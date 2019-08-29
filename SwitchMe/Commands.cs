@@ -15,14 +15,14 @@ using System.Text;
 
 namespace SwitchMe
 {
-    [Category("Switch")]
+    [Category("switch")]
     public class Commands : CommandModule
     {
 
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         public SwitchMePlugin Plugin => (SwitchMePlugin)Context.Plugin;
-        [Command("me", "Automatically connect to your server of choice within this network. USAGE: !Switch me <Insert Server name here>")]
+        [Command("me", "Automatically connect to your server of choice within this network. USAGE: !switch me <Insert Server name here>")]
         [Permission(MyPromoteLevel.None)]
         public void SwitchLocal()
         {
@@ -69,7 +69,7 @@ namespace SwitchMe
                 Context.Respond("Switching is not enabled!");
             }
         }
-        [Command("all", "Automatically connects all players to your server of choice within this network. USAGE: !Switch all <Insert Server name here>")]
+        [Command("all", "Automatically connects all players to your server of choice within this network. USAGE: !switch all <Insert Server name here>")]
         [Permission(MyPromoteLevel.Admin)]
         public void SwitchAll()
         {
@@ -106,7 +106,7 @@ namespace SwitchMe
                 Context.Respond("Switching is not enabled!");
             }
         }
-        [Command("list", "Displays a list of Valid Server names for the '!Switch me <servername>' command. ")]
+        [Command("list", "Displays a list of Valid Server names for the '!switch me <servername>' command. ")]
         [Permission(MyPromoteLevel.None)]
         public void SwitchList()
         {
@@ -133,12 +133,12 @@ namespace SwitchMe
             }
         }
 
-        [Command("help", "Displays a list of Valid Server names for !Switch Me <servername> ")]
+        [Command("help", "Displays a list of Valid Server names for !switch Me <servername> ")]
         [Permission(MyPromoteLevel.None)]
         public void SwitchHelp()
         {
-            Context.Respond("'!Switch Me <servername>' Switches you to selected server");
-            Context.Respond("'!Switch List' Displays a list of valid Server names to connect to.");
+            Context.Respond("'!switch Me <servername>' Switches you to selected server");
+            Context.Respond("'!switch List' Displays a list of valid Server names to connect to.");
         }
     }
 }
