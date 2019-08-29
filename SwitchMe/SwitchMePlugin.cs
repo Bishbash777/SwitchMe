@@ -17,8 +17,8 @@ using Torch.API;
 using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
-using Torch.Managers.ChatManager;
 using Torch.Server;
+using Torch.Managers.ChatManager;
 using Torch.Session;
 using VRage.Game.ModAPI;
 
@@ -34,6 +34,9 @@ namespace SwitchMe
 
         private UserControl _control;
         public static string ip;
+        private Timer _timer;
+        private DateTime timerStart = new DateTime(0);
+        private TorchSessionManager _sessionManager;
 
 
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
@@ -51,8 +54,9 @@ namespace SwitchMe
 
             try
             {
-
+                StartTimer();
                 _config = Persistent<SwitchMeConfig>.Load(configFile);
+                timerStart = new DateTime(0);
 
             }
             catch (Exception e)
@@ -67,6 +71,129 @@ namespace SwitchMe
 
                 _config = new Persistent<SwitchMeConfig>(configFile, new SwitchMeConfig());
                 Save();
+            }
+        }
+
+        private void SessionChanged(ITorchSession session, TorchSessionState state)
+        {
+            if (!Config.Enabled) return;
+
+            switch (state)
+            {
+                case TorchSessionState.Loaded:
+
+                    //load
+                    LoadSEDB();
+
+
+                    break;
+                case TorchSessionState.Unloaded:
+
+                    //unload
+                    timerStart = new DateTime(0);
+
+                    UnloadSEDB();
+
+                    break;
+                default:
+                    // ignore
+                    break;
+            }
+        }
+        public void StartTimer()
+        {
+            if (_timer != null) StopTimer();
+
+            _timer = new Timer(1000);
+            _timer.Elapsed += _timer_Elapsed;
+            _timer.Enabled = true;
+        }
+
+        public void StopTimer()
+        {
+            if (_timer != null)
+            {
+                _timer.Elapsed -= _timer_Elapsed;
+                _timer.Enabled = false;
+                _timer.Dispose();
+                _timer = null;
+            }
+        }
+        public void UnloadSEDB()
+        {
+            Dispose();
+        }
+
+
+        public void LoadSEDB()
+        {
+            if (_sessionManager == null)
+            {
+                _sessionManager = Torch.Managers.GetManager<TorchSessionManager>();
+                if (_sessionManager == null)
+                {
+                    Log.Warn("No session manager loaded!");
+                }
+                else
+                {
+                    _sessionManager.SessionStateChanged += SessionChanged;
+                }
+            }
+            if (Torch.CurrentSession != null)
+            {
+                InitPost();
+            }
+        }
+
+        public string CheckSlots(string targetIP)
+        {
+            try
+            {
+                string maxPlayers = MySession.Static.MaxPlayers.ToString();
+                string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
+                string currentIp = Sandbox.MySandboxExternal.ConfigDedicated.IP + ":" + Sandbox.MySandboxExternal.ConfigDedicated.ServerPort;
+                using (WebClient client = new WebClient())
+                {
+                    NameValueCollection postData = new NameValueCollection()
+                            {
+                                //order: {"parameter name", "parameter value"}
+                                { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp}, {"targetip", targetIP}
+                            };
+                    client.UploadValuesAsync(new Uri("http://captainjackyt.com/SE/staff/globaltracking.php"), postData);
+                }
+            }
+            catch
+            {
+                Log.Warn("Cannot connect to captainjackyt.com database.");
+            }
+            string result = "";
+            return result;
+        }
+
+        private void InitPost()
+        {
+            StartTimer();
+        }
+        private void _timer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            string maxPlayers = MySession.Static.MaxPlayers.ToString();
+            string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
+            string currentIp = Sandbox.MySandboxExternal.ConfigDedicated.IP + ":" + Sandbox.MySandboxExternal.ConfigDedicated.ServerPort;
+            if (Torch.CurrentSession != null)
+            {
+                using (WebClient client = new WebClient())
+                {
+                    NameValueCollection postData = new NameValueCollection()
+                        {
+                            //order: {"parameter name", "parameter value"}
+                            { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp},
+                        };
+                    client.UploadValuesAsync(new Uri("http://captainjackyt.com/SE/staff/globaltracking.php"), postData);
+                }
+            }
+            else
+            {
+                Log.Fatal("TEST");
             }
         }
     }
