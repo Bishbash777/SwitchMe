@@ -182,7 +182,7 @@ namespace SwitchMe
             string maxPlayers = MySession.Static.MaxPlayers.ToString();
             string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
             string currentIp = Sandbox.MySandboxExternal.ConfigDedicated.IP + ":" + Sandbox.MySandboxExternal.ConfigDedicated.ServerPort;
-            if (Torch.CurrentSession != null)
+            if (Torch.CurrentSession != null && currentIp.Length < 1)
             {
                 using (WebClient client = new WebClient())
                 {
