@@ -88,7 +88,7 @@ namespace SwitchMe
                     NameValueCollection postData = new NameValueCollection()
                         {
                             //order: {"parameter name", "parameter value"}
-                            { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp},
+                            { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"targetip", targetIP},
                         };
                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
                 }

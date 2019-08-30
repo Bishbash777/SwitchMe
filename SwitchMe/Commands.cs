@@ -29,9 +29,10 @@ namespace SwitchMe
             string ip = "";
             string name = "";
             string port = "";
-            
+            string existanceCheck = "";
             if (Plugin.Config.Enabled)
             {
+
                 IEnumerable<string> channelIds = Plugin.Config.Servers.Where(c => c.Split(':')[0].Equals(Context.RawArgs));
                 foreach (string chId in channelIds)
                 {
@@ -42,50 +43,63 @@ namespace SwitchMe
                 }
                 string target = ip + ":" + port;
                 string slotinfo = Plugin.CheckSlots(target);
-                int current = 0;
-                int max = 0;
-                current = int.Parse(slotinfo.Substring(slotinfo.IndexOf(",") + 1));
-                max = int.Parse(slotinfo.Substring(slotinfo.IndexOf(",") + 2));
-                int currentPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                int maxcheck = currentPlayers + 1;
-
-                if (maxcheck > max)
+                Context.Respond(slotinfo);
+                existanceCheck = slotinfo.Split(';').Last();
+                //existanceCheck = int.Parse(slotinfo.Substring(0, slotinfo.LastIndexOf(";")));
+                Context.Respond(existanceCheck);
+                if (target.Length <= 1)
                 {
-
-                    if (ip == null)
+                    if (existanceCheck == "1")
                     {
-                        Context.Respond("Invalid Server!");
-                    }
-                    if (Context.Player != null)
-                    {
+                        Log.Warn("Checking " + target);
+                        int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+                        string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+                        Log.Warn("MAX: " + max);
+                        int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+                        int maxi = int.Parse(max);
+                        int maxcheck = currentLocalPlayers + currentRemotePlayers;
+                        Context.Respond("Slot Checking...");
+                        Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
 
-                        ulong steamid = Context.Player.SteamUserId;
-                        try
+                        if (maxcheck < maxi)
                         {
-                            Context.Respond("Connecting to " + Context.RawArgs + " @ " + ip + ":" + port);
-                            ModCommunication.SendMessageTo(new JoinServerMessage(ip), steamid);
-                            Log.Warn(Context.Player.DisplayName + " has switched to " + Context.RawArgs + " @ " + ip + ":" + port);
+                            if (ip == null || name == null || port == null)
+                            {
+                                Context.Respond("Invalid Configuration!");
+                            }
+                            Context.Respond("Slot checking passed!");
+                            try
+                            {
+                                ulong steamid = Context.Player.SteamUserId;
+                                Context.Respond("Connecting client to " + Context.RawArgs + " @ " + ip + ":" + port);
+                                ModCommunication.SendMessageTo(new JoinServerMessage(ip), steamid);
+                                Log.Warn("Connected client to " + Context.RawArgs + " @ " + ip + ":" + port);
+                            }
+                            catch
+                            {
+                                Context.Respond("Failure");
+                            }
                         }
-                        catch (Exception e)
+                        else
                         {
-                            Context.Respond(e.Message);
+                            Context.Respond("Cannot switch, not enough slots available");
                         }
                     }
                     else
                     {
-                        Context.Respond("Command can only be ran ingame!");
+                        Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
                     }
                 }
                 else
                 {
-                    Context.Respond("Cannot Switch, target server is full!");
+                    Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
                 }
             }
-            
             else
             {
                 Context.Respond("Switching is not enabled!");
             }
+
         }
         [Command("all", "Automatically connects all players to your server of choice within this network. USAGE: !switch all <Insert Server name here>")]
         [Permission(MyPromoteLevel.Admin)]
@@ -94,8 +108,10 @@ namespace SwitchMe
             string ip = "";
             string name = "";
             string port = "";
+            string existanceCheck = "";
             if (Plugin.Config.Enabled)
             {
+                
                 IEnumerable<string> channelIds = Plugin.Config.Servers.Where(c => c.Split(':')[0].Equals(Context.RawArgs));
                 foreach (string chId in channelIds)
                 {
@@ -106,34 +122,60 @@ namespace SwitchMe
                 }
                 string target = ip + ":" + port;
                 string slotinfo = Plugin.CheckSlots(target);
-                int current = 0;
-                int max = 0;
-                current = int.Parse(slotinfo.Substring(slotinfo.IndexOf(",") + 1));
-                max = int.Parse(slotinfo.Substring(slotinfo.IndexOf(",") + 2));
-                int currentPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                int maxcheck = currentPlayers + 1;
-
-                if (maxcheck > max)
+                Context.Respond(slotinfo);
+                existanceCheck = slotinfo.Split(';').Last();
+                //existanceCheck = int.Parse(slotinfo.Substring(0, slotinfo.LastIndexOf(";")));
+                Context.Respond(existanceCheck);
+                if (target.Length <= 1)
                 {
-                    if (ip == null || name == null || port == null)
+                    if (existanceCheck == "1")
                     {
-                        Context.Respond("Invalid Configuration!");
+                        Log.Warn("Checking " + target);
+                        int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+                        string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+                        Log.Warn("MAX: " + max);
+                        int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+                        int maxi = int.Parse(max);
+                        int maxcheck = currentLocalPlayers + currentRemotePlayers;
+                        Context.Respond("Slot Checking...");
+                        Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
+
+                        if (maxcheck < maxi)
+                        {
+                            if (ip == null || name == null || port == null)
+                            {
+                                Context.Respond("Invalid Configuration!");
+                            }
+                            Context.Respond("Slot checking passed!");
+                            try
+                            {
+                                Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip + ":" + port);
+                                ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
+                                Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip + ":" + port);
+                            }
+                            catch
+                            {
+                                Context.Respond("Failure");
+                            }
+                        }
+                        else
+                        {
+                            Context.Respond("Cannot switch, not enough slots available");
+                        }
                     }
-                    try
+                    else
                     {
-                        Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip + ":" + port);
-                        ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
-                        Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip + ":" + port);
-                    }
-                    catch
-                    {
-                        Context.Respond("Failure");
+                        Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
                     }
                 }
                 else
                 {
-                    Context.Respond("Switching is not enabled!");
+                    Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
                 }
+            }
+            else
+            {
+                Context.Respond("Switching is not enabled!");
             }
         }
         [Command("list", "Displays a list of Valid Server names for the '!switch me <servername>' command. ")]
@@ -149,13 +191,13 @@ namespace SwitchMe
                 foreach (string chId in channelIds)
                 {
                     name = chId.Split(':')[0];
-                    sb.AppendLine("'" + name + "'");
+                    sb.Append("'" + name + "'");
+                    
                 }
-                Context.Respond("");
-                Context.Respond("----------------");
+                Context.Respond("--------------------------");
                 Context.Respond("List of Servers available to switch to:");
                 Context.Respond(sb.ToString());
-                Context.Respond("----------------");
+                Context.Respond("--------------------------");
             }
             else
             {
