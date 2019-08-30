@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using System.Timers;
 using System.Windows.Controls;
 using Torch;
+using System.Text;
 using Torch.API;
 using Torch.API.Managers;
 using Torch.API.Plugins;
@@ -73,7 +74,33 @@ namespace SwitchMe
                 Save();
             }
         }
+        public string CheckSlots(string targetIP)
+        {
+            string pagesource = "";
+            try
+            {
+                string maxPlayers = MySession.Static.MaxPlayers.ToString();
+                string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
+                string currentIp = Sandbox.MySandboxExternal.ConfigDedicated.IP + ":" + Sandbox.MySandboxExternal.ConfigDedicated.ServerPort;
+                using (WebClient client = new WebClient())
+                {
 
+                    NameValueCollection postData = new NameValueCollection()
+                        {
+                            //order: {"parameter name", "parameter value"}
+                            { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp},
+                        };
+                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
+                }
+            }
+
+            catch
+            {
+                Log.Warn("Cannot connect to captainjackyt.com database.");
+            }
+
+            return pagesource;
+        }
         private void SessionChanged(ITorchSession session, TorchSessionState state)
         {
             if (!Config.Enabled) return;
@@ -104,7 +131,7 @@ namespace SwitchMe
         {
             if (_timer != null) StopTimer();
 
-            _timer = new Timer(1000);
+            _timer = new Timer(3000);
             _timer.Elapsed += _timer_Elapsed;
             _timer.Enabled = true;
         }
@@ -145,30 +172,6 @@ namespace SwitchMe
             }
         }
 
-        public string CheckSlots(string targetIP)
-        {
-            try
-            {
-                string maxPlayers = MySession.Static.MaxPlayers.ToString();
-                string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
-                string currentIp = Sandbox.MySandboxExternal.ConfigDedicated.IP + ":" + Sandbox.MySandboxExternal.ConfigDedicated.ServerPort;
-                using (WebClient client = new WebClient())
-                {
-                    NameValueCollection postData = new NameValueCollection()
-                            {
-                                //order: {"parameter name", "parameter value"}
-                                { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp}, {"targetip", targetIP}
-                            };
-                    client.UploadValuesAsync(new Uri("http://captainjackyt.com/SE/staff/globaltracking.php"), postData);
-                }
-            }
-            catch
-            {
-                Log.Warn("Cannot connect to captainjackyt.com database.");
-            }
-            string result = "";
-            return result;
-        }
 
         private void InitPost()
         {
@@ -183,17 +186,17 @@ namespace SwitchMe
             {
                 using (WebClient client = new WebClient())
                 {
+                    string pagesource = "";
                     NameValueCollection postData = new NameValueCollection()
                         {
                             //order: {"parameter name", "parameter value"}
                             { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp},
                         };
-                    client.UploadValuesAsync(new Uri("http://captainjackyt.com/SE/staff/globaltracking.php"), postData);
+                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
                 }
             }
             else
             {
-                Log.Fatal("TEST");
             }
         }
     }
