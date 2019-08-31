@@ -43,6 +43,7 @@ namespace SwitchMe
 
                     }
                     string target = ip + ":" + port;
+                    ip += ":" + port;
                     string slotinfo = Plugin.CheckSlots(target);
                     existanceCheck = slotinfo.Split(';').Last();
                     //existanceCheck = int.Parse(slotinfo.Substring(0, slotinfo.LastIndexOf(";")));
@@ -71,9 +72,11 @@ namespace SwitchMe
                                 try
                                 {
                                     ulong steamid = Context.Player.SteamUserId;
-                                    Context.Respond("Connecting client to " + Context.RawArgs + " @ " + ip + ":" + port);
+                                    Context.Respond("Connecting client to " + Context.RawArgs + " @ " + ip);
                                     ModCommunication.SendMessageTo(new JoinServerMessage(ip), steamid);
-                                    Log.Warn("Connected client to " + Context.RawArgs + " @ " + ip + ":" + port);
+                                    Log.Warn("Connected client to " + Context.RawArgs + " @ " + ip);
+                                    
+
                                 }
                                 catch
                                 {
@@ -116,7 +119,7 @@ namespace SwitchMe
             string existanceCheck = "";
             if (Plugin.Config.Enabled)
             {
-                
+
                 IEnumerable<string> channelIds = Plugin.Config.Servers.Where(c => c.Split(':')[0].Equals(Context.RawArgs));
                 foreach (string chId in channelIds)
                 {
@@ -126,6 +129,7 @@ namespace SwitchMe
 
                 }
                 string target = ip + ":" + port;
+                ip += ":" + port;
                 string slotinfo = Plugin.CheckSlots(target);
                 existanceCheck = slotinfo.Split(';').Last();
                 if (target.Length > 1)
@@ -151,9 +155,9 @@ namespace SwitchMe
                             Context.Respond("Slot checking passed!");
                             try
                             {
-                                Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip + ":" + port);
+                                Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip);
                                 ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
-                                Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip + ":" + port);
+                                Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip);
                             }
                             catch
                             {
@@ -187,14 +191,14 @@ namespace SwitchMe
             if (Plugin.Config.Enabled)
             {
                 StringBuilder sb = new StringBuilder();
-                string name = "";
+                string name;
 
                 IEnumerable<string> channelIds = Plugin.Config.Servers;
                 foreach (string chId in channelIds)
                 {
                     name = chId.Split(':')[0];
                     sb.Append("'" + name + "' ");
-                    
+
                 }
                 Context.Respond("--------------------------");
                 Context.Respond("List of Servers available to switch to:");
@@ -214,7 +218,6 @@ namespace SwitchMe
             Context.Respond("'!switch Me <servername>' Switches you to selected server");
             Context.Respond("'!switch List' Displays a list of valid Server names to connect to.");
         }
-       
     }
 }
 

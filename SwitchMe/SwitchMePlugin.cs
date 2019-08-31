@@ -15,6 +15,7 @@ using System.Windows.Controls;
 using Torch;
 using System.Text;
 using Torch.API;
+using Torch.Managers;
 using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
@@ -38,6 +39,7 @@ namespace SwitchMe
         private Timer _timer;
         private DateTime timerStart = new DateTime(0);
         private TorchSessionManager _sessionManager;
+        
 
 
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
@@ -50,7 +52,6 @@ namespace SwitchMe
         public override void Init(ITorchBase torch)
         {
             base.Init(torch);
-
             var configFile = Path.Combine(StoragePath, "SwitchMe.cfg");
 
             try
@@ -71,6 +72,7 @@ namespace SwitchMe
                 Log.Info("Create Default Config, because none was found!");
 
                 _config = new Persistent<SwitchMeConfig>(configFile, new SwitchMeConfig());
+                
                 Save();
             }
         }
@@ -96,7 +98,7 @@ namespace SwitchMe
 
             catch
             {
-                Log.Warn("Cannot connect to captainjackyt.com database.");
+                Log.Warn("Cannot connect to database.");
             }
 
             return pagesource;
@@ -179,10 +181,11 @@ namespace SwitchMe
         }
         private void _timer_Elapsed(object sender, ElapsedEventArgs e)
         {
+            if (timerStart.Ticks == 0) timerStart = e.SignalTime;
             string maxPlayers = MySession.Static.MaxPlayers.ToString();
             string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
             string currentIp = Sandbox.MySandboxExternal.ConfigDedicated.IP + ":" + Sandbox.MySandboxExternal.ConfigDedicated.ServerPort;
-            if (Torch.CurrentSession != null && currentIp.Length < 1)
+            if (Torch.CurrentSession != null && currentIp.Length > 1)
             {
                 using (WebClient client = new WebClient())
                 {
@@ -193,6 +196,7 @@ namespace SwitchMe
                             { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp},
                         };
                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
+                   
                 }
             }
             else
