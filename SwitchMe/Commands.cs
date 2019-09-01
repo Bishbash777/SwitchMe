@@ -58,7 +58,7 @@ namespace SwitchMe
                             Log.Warn("MAX: " + max);
                             int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
                             int maxi = int.Parse(max);
-                            int maxcheck = currentLocalPlayers + currentRemotePlayers;
+                            int maxcheck = (1 + currentRemotePlayers);
                             Context.Respond("Slot Checking...");
                             Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
 
