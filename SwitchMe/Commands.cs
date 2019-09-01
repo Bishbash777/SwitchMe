@@ -211,12 +211,12 @@ namespace SwitchMe
             }
         }
 
-        [Command("help", "Displays a list of Valid Server names for !switch Me <servername> ")]
+        [Command("help", "Displays a list of Valid Server names for !switch me <servername> ")]
         [Permission(MyPromoteLevel.None)]
         public void SwitchHelp()
         {
-            Context.Respond("'!switch Me <servername>' Switches you to selected server");
-            Context.Respond("'!switch List' Displays a list of valid Server names to connect to.");
+            Context.Respond("'!switch me <servername>' Switches you to selected server");
+            Context.Respond("'!switch list' Displays a list of valid Server names to connect to.");
         }
     }
 }
