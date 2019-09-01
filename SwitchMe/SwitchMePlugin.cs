@@ -1,28 +1,20 @@
 ﻿using NLog;
-using Sandbox.Game.Entities;
-using Sandbox.Game.Entities.Character;
-using Sandbox.Game.Gui;
 using Sandbox.Game.World;
 using System;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Net;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using Torch.Mod;
+using Torch.Mod.Messages;
 using System.Timers;
 using System.Windows.Controls;
 using Torch;
 using System.Text;
 using Torch.API;
-using Torch.Managers;
 using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
-using Torch.Server;
-using Torch.Managers.ChatManager;
 using Torch.Session;
-using VRage.Game.ModAPI;
 
 namespace SwitchMe
 {
@@ -59,7 +51,6 @@ namespace SwitchMe
                 StartTimer();
                 _config = Persistent<SwitchMeConfig>.Load(configFile);
                 timerStart = new DateTime(0);
-
             }
             catch (Exception e)
             {
@@ -132,10 +123,10 @@ namespace SwitchMe
         public void StartTimer()
         {
             if (_timer != null) StopTimer();
-
             _timer = new Timer(3000);
             _timer.Elapsed += _timer_Elapsed;
             _timer.Enabled = true;
+            
         }
 
         public void StopTimer()
@@ -145,6 +136,7 @@ namespace SwitchMe
                 _timer.Elapsed -= _timer_Elapsed;
                 _timer.Enabled = false;
                 _timer.Dispose();
+                
                 _timer = null;
             }
         }
@@ -174,34 +166,43 @@ namespace SwitchMe
             }
         }
 
-
+        int i = 0;
         private void InitPost()
         {
             StartTimer();
         }
         private void _timer_Elapsed(object sender, ElapsedEventArgs e)
         {
+
             if (timerStart.Ticks == 0) timerStart = e.SignalTime;
             string maxPlayers = MySession.Static.MaxPlayers.ToString();
             string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
             string currentIp = Sandbox.MySandboxExternal.ConfigDedicated.IP + ":" + Sandbox.MySandboxExternal.ConfigDedicated.ServerPort;
             if (Torch.CurrentSession != null && currentIp.Length > 1)
             {
-                using (WebClient client = new WebClient())
+                if (currentIp.Contains("0.0.") || currentIp.Contains("192.168") || currentIp.Contains("127.0.0"))
                 {
-                    string pagesource = "";
-                    NameValueCollection postData = new NameValueCollection()
-                        {
-                            //order: {"parameter name", "parameter value"}
-                            { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp},
-                        };
-                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
-                   
+                    if (i == 200) { Log.Warn("Invalid Ip in Torch config. Please use a public facing ip!"); }
+                }
+                else
+                {
+                    using (WebClient client = new WebClient())
+                    {
+                        string pagesource = "";
+                        NameValueCollection postData = new NameValueCollection()
+                    {
+                        //order: {"parameter name", "parameter value"}
+                        { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp},
+                    };
+                        pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
+
+                    }
                 }
             }
             else
             {
             }
+
         }
     }
 }
