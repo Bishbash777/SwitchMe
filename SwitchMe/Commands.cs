@@ -146,7 +146,7 @@ namespace SwitchMe
                         int maxcheck = currentLocalPlayers + currentRemotePlayers;
                         Context.Respond("Slot Checking...");
                         Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-
+                        
                         if (maxcheck <= maxi)
                         {
                             if (ip == null || name == null || port == null)
@@ -205,6 +205,7 @@ namespace SwitchMe
                 Context.Respond("List of Servers available to switch to:");
                 Context.Respond(sb.ToString());
                 Context.Respond("--------------------------");
+                
             }
             else
             {
