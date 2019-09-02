@@ -61,8 +61,9 @@ namespace SwitchMe
                             int maxcheck = (1 + currentRemotePlayers);
                             Context.Respond("Slot Checking...");
                             Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
+                            Log.Warn("Switch Me 1.1.4");
 
-                            if (maxcheck < maxi)
+                            if (maxcheck <= maxi)
                             {
                                 if (ip == null || name == null || port == null)
                                 {
@@ -146,7 +147,7 @@ namespace SwitchMe
                         Context.Respond("Slot Checking...");
                         Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
 
-                        if (maxcheck < maxi)
+                        if (maxcheck <= maxi)
                         {
                             if (ip == null || name == null || port == null)
                             {
