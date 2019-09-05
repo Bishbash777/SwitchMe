@@ -1,15 +1,23 @@
 using NLog;
 using System;
-using System.Collections.Generic;
-using Torch.Commands;
-using Torch.Commands.Permissions;
-using VRage.Game.ModAPI;
-using Torch.Mod;
-using Torch.Mod.Messages;
+using System.IO;
 using System.Linq;
 using System.Text;
+using Sandbox;
+using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
+using Torch.API.Managers;
+using Torch.Commands;
+using Torch.Commands.Permissions;
+using Torch.Mod;
+using Torch.Mod.Messages;
+using VRage;
+using VRage.Game.ModAPI;
+using VRage.ModAPI;
+using VRage.Game;
+using VRage.ObjectBuilders;
+using System.Collections.Generic;
 using Sandbox.Game.World;
-using System.Collections.Specialized;
 using System.Net;
 
 
@@ -218,6 +226,64 @@ namespace SwitchMe
         {
             Context.Respond("'!switch me <servername>' Switches you to selected server");
             Context.Respond("'!switch list' Displays a list of valid Server names to connect to.");
+        }
+
+        private readonly string ExportPath = "ExportedGrids\\{0}.xml";
+        [Command("grid", "Displays a list of Valid Server names for !switch me <servername> ")]
+        [Permission(MyPromoteLevel.None)]
+        public void Grid(string gridTarget, string serverTarget)
+        {
+
+            
+            if (Context.Player == null)
+            {
+                Context.Respond("Console cannot run this command");
+                return;
+            }
+            else
+            {
+                IMyIdentity identity = SwitchMe.SwitchMePlugin.GetIdentityByName(Context.Player.DisplayName);
+                var id = Context.Player?.IdentityId ?? 0;
+                StringBuilder sb = new StringBuilder();
+
+                foreach (var entity in MyEntities.GetEntities())
+                {
+                    Context.Respond("2");
+                    var grid = entity as MyCubeGrid;
+                    if (grid == null)
+                        continue;
+                    Context.Respond("Error");
+                    if (grid.BigOwners.Contains(id))
+                    {
+                        if (grid.Name == gridTarget)
+                        {
+                            Context.Respond("4");
+                            Directory.CreateDirectory("ExportedGrids");
+                            if (!SwitchMe.SwitchMePlugin.TryGetEntityByNameOrId(gridTarget, out var ent) || !(ent is IMyCubeGrid))
+                            {
+                                Context.Respond("Grid not found.");
+                                return;
+                            }
+
+                            var path = string.Format(ExportPath, Context.Player.SteamUserId + "-" + gridTarget);
+                            if (File.Exists(path))
+                            {
+                                Context.Respond("Export file already exists.");
+                                return;
+                            }
+                            Context.Respond("5");
+                            MyObjectBuilderSerializer.SerializeXML(path, false, ent.GetObjectBuilder());
+                            Context.Respond($"Grid saved to {path}");
+
+                            Context.Respond("6");
+                            System.Net.WebClient Client = new System.Net.WebClient();
+                            Client.Headers.Add("Content-Type", "binary/octet-stream");
+                            byte[] result = Client.UploadFile("http://switchplugin.net/gridHandle.php", "POST", path);
+                            String s = System.Text.Encoding.UTF8.GetString(result, 0, result.Length);
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -1,20 +1,26 @@
 ﻿using NLog;
-using Sandbox.Game.World;
-using System;
-using System.Collections.Specialized;
-using System.IO;
-using System.Net;
-using Torch.Mod;
-using Torch.Mod.Messages;
-using System.Timers;
-using System.Windows.Controls;
-using Torch;
 using System.Text;
-using Torch.API;
-using Torch.API.Managers;
+using System.Threading.Tasks;
+using Sandbox.Game.Entities;
+using Sandbox.Game.World;
+using Sandbox.ModAPI;
+using Torch;
+using VRage.Game.ModAPI;
+using VRage.ModAPI;
+using VRage.Utils;
 using Torch.API.Plugins;
-using Torch.API.Session;
 using Torch.Session;
+using System.Windows.Controls;
+using System.Threading;
+using Torch.API.Managers;
+using System;
+using System.Timers;
+using System.Collections.Specialized;
+using System.Net;
+using Timer = System.Timers.Timer;
+using Torch.API.Session;
+using Torch.API;
+using System.IO;
 
 namespace SwitchMe
 {
@@ -166,7 +172,36 @@ namespace SwitchMe
             }
         }
 
-        int i = 0;
+        public static bool TryGetEntityByNameOrId(string nameOrId, out IMyEntity entity)
+        {
+            if (long.TryParse(nameOrId, out long id))
+                return MyAPIGateway.Entities.TryGetEntityById(id, out entity);
+
+            foreach (var ent in MyEntities.GetEntities())
+            {
+                if (ent.DisplayName == nameOrId)
+                {
+                    entity = ent;
+                    return true;
+                }
+            }
+
+            entity = null;
+            return false;
+        }
+
+
+        public static MyIdentity GetIdentityByName(string playerName)
+        {
+
+            foreach (var identity in MySession.Static.Players.GetAllIdentities())
+                if (identity.DisplayName == playerName)
+                    return (MyIdentity)identity;
+
+            return null;
+        }
+
+        readonly int i = 0;
         private void InitPost()
         {
             StartTimer();
