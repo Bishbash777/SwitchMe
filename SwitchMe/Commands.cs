@@ -246,7 +246,7 @@ namespace SwitchMe
                 var id = Context.Player?.IdentityId ?? 0;
                 StringBuilder sb = new StringBuilder();
 
-                foreach (var entity in MyEntities.GetEntities())
+                foreach (var entity in MyEntities.GetEntities() )
                 {
                     Context.Respond("2");
                     var grid = entity as MyCubeGrid;

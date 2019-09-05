@@ -94,6 +94,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Commands.cs" />
+    <Compile Include="GridFinder.cs" />
     <Compile Include="SwitchMeConfig.cs" />
     <Compile Include="SwitchMeControl.xaml.cs" />
     <Compile Include="SwitchMePlugin.cs" />

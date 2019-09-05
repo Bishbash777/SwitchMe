@@ -21,6 +21,9 @@ using Timer = System.Timers.Timer;
 using Torch.API.Session;
 using Torch.API;
 using System.IO;
+using System.Collections.Concurrent;
+using VRage.Groups;
+using Torch.Commands;
 
 namespace SwitchMe
 {
@@ -73,6 +76,16 @@ namespace SwitchMe
                 Save();
             }
         }
+
+        public void checkOwner(string gridName, CommandContext Context)
+        {
+
+            ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = GridFinder.findGridGroup(gridName);
+
+            checkOwner(groups.ToString(), Context);
+        }
+
+
         public string CheckSlots(string targetIP)
         {
             string pagesource = "";
