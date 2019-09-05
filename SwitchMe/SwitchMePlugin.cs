@@ -166,7 +166,7 @@ namespace SwitchMe
             }
         }
 
-        int i = 0;
+        readonly int i = 0;
         private void InitPost()
         {
             StartTimer();
@@ -177,7 +177,7 @@ namespace SwitchMe
             if (timerStart.Ticks == 0) timerStart = e.SignalTime;
             string maxPlayers = MySession.Static.MaxPlayers.ToString();
             string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
-            string currentIp = Sandbox.MySandboxExternal.ConfigDedicated.IP + ":" + Sandbox.MySandboxExternal.ConfigDedicated.ServerPort;
+            string currentIp = new WebClient().DownloadString("http://switchplugin.net/ip.php") + ":" + Sandbox.MySandboxExternal.ConfigDedicated.ServerPort;
             if (Torch.CurrentSession != null && currentIp.Length > 1)
             {
                 if (currentIp.Contains("0.0.") || currentIp.Contains("192.168") || currentIp.Contains("127.0.0"))

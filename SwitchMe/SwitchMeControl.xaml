@@ -9,8 +9,7 @@
         <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
 
         <Label Content="Add Servers to link here:" />
-        <Label Content="*Please note that Switchme will not work properly if your ip in the torch.cfg is a local ip" FontSize="9" />
-        <Label Content="eg, '192.168', '0.0.0.0' or '127.0.0.1'" FontSize="9" />
+        <Label Content="*Please note that the Target server IP has to be the same your players connect to!" FontSize="9" />
 
 
         <StackPanel Orientation="Horizontal">
