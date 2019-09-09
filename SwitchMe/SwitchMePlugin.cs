@@ -73,8 +73,11 @@ namespace SwitchMe
             try
             {
                 string maxPlayers = MySession.Static.MaxPlayers.ToString();
+                
                 string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
+                
                 string currentIp = Sandbox.MySandboxExternal.ConfigDedicated.IP + ":" + Sandbox.MySandboxExternal.ConfigDedicated.ServerPort;
+                
                 using (WebClient client = new WebClient())
                 {
 
@@ -83,7 +86,9 @@ namespace SwitchMe
                             //order: {"parameter name", "parameter value"}
                             { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"targetip", targetIP},
                         };
+                    
                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
+                    
                 }
             }
 
@@ -173,30 +178,31 @@ namespace SwitchMe
         }
         private void _timer_Elapsed(object sender, ElapsedEventArgs e)
         {
-
+            string externalIP;
+            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0"))
+            {
+                externalIP = new WebClient().DownloadString("http://switchplugin.net/ip.php");
+            }
+            else
+            {
+                externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            }
             if (timerStart.Ticks == 0) timerStart = e.SignalTime;
             string maxPlayers = MySession.Static.MaxPlayers.ToString();
             string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
-            string currentIp = new WebClient().DownloadString("http://switchplugin.net/ip.php") + ":" + Sandbox.MySandboxExternal.ConfigDedicated.ServerPort;
+            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
             if (Torch.CurrentSession != null && currentIp.Length > 1)
             {
-                if (currentIp.Contains("0.0.") || currentIp.Contains("192.168") || currentIp.Contains("127.0.0"))
+
+                using (WebClient client = new WebClient())
                 {
-                    if (i == 200) { Log.Warn("Invalid Ip in Torch config. Please use a public facing ip!"); }
-                }
-                else
-                {
-                    using (WebClient client = new WebClient())
-                    {
-                        string pagesource = "";
-                        NameValueCollection postData = new NameValueCollection()
+                    string pagesource = "";
+                    NameValueCollection postData = new NameValueCollection()
                     {
                         //order: {"parameter name", "parameter value"}
                         { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp},
                     };
-                        pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
-
-                    }
+                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
                 }
             }
             else
