@@ -9,12 +9,15 @@ using Torch.Mod.Messages;
 using System.Timers;
 using System.Windows.Controls;
 using Torch;
+using Torch.Commands;
 using System.Text;
 using Torch.API;
 using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
+using System.Collections.Generic;
+using System.Runtime.Remoting.Contexts;
 
 namespace SwitchMe
 {
@@ -76,8 +79,6 @@ namespace SwitchMe
                 
                 string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
                 
-                string currentIp = Sandbox.MySandboxExternal.ConfigDedicated.IP + ":" + Sandbox.MySandboxExternal.ConfigDedicated.ServerPort;
-                
                 using (WebClient client = new WebClient())
                 {
 
@@ -94,7 +95,7 @@ namespace SwitchMe
 
             catch
             {
-                Log.Warn("Cannot connect to database.");
+                Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
             }
 
             return pagesource;
@@ -171,22 +172,32 @@ namespace SwitchMe
             }
         }
 
-        readonly int i = 0;
+
+        int i = 590;
         private void InitPost()
         {
             StartTimer();
         }
         private void _timer_Elapsed(object sender, ElapsedEventArgs e)
         {
+            
+            
             string externalIP;
-            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0"))
+            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
             {
-                externalIP = new WebClient().DownloadString("http://switchplugin.net/ip.php");
+                externalIP = Config.LocalIP;
+                if (Config.LocalIP == "" || Config.LocalIP == null)
+                {
+                    i++;
+                    if (i == 600) { Log.Warn("Please have your public ip set in the SwitchMe Config."); i = 0;  }
+                }
+                
             }
             else
             {
                 externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
             }
+            
             if (timerStart.Ticks == 0) timerStart = e.SignalTime;
             string maxPlayers = MySession.Static.MaxPlayers.ToString();
             string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
@@ -200,7 +211,7 @@ namespace SwitchMe
                     NameValueCollection postData = new NameValueCollection()
                     {
                         //order: {"parameter name", "parameter value"}
-                        { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp},
+                        { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp}, {"verion", "1.1.7.5"  }
                     };
                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
                 }
