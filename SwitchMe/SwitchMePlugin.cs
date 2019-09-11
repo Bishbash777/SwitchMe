@@ -17,26 +17,12 @@ using System;
 using System.Timers;
 using System.Collections.Specialized;
 using System.Net;
-using Torch.Mod;
-using Torch.Mod.Messages;
-using System.Timers;
-using System.Windows.Controls;
-using Torch;
-using Torch.Commands;
-using System.Text;
 using Timer = System.Timers.Timer;
 using Torch.API.Session;
 using Torch.API;
-using Torch.API.Managers;
-using Torch.API.Plugins;
-using Torch.API.Session;
-using Torch.Session;
-using System.Collections.Generic;
-using System.Runtime.Remoting.Contexts;
+
 using System.IO;
-using System.Collections.Concurrent;
-using VRage.Groups;
-using Torch.Commands;
+
 
 namespace SwitchMe
 {
@@ -88,14 +74,6 @@ namespace SwitchMe
                 
                 Save();
             }
-        }
-
-        public void checkOwner(string gridName, CommandContext Context)
-        {
-
-            ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = GridFinder.findGridGroup(gridName);
-
-            checkOwner(groups.ToString(), Context);
         }
 
 
@@ -264,7 +242,7 @@ namespace SwitchMe
             return null;
         }
 
-        readonly int i = 0;
+       int i = 0;
         private void InitPost()
         {
             StartTimer();
