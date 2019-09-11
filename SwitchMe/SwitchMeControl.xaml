@@ -3,48 +3,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d" Height="420" Width="610">
-    <StackPanel Height="424" VerticalAlignment="Top">
-        <Label x:Name="popupTarget" FontWeight="Bold" FontSize="16" Content="SwitchMe Configuration:" />
-        <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
-
-        <Label Content="Add Servers to link here:" />
-        <Label Content="*Please note that Switchme will not work properly if your ip in the torch.cfg is a local ip" FontSize="9" />
-        <Label Content="eg, '192.168', '0.0.0.0' or '127.0.0.1'" FontSize="9" />
-
-
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Target server name:"/>
-            <TextBox x:Name="txtServerName" Width="169" Margin="3,3,0,3" HorizontalAlignment="Right" Height="20" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Target server IP:"/>
-            <TextBox x:Name="txtServerIP" Width="169" Margin="23,3,0,3" HorizontalAlignment="Right" Height="20" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Target server Port:"/>
-            <TextBox x:Name="txtServerPort" Width="169" Margin="11,3,0,3" HorizontalAlignment="Right" Height="20" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <Button x:Name="btnAddServer" Width="100" Content="Add Server" Margin="3" Click="BtnAddServer_Click" Height="22" />
-            <Button x:Name="btnDelServer" Width="100" Content="Delete Server" Margin="3" Click="BtnDelServer_Click" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <DataGrid x:Name="dgServerList" Height="139" Width="497" Margin="3" AutoGenerateColumns="False" SelectionChanged="DgServerList_SelectionChanged" IsReadOnly="True">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Binding="{Binding SERVER}" Header="Server Name" Width="165"/>
-                    <DataGridTextColumn Binding="{Binding IP}" Header="Server IP" Width="165"/>
-                    <DataGridTextColumn Binding="{Binding PORT}" Header="Server Port" Width="165"/>
-                </DataGrid.Columns>
-            </DataGrid>
-        </StackPanel>
-        <Label Height="20">
-            <LineBreak/>
-        </Label>
-        <StackPanel Orientation="Horizontal"/>
-
-        <DockPanel Height="31" LastChildFill="False" Margin="3,0,20,0">
-            <Border DockPanel.Dock="Bottom" Width="600" Height="30">
+             mc:Ignorable="d" Height="524" Width="503">
+    <StackPanel Height="491" VerticalAlignment="Top">
+        <Label x:Name="popupTarget" FontWeight="Bold" FontSize="16" Content="SwitchMe Configuration:" Height="27" Margin="1,0,0,0" />
+        <DockPanel Height="31" LastChildFill="False" Margin="0,0,20,0" HorizontalAlignment="Right" Width="481">
+            <Border DockPanel.Dock="Bottom" Height="29" Margin="0,0,-10,0" HorizontalAlignment="Right" Width="492">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="1,0" EndPoint="0,0">
                         <GradientStop Offset="1" Color="#55555555"/>
@@ -54,5 +17,61 @@
                 <Button Width="100" Content="Save Config" Click="SaveConfig_OnClick" Margin="3,4,10,4" HorizontalAlignment="Left" />
             </Border>
         </DockPanel>
+        <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
+
+        <Label Content="Add Servers to link here:" />
+        <Label Content="*Please note that the Target server IP has to be the same your players connect to!" FontSize="9" />
+        <Label Height="7">
+            <LineBreak/>
+        </Label>
+        <Label Content="*Please enter the ip your players use in order to connect to this instance of torch (Do not include port)." FontSize="9" />
+        <Label Content="*Only needed if you have a local IP set in torch (eg, 0.0.0.0 , 127.0.0.0, 192.168.*.*)." FontSize="9" />
+
+
+
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Public IP of this server:"/>
+            <TextBox x:Name="txtServerLocalIP" Width="169" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding LocalIP}" />
+            
+        </StackPanel>
+        <Label Height="7">
+            <LineBreak/>
+        </Label>
+        <Label FontWeight="Bold" Content="Make sure your bind key is the same on all your target servers!" FontSize="12" />
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Binding key:"/>
+            <TextBox x:Name="txtServerLocalKey" Width="169" Margin="58,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding LocalKey}" />
+        </StackPanel>
+        <Label Height="10">
+            <LineBreak/>
+        </Label>
+
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Target server name:"/>
+            <TextBox x:Name="txtServerName" Width="169" Margin="19,3,0,3" HorizontalAlignment="Right" Height="20" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Target server IP:"/>
+            <TextBox x:Name="txtServerIP" Width="169" Margin="39,3,0,3" HorizontalAlignment="Right" Height="20" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Target server Port:"/>
+            <TextBox x:Name="txtServerPort" Width="169" Margin="27,3,0,3" HorizontalAlignment="Right" Height="20" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+            <Button x:Name="btnAddServer" Width="100" Content="Add Server" Margin="3" Click="BtnAddServer_Click" Height="22" />
+            <Button x:Name="btnDelServer" Width="100" Content="Delete Server" Margin="3" Click="BtnDelServer_Click" />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Height="151">
+            <DataGrid x:Name="dgServerList" Width="497" Margin="3,3,3,-49" AutoGenerateColumns="False" SelectionChanged="DgServerList_SelectionChanged" IsReadOnly="True" Height="197" VerticalAlignment="Top">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Binding="{Binding SERVER}" Header="Server Name" Width="165"/>
+                    <DataGridTextColumn Binding="{Binding IP}" Header="Server IP" Width="165"/>
+                    <DataGridTextColumn Binding="{Binding PORT}" Header="Server Port" Width="165"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </StackPanel>
+
     </StackPanel>
 </UserControl>
