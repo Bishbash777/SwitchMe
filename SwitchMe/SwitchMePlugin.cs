@@ -151,6 +151,40 @@ namespace SwitchMe
             Dispose();
         }
 
+        public bool CheckKey(string target)
+        {
+            string pagesource;
+            try
+            {
+
+
+                using (WebClient client = new WebClient())
+                {
+
+                    NameValueCollection postData = new NameValueCollection()
+                        {
+                            //order: {"parameter name", "parameter value"}
+                            {"targetip", target},
+                            {"bindKey", Config.LocalKey },
+                            {"bindCheck", "1"}
+                        };
+
+                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
+                    if (pagesource == Config.LocalKey)
+                    {
+                        return true;
+                    }
+
+                }
+            }
+
+            catch
+            {
+                Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
+            }
+
+            return false;
+        }
 
         public void LoadSEDB()
         {
@@ -211,7 +245,11 @@ namespace SwitchMe
                     NameValueCollection postData = new NameValueCollection()
                     {
                         //order: {"parameter name", "parameter value"}
-                        { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"serverip", currentIp}, {"verion", "1.1.7.5"  }
+                        { "currentplayers", currentPlayers },
+                        { "maxplayers", maxPlayers },
+                        { "serverip", currentIp},
+                        { "verion", "1.1.8"},
+                        { "bindKey", Config.LocalKey}
                     };
                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
                 }

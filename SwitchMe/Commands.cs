@@ -9,6 +9,7 @@ using Torch.Mod.Messages;
 using System.Linq;
 using System.Text;
 using Sandbox.Game.World;
+using SwitchMe;
 using System.Collections.Specialized;
 using System.Net;
 
@@ -26,6 +27,7 @@ namespace SwitchMe
         [Permission(MyPromoteLevel.None)]
         public void SwitchLocal()
         {
+
             string ip = "";
             string name = "";
             string port = "";
@@ -51,46 +53,53 @@ namespace SwitchMe
                         ip += ":" + port;
                         string slotinfo = Plugin.CheckSlots(target);
                         existanceCheck = slotinfo.Split(';').Last();
-
+                        bool paired = Plugin.CheckKey(target);
                         if (target.Length > 1)
                         {
                             if (existanceCheck == "1")
                             {
-                                Log.Warn("Checking " + target);
-                                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                                Log.Warn("MAX: " + max);
-                                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                                int maxi = int.Parse(max);
-                                int maxcheck = (1 + currentRemotePlayers);
-                                Context.Respond("Slot Checking...");
-                                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-                                
-
-                                if (maxcheck <= maxi)
+                                if (paired == true)
                                 {
-                                    if (ip == null || name == null || port == null)
-                                    {
-                                        Context.Respond("Invalid Configuration!");
-                                    }
-                                    Context.Respond("Slot checking passed!");
-                                    try
-                                    {
-                                        ulong steamid = Context.Player.SteamUserId;
-                                        Context.Respond("Connecting client to " + name + " @ " + target);
-                                        ModCommunication.SendMessageTo(new JoinServerMessage(ip), steamid);
-                                        Log.Warn("Connected client to " + name + " @ " + ip);
+                                    Log.Warn("Checking " + target);
+                                    int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+                                    string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+                                    Log.Warn("MAX: " + max);
+                                    int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+                                    int maxi = int.Parse(max);
+                                    int maxcheck = (1 + currentRemotePlayers);
+                                    Context.Respond("Slot Checking...");
+                                    Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
 
 
-                                    }
-                                    catch
+                                    if (maxcheck <= maxi)
                                     {
-                                        Context.Respond("Failure");
+                                        if (ip == null || name == null || port == null)
+                                        {
+                                            Context.Respond("Invalid Configuration!");
+                                        }
+                                        Context.Respond("Slot checking passed!");
+                                        try
+                                        {
+                                            ulong steamid = Context.Player.SteamUserId;
+                                            Context.Respond("Connecting client to " + name + " @ " + target);
+                                            ModCommunication.SendMessageTo(new JoinServerMessage(ip), steamid);
+                                            Log.Warn("Connected client to " + name + " @ " + ip);
+
+
+                                        }
+                                        catch
+                                        {
+                                            Context.Respond("Failure");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Context.Respond("Cannot switch, not enough slots available");
                                     }
                                 }
                                 else
                                 {
-                                    Context.Respond("Cannot switch, not enough slots available");
+                                    Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
                                 }
                             }
                             else
@@ -118,47 +127,54 @@ namespace SwitchMe
                         ip += ":" + port;
                         string slotinfo = Plugin.CheckSlots(target);
                         existanceCheck = slotinfo.Split(';').Last();
-                        //existanceCheck = int.Parse(slotinfo.Substring(0, slotinfo.LastIndexOf(";")));
+                        bool paired = Plugin.CheckKey(target);
 
                         if (target.Length > 1)
                         {
                             if (existanceCheck == "1")
                             {
-                                Log.Warn("Checking " + target);
-                                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                                Log.Warn("MAX: " + max);
-                                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                                int maxi = int.Parse(max);
-                                int maxcheck = (1 + currentRemotePlayers);
-                                Context.Respond("Slot Checking...");
-                                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-                                
-
-                                if (maxcheck <= maxi)
+                                if (paired == true)
                                 {
-                                    if (ip == null || name == null || port == null)
-                                    {
-                                        Context.Respond("Invalid Configuration!");
-                                    }
-                                    Context.Respond("Slot checking passed!");
-                                    try
-                                    {
-                                        ulong steamid = Context.Player.SteamUserId;
-                                        Context.Respond("Connecting client to " + Context.RawArgs + " @ " + ip);
-                                        ModCommunication.SendMessageTo(new JoinServerMessage(ip), steamid);
-                                        Log.Warn("Connected client to " + Context.RawArgs + " @ " + ip);
+                                    Log.Warn("Checking " + target);
+                                    int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+                                    string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+                                    Log.Warn("MAX: " + max);
+                                    int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+                                    int maxi = int.Parse(max);
+                                    int maxcheck = (1 + currentRemotePlayers);
+                                    Context.Respond("Slot Checking...");
+                                    Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
 
 
-                                    }
-                                    catch
+                                    if (maxcheck <= maxi)
                                     {
-                                        Context.Respond("Failure");
+                                        if (ip == null || name == null || port == null)
+                                        {
+                                            Context.Respond("Invalid Configuration!");
+                                        }
+                                        Context.Respond("Slot checking passed!");
+                                        try
+                                        {
+                                            ulong steamid = Context.Player.SteamUserId;
+                                            Context.Respond("Connecting client to " + Context.RawArgs + " @ " + ip);
+                                            ModCommunication.SendMessageTo(new JoinServerMessage(ip), steamid);
+                                            Log.Warn("Connected client to " + Context.RawArgs + " @ " + ip);
+
+
+                                        }
+                                        catch
+                                        {
+                                            Context.Respond("Failure");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Context.Respond("Cannot switch, not enough slots available");
                                     }
                                 }
                                 else
                                 {
-                                    Context.Respond("Cannot switch, not enough slots available");
+                                    Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
                                 }
                             }
                             else
@@ -210,41 +226,49 @@ namespace SwitchMe
                     ip += ":" + port;
                     string slotinfo = Plugin.CheckSlots(target);
                     existanceCheck = slotinfo.Split(';').Last();
+                    bool paired = Plugin.CheckKey(target);
                     if (target.Length > 1)
                     {
                         if (existanceCheck == "1")
                         {
-                            Log.Warn("Checking " + target);
-                            int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                            string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                            Log.Warn("MAX: " + max);
-                            int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                            int maxi = int.Parse(max);
-                            int maxcheck = currentLocalPlayers + currentRemotePlayers;
-                            Context.Respond("Slot Checking...");
-                            Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-
-                            if (maxcheck <= maxi)
+                            if (paired == true)
                             {
-                                if (ip == null || name == null || port == null)
+                                Log.Warn("Checking " + target);
+                                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+                                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+                                Log.Warn("MAX: " + max);
+                                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+                                int maxi = int.Parse(max);
+                                int maxcheck = currentLocalPlayers + currentRemotePlayers;
+                                Context.Respond("Slot Checking...");
+                                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
+
+                                if (maxcheck <= maxi)
                                 {
-                                    Context.Respond("Invalid Configuration!");
+                                    if (ip == null || name == null || port == null)
+                                    {
+                                        Context.Respond("Invalid Configuration!");
+                                    }
+                                    Context.Respond("Slot checking passed!");
+                                    try
+                                    {
+                                        Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip);
+                                        ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
+                                        Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip);
+                                    }
+                                    catch
+                                    {
+                                        Context.Respond("Failure");
+                                    }
                                 }
-                                Context.Respond("Slot checking passed!");
-                                try
+                                else
                                 {
-                                    Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip);
-                                    ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
-                                    Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip);
-                                }
-                                catch
-                                {
-                                    Context.Respond("Failure");
+                                    Context.Respond("Cannot switch, not enough slots available");
                                 }
                             }
                             else
                             {
-                                Context.Respond("Cannot switch, not enough slots available");
+                                Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
                             }
                         }
                         else
@@ -272,41 +296,49 @@ namespace SwitchMe
                     ip += ":" + port;
                     string slotinfo = Plugin.CheckSlots(target);
                     existanceCheck = slotinfo.Split(';').Last();
+                    bool paired = Plugin.CheckKey(target);
                     if (target.Length > 1)
                     {
                         if (existanceCheck == "1")
                         {
-                            Log.Warn("Checking " + target);
-                            int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                            string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                            Log.Warn("MAX: " + max);
-                            int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                            int maxi = int.Parse(max);
-                            int maxcheck = currentLocalPlayers + currentRemotePlayers;
-                            Context.Respond("Slot Checking...");
-                            Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-
-                            if (maxcheck <= maxi)
+                            if (paired == true)
                             {
-                                if (ip == null || name == null || port == null)
+                                Log.Warn("Checking " + target);
+                                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+                                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+                                Log.Warn("MAX: " + max);
+                                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+                                int maxi = int.Parse(max);
+                                int maxcheck = currentLocalPlayers + currentRemotePlayers;
+                                Context.Respond("Slot Checking...");
+                                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
+
+                                if (maxcheck <= maxi)
                                 {
-                                    Context.Respond("Invalid Configuration!");
+                                    if (ip == null || name == null || port == null)
+                                    {
+                                        Context.Respond("Invalid Configuration!");
+                                    }
+                                    Context.Respond("Slot checking passed!");
+                                    try
+                                    {
+                                        Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip);
+                                        ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
+                                        Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip);
+                                    }
+                                    catch
+                                    {
+                                        Context.Respond("Failure");
+                                    }
                                 }
-                                Context.Respond("Slot checking passed!");
-                                try
+                                else
                                 {
-                                    Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip);
-                                    ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
-                                    Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip);
-                                }
-                                catch
-                                {
-                                    Context.Respond("Failure");
+                                    Context.Respond("Cannot switch, not enough slots available");
                                 }
                             }
                             else
                             {
-                                Context.Respond("Cannot switch, not enough slots available");
+                                Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
                             }
                         }
                         else
@@ -338,7 +370,14 @@ namespace SwitchMe
                 foreach (string chId in channelIds)
                 {
                     name = chId.Split(':')[0];
-                    sb.Append("'" + name + "' ");
+                    string ip = chId.Split(':')[1];
+                    string port = chId.Split(':')[2];
+                    string target = ip + ":" + port;
+                    bool paired = Plugin.CheckKey(target);
+                    if (paired == true)
+                    {
+                        sb.Append("'" + name + "' ");
+                    }
 
                 }
                 Context.Respond("--------------------------");

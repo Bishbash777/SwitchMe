@@ -32,6 +32,15 @@
         <StackPanel Orientation="Horizontal">
             <Label Content="Public IP of this server:"/>
             <TextBox x:Name="txtServerLocalIP" Width="169" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding LocalIP}" />
+            
+        </StackPanel>
+        <Label Height="7">
+            <LineBreak/>
+        </Label>
+        <Label FontWeight="Bold" Content="Make sure your bind key is the same on all your target servers!" FontSize="12" />
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Binding key:"/>
+            <TextBox x:Name="txtServerLocalKey" Width="169" Margin="58,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding LocalKey}" />
         </StackPanel>
         <Label Height="10">
             <LineBreak/>
