@@ -410,6 +410,36 @@ namespace SwitchMe
         }
 
         private readonly string ExportPath = "ExportedGrids\\{0}.xml";
+
+
+        [Command("recover", "Completes the transfer of one grid to another")]
+        [Permission(MyPromoteLevel.None)]
+        public void Recover()
+        {
+            string externalIP;
+            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
+            {
+                externalIP = Plugin.Config.LocalIP;
+            }
+            else
+            {
+                externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            }
+            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+            using (WebClient client = new WebClient())
+            {
+                string pagesource = "";
+                NameValueCollection postData = new NameValueCollection()
+                {
+                    //order: {"parameter name", "parameter value"}
+                    {"steamID", Context.Player.SteamUserId + ""},
+                    {"currentIP", currentIp },
+                };
+                pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
+            }
+        }
+
+
         [Command("grid", "Displays a list of Valid Server names for !switch me <servername> ")]
         [Permission(MyPromoteLevel.None)]
         public void Grid(string gridTarget, string serverTarget)
@@ -479,9 +509,8 @@ namespace SwitchMe
                                     try
                                     {
                                         SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target);
-                                        Context.Respond("Connecting clients to " + serverTarget + " @ " + ip);
-                                        ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
-                                        Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip);
+                                        
+                                        Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
                                     }
                                     catch
                                     {
@@ -513,7 +542,16 @@ namespace SwitchMe
 
         public void SendGrid(string gridTarget,string serverTarget, long playerId, string ip)
         {
-
+            string externalIP;
+            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
+            {
+                externalIP = Plugin.Config.LocalIP;
+            }
+            else
+            {
+                externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            }
+            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
             ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = GridFinder.findGridGroup(gridTarget);
 
             /* Each Physical Grid group (physical included Connectors) */
@@ -565,6 +603,7 @@ namespace SwitchMe
                     /* Is the player ID the biggest owner? */
                     if (gridOwner == playerId)
                     {
+                        Log.Fatal("checking was completed");
                         groupFound = true;
                         break;
                     }
@@ -593,6 +632,7 @@ namespace SwitchMe
                             continue;
 
                         /* DO STUFF */
+                        Log.Warn("Starting transfer");
                         Directory.CreateDirectory("ExportedGrids");
                         if (!SwitchMe.SwitchMePlugin.TryGetEntityByNameOrId(gridTarget, out var ent) || !(ent is IMyCubeGrid))
                         {
@@ -609,28 +649,53 @@ namespace SwitchMe
                         MyObjectBuilderSerializer.SerializeXML(path, false, ent.GetObjectBuilder());
                         System.Net.WebClient Client = new System.Net.WebClient();
                         Client.Headers.Add("Content-Type", "binary/octet-stream");
-                        byte[] result = Client.UploadFile("http://switchplugin.net/gridHandle.php", "POST", path);
 
-
-                        String s = System.Text.Encoding.UTF8.GetString(result, 0, result.Length);
-                        if (s == "1")
+                        try
                         {
-                            Context.Respond("Grid has been sent to the void! - Good luck!");
-                            using (WebClient client = new WebClient())
+                            byte[] result = Client.UploadFile("http://switchplugin.net/gridHandle.php", "POST", path);
+                            Log.Fatal("Grid was uploaded to webserver!");
+
+
+                            String s = System.Text.Encoding.UTF8.GetString(result, 0, result.Length);
+
+                            if (s == "1")
                             {
-                                string pagesource = "";
-                                NameValueCollection postData = new NameValueCollection()
+                                var name = gridTarget;
+                                if (string.IsNullOrEmpty(name))
+                                    return;
+
+                                if (!SwitchMe.SwitchMePlugin.TryGetEntityByNameOrId(name, out IMyEntity entity))
+                                {
+                                    Context.Respond($"Entity '{name}' not found.");
+                                    return;
+                                }
+                                entity.Close();
+                                Context.Respond("Connecting clients to " + serverTarget + " @ " + ip);
+                                Context.Respond("Grid has been sent to the void! - Good luck!");
+                                //ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
+                                using (WebClient client = new WebClient())
+                                {
+                                    string pagesource = "";
+                                    NameValueCollection postData = new NameValueCollection()
                                     {
                                         //order: {"parameter name", "parameter value"}
-                                        {"steamID", Context.Player.SteamUserId.ToString()},
+                                        {"steamID", Context.Player.SteamUserId + ""},
                                         {"gridName", gridTarget },
-                                        {"targetIP", ip }
+                                        {"targetIP", ip },
+                                        {"currentIP", currentIp },
+                                        {"fileName", Context.Player.SteamUserId + "-" + gridTarget }
                                     };
-                                pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
-                            }
+                                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
+                                }
 
+                            }
+                            if (s == "0") { Context.Respond("Unable to switch grid!"); }
                         }
-                        if (s == "0") { Context.Respond("Unable to switch grid!"); }
+                        catch
+                        {
+                            Log.Fatal("Cannot upload grid");
+                        }
+
                     }
                 }
                 else
