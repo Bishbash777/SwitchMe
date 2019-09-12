@@ -416,26 +416,54 @@ namespace SwitchMe
         [Permission(MyPromoteLevel.None)]
         public void Recover()
         {
-            string externalIP;
-            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
+            if (Context.Player != null)
             {
-                externalIP = Plugin.Config.LocalIP;
-            }
-            else
-            {
-                externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-            }
-            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-            using (WebClient client = new WebClient())
-            {
-                string pagesource = "";
-                NameValueCollection postData = new NameValueCollection()
+                string externalIP;
+                if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
+                {
+                    externalIP = Plugin.Config.LocalIP;
+                }
+                else
+                {
+                    externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+                }
+                string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+                using (WebClient client = new WebClient())
+                {
+                    string pagesource = "";
+                    NameValueCollection postData = new NameValueCollection()
                 {
                     //order: {"parameter name", "parameter value"}
                     {"steamID", Context.Player.SteamUserId + ""},
                     {"currentIP", currentIp },
                 };
-                pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
+                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
+                    int existance = int.Parse(pagesource.Substring(0, pagesource.IndexOf(":")));
+                    if (existance == 1)
+                    {
+                        string filename = pagesource.Split(':').Last() + ".xml";
+                        try
+                        {
+                            string remoteUri = "http://www.switchplugin.net/transportedGrids/" + filename;
+                            string targetFile = "ExportedGrids\\" + filename;
+
+                            WebClient myWebClient = new WebClient();
+                            myWebClient.DownloadFile(remoteUri, targetFile);
+                        }
+                        catch
+                        {
+                            Log.Fatal("Unable to download grid");
+                        }
+                    }
+                    else
+                    {
+                        Context.Respond("You have no grids in active transport!");
+                    }
+                }
+            }
+            else
+            {
+                Context.Respond("Command cannot be ran from console");
             }
         }
 
