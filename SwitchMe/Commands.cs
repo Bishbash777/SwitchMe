@@ -412,7 +412,7 @@ namespace SwitchMe
         private readonly string ExportPath = "ExportedGrids\\{0}.xml";
 
 
-        [Command("recover", "Completes the transfer of one grid to another")]
+        [Command("recover", "Completes the transfer of one grid from one server to another")]
         [Permission(MyPromoteLevel.None)]
         public void Recover()
         {
@@ -536,9 +536,38 @@ namespace SwitchMe
                                     Context.Respond("Slot checking passed!");
                                     try
                                     {
-                                        SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target);
-                                        
-                                        Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
+                                        string externalIP;
+                                        if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
+                                        {
+                                            externalIP = Plugin.Config.LocalIP;
+                                        }
+                                        else
+                                        {
+                                            externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+                                        }
+                                        string pagesource = "";
+                                        string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+                                        using (WebClient client = new WebClient())
+                                        {
+
+                                            NameValueCollection postData = new NameValueCollection()
+                                                {
+                                                    //order: {"parameter name", "parameter value"}
+                                                    {"steamID", Context.Player.SteamUserId + ""},
+                                                    {"currentIP", currentIp },
+                                                };
+                                            pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
+                                        }
+                                        if (pagesource == "0")
+                                        {
+                                            SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target);
+
+                                            Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
+                                        }
+                                        else
+                                        {
+                                            Context.Respond("Cannot transfer! you already have a transfer ready to be recieved!");
+                                        }
                                     }
                                     catch
                                     {
