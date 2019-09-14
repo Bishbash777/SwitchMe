@@ -437,9 +437,12 @@ namespace SwitchMe
                     {"steamID", Context.Player.SteamUserId + ""},
                     {"currentIP", currentIp },
                 };
-                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
-                    int existance = int.Parse(pagesource.Substring(0, pagesource.IndexOf(":")));
-                    if (existance == 1)
+                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
+                    Log.Fatal("HERE: " + pagesource);
+                    
+                    string existance = pagesource.Substring(0, pagesource.IndexOf(":"));
+                    Log.Fatal("HERE me pls");
+                    if (existance == "1")
                     {
                         string filename = pagesource.Split(':').Last() + ".xml";
                         try
@@ -449,6 +452,24 @@ namespace SwitchMe
 
                             WebClient myWebClient = new WebClient();
                             myWebClient.DownloadFile(remoteUri, targetFile);
+
+                            Context.Respond(targetFile);
+                            if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_CubeGrid grid))
+                            {
+                                Context.Respond($"Importing grid from {targetFile}");
+                                MyEntities.RemapObjectBuilder(grid);
+                                var pos = MyEntities.FindFreePlace(Context.Player.GetPosition(), grid.CalculateBoundingSphere().Radius);
+                                if (pos == null)
+                                {
+                                    Context.Respond("No free place.");
+                                    return;
+                                }
+
+                                var x = grid.PositionAndOrientation ?? new MyPositionAndOrientation();
+                                x.Position = pos.Value;
+                                grid.PositionAndOrientation = x;
+                                MyEntities.CreateFromObjectBuilderParallel(grid, true);
+                            }
                         }
                         catch
                         {
@@ -555,8 +576,10 @@ namespace SwitchMe
                                                     //order: {"parameter name", "parameter value"}
                                                     {"steamID", Context.Player.SteamUserId + ""},
                                                     {"currentIP", currentIp },
+                                                    {"gridCheck", ""}
                                                 };
                                             pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
+                                            Log.Fatal(pagesource);
                                         }
                                         if (pagesource == "0")
                                         {
@@ -566,7 +589,8 @@ namespace SwitchMe
                                         }
                                         else
                                         {
-                                            Context.Respond("Cannot transfer! you already have a transfer ready to be recieved!");
+                                            Log.Fatal(pagesource);
+                                            Context.Respond("Cannot transfer! You already have a transfer ready to be recieved!");
                                         }
                                     }
                                     catch
