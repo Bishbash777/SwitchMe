@@ -672,7 +672,7 @@ namespace SwitchMe
                     DeleteUploadedGrids(relevantGroup);
 
                     /* Also delete local file */
-                    File.Delete(path + ".xml");
+                    File.Delete(path);
                 }
             }
             else
