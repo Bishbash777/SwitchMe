@@ -628,7 +628,15 @@ namespace SwitchMe
             }
         }
 
-        public void SendGrid(string gridTarget, string serverTarget, long playerId, string ip)
+        [Command("debugsend", "Displays a list of Valid Server names for the '!switch me <servername>' command. ")]
+        [Permission(MyPromoteLevel.None)]
+        public void DebugSend(string gridTarget) {
+
+            SendGrid(gridTarget, "", Context.Player.IdentityId, "", true);
+
+        }
+
+        public void SendGrid(string gridTarget, string serverTarget, long playerId, string ip, bool debug = false)
         {
             string externalIP;
             if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
@@ -655,9 +663,9 @@ namespace SwitchMe
                     return;
                 }
 
-                SerializeGridsToPath(relevantGroup, path, gridTarget);
+                SerializeGridsToPath(relevantGroup, gridTarget, path);
 
-                if(UploadGrid(serverTarget, gridTarget, ip, currentIp, path)) 
+                if(!debug && UploadGrid(serverTarget, gridTarget, ip, currentIp, path)) 
                 {
 
                     /* Upload successful close the grids */
@@ -695,11 +703,10 @@ namespace SwitchMe
                 objectBuilders.Add(objectBuilder);
             }
 
-
             MyObjectBuilder_PrefabDefinition definition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_PrefabDefinition>();
 
             definition.Id = new MyDefinitionId(new MyObjectBuilderType(typeof(MyObjectBuilder_PrefabDefinition)), gridTarget);
-            definition.CubeGrids = objectBuilders.Select(x => (MyObjectBuilder_CubeGrid)x.Clone()).ToArray(); 
+            definition.CubeGrids = objectBuilders.Select(x => (MyObjectBuilder_CubeGrid)x.Clone()).ToArray();
 
             /* Reset ownership as it will be different on the new server anyway */
             foreach (MyObjectBuilder_CubeGrid cubeGrid in definition.CubeGrids) 
@@ -714,7 +721,9 @@ namespace SwitchMe
             MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
             builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
 
-            MyObjectBuilderSerializer.SerializeXML(path, false, builderDefinition, null);
+            bool worked = MyObjectBuilderSerializer.SerializeXML(path, false, builderDefinition);
+
+            Log.Fatal("exported " + path+ " "+worked);
         }
 
         private bool UploadGrid(string serverTarget, string gridTarget, string ip, string currentIp, string path) {
