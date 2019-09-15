@@ -655,7 +655,7 @@ namespace SwitchMe
                     return;
                 }
 
-                SerializeGridsToPath(relevantGroup, path);
+                SerializeGridsToPath(relevantGroup, path, gridTarget);
 
                 if(UploadGrid(serverTarget, gridTarget, ip, currentIp, path)) 
                 {
@@ -673,18 +673,10 @@ namespace SwitchMe
             }
         }
 
-        private void SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup, string path) {
+        private void SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup, string gridTarget, string path) {
 
-            /* 
-             * you found one group where is a grid, with the name you wanted and the player is owner 
-             * 
-             * All Grid of that group need to be exported if thats what you want.
-             * 
-             * Dont know if you can export a group directly, or need to export each grid.
-             * Sooooo yeah thats something you have to find out for yourselves. 
-             * 
-             * Dont forget ignore grids without physics as they are projections. 
-             */
+            List<MyObjectBuilder_CubeGrid> objectBuilders = new List<MyObjectBuilder_CubeGrid>();
+
             foreach (var node in relevantGroup.Nodes) 
             {
 
@@ -694,9 +686,35 @@ namespace SwitchMe
                 if (grid.Physics == null)
                     continue;
 
-                /* FIXME: Shall work with multple grids */
-                MyObjectBuilderSerializer.SerializeXML(path, false, grid.GetObjectBuilder());
+                var objectBuilder = grid.GetObjectBuilder(true) as MyObjectBuilder_CubeGrid;
+
+                /* What else should it be? LOL? */
+                if (objectBuilder == null)
+                    throw new ArgumentException(grid + " has a ObjectBuilder thats not for a CubeGrid");
+
+                objectBuilders.Add(objectBuilder);
             }
+
+
+            MyObjectBuilder_PrefabDefinition definition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_PrefabDefinition>();
+
+            definition.Id = new MyDefinitionId(new MyObjectBuilderType(typeof(MyObjectBuilder_PrefabDefinition)), gridTarget);
+            definition.CubeGrids = objectBuilders.Select(x => (MyObjectBuilder_CubeGrid)x.Clone()).ToArray(); 
+
+            /* Reset ownership as it will be different on the new server anyway */
+            foreach (MyObjectBuilder_CubeGrid cubeGrid in definition.CubeGrids) 
+            {
+                foreach (MyObjectBuilder_CubeBlock cubeBlock in cubeGrid.CubeBlocks) 
+                {
+                    cubeBlock.Owner = 0L;
+                    cubeBlock.BuiltBy = 0L;
+                }
+            }
+
+            MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
+            builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
+
+            MyObjectBuilderSerializer.SerializeXML(path, false, builderDefinition, null);
         }
 
         private bool UploadGrid(string serverTarget, string gridTarget, string ip, string currentIp, string path) {
