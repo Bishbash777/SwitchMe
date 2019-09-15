@@ -429,58 +429,14 @@ namespace SwitchMe
                     externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
                 }
                 string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-                using (WebClient client = new WebClient())
-                {
-                    string pagesource = "";
-                    NameValueCollection postData = new NameValueCollection()
-                {
-                    //order: {"parameter name", "parameter value"}
-                    {"steamID", Context.Player.SteamUserId + ""},
-                    {"currentIP", currentIp },
-                };
-                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
 
-                    string existance = pagesource.Substring(0, pagesource.IndexOf(":"));
-                    if (existance == "1")
-                    {
-                        string filename = pagesource.Split(':').Last() + ".xml";
-                        try
-                        {
-                            string remoteUri = "http://www.switchplugin.net/transportedGrids/" + filename;
-                            string targetFile = "ExportedGrids\\" + filename;
+                if (DownloadGrid(currentIp, out string targetFile, out string filename)) {
 
-                            WebClient myWebClient = new WebClient();
-                            myWebClient.DownloadFile(remoteUri, targetFile);
+                    if(DeserializeGridFromPath(targetFile)) {
 
-                            Context.Respond(targetFile);
-                            if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_CubeGrid grid))
-                            {
-                                Context.Respond($"Importing grid from {targetFile}");
-                                MyEntities.RemapObjectBuilder(grid);
-                                var pos = MyEntities.FindFreePlace(Context.Player.GetPosition(), grid.CalculateBoundingSphere().Radius);
-                                if (pos == null)
-                                {
-                                    Context.Respond("No free place.");
-                                    return;
-                                }
+                        File.Delete(targetFile);
 
-                                var x = grid.PositionAndOrientation ?? new MyPositionAndOrientation();
-                                x.Position = pos.Value;
-                                grid.PositionAndOrientation = x;
-                                MyEntities.CreateFromObjectBuilderParallel(grid, true);
-                                Context.Respond("Grid has been pulled from the void!");
-                                File.Delete(targetFile);
-                                Plugin.DeleteFromWeb(filename);
-                            }
-                        }
-                        catch
-                        {
-                            Log.Fatal("Unable to download grid");
-                        }
-                    }
-                    else
-                    {
-                        Context.Respond("You have no grids in active transport!");
+                        Plugin.DeleteFromWeb(filename);
                     }
                 }
             }
@@ -490,6 +446,74 @@ namespace SwitchMe
             }
         }
 
+        private bool DownloadGrid(string currentIp, out string targetFile, out string filename) {
+
+            using (WebClient client = new WebClient()) 
+            {
+                string pagesource = "";
+                NameValueCollection postData = new NameValueCollection()
+                {
+                    //order: {"parameter name", "parameter value"}
+                    {"steamID", Context.Player.SteamUserId + ""},
+                    {"currentIP", currentIp },
+                };
+
+                pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
+
+                string existance = pagesource.Substring(0, pagesource.IndexOf(":"));
+
+                if (existance == "1") 
+                {
+                    filename = pagesource.Split(':').Last() + ".xml";
+
+                    try 
+                    {
+                        string remoteUri = "http://www.switchplugin.net/transportedGrids/" + filename;
+                        targetFile = "ExportedGrids\\" + filename;
+
+                        WebClient myWebClient = new WebClient();
+                        myWebClient.DownloadFile(remoteUri, targetFile);
+
+                        return true;
+                    } 
+                    catch 
+                    {
+                        Log.Fatal("Unable to download grid");
+                    }
+                } 
+                else 
+                {
+                    Context.Respond("You have no grids in active transport!");
+                    filename = null;
+                }
+
+                targetFile = null;
+                return false;
+            }
+        }
+
+        private bool DeserializeGridFromPath(string targetFile) {
+
+            if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_CubeGrid grid)) 
+            {
+                Context.Respond($"Importing grid from {targetFile}");
+                MyEntities.RemapObjectBuilder(grid);
+                var pos = MyEntities.FindFreePlace(Context.Player.GetPosition(), grid.CalculateBoundingSphere().Radius);
+                if (pos == null) {
+                    Context.Respond("No free place.");
+                    return false;
+                }
+
+                var x = grid.PositionAndOrientation ?? new MyPositionAndOrientation();
+                x.Position = pos.Value;
+                grid.PositionAndOrientation = x;
+                MyEntities.CreateFromObjectBuilderParallel(grid, true);
+                Context.Respond("Grid has been pulled from the void!");
+                return true;
+            }
+
+            return false;
+        }
 
         [Command("grid", "Transfers the target grid to the target server")]
         [Permission(MyPromoteLevel.None)]
@@ -694,7 +718,7 @@ namespace SwitchMe
                 if (grid.Physics == null)
                     continue;
 
-                var objectBuilder = grid.GetObjectBuilder(true) as MyObjectBuilder_CubeGrid;
+                MyObjectBuilder_CubeGrid objectBuilder = grid.GetObjectBuilder(true) as MyObjectBuilder_CubeGrid;
 
                 /* What else should it be? LOL? */
                 if (objectBuilder == null)
