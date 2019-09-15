@@ -22,6 +22,7 @@ using VRage.Groups;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Collections.Specialized;
+using VRageMath;
 
 namespace SwitchMe
 {
@@ -492,27 +493,144 @@ namespace SwitchMe
             }
         }
 
+        [Command("debugrestore", "Displays a list of Valid Server names for the '!switch me <servername>' command. ")]
+        [Permission(MyPromoteLevel.None)]
+        public void DebugRestore(string gridTarget) {
+
+            string targetFile = "ExportedGrids\\" + gridTarget + ".xml";
+
+            DeserializeGridFromPath(targetFile);
+
+        }
+
         private bool DeserializeGridFromPath(string targetFile) {
 
-            if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_CubeGrid grid)) 
+            if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) 
             {
                 Context.Respond($"Importing grid from {targetFile}");
-                MyEntities.RemapObjectBuilder(grid);
-                var pos = MyEntities.FindFreePlace(Context.Player.GetPosition(), grid.CalculateBoundingSphere().Radius);
-                if (pos == null) {
+
+                var prefabs = myObjectBuilder_Definitions.Prefabs;
+
+                if (prefabs == null || prefabs.Length != 1) 
+                {
+                    Context.Respond($"Grid has unsupported format!");
+                    return false;
+                }
+
+                var prefab = prefabs[0];
+                var grids = prefab.CubeGrids;
+
+                /* Where do we want to paste the grids? Lets find out. */
+                var pos = FindPastePosition(grids);
+                if (pos == null) 
+                {
                     Context.Respond("No free place.");
                     return false;
                 }
 
-                var x = grid.PositionAndOrientation ?? new MyPositionAndOrientation();
-                x.Position = pos.Value;
-                grid.PositionAndOrientation = x;
-                MyEntities.CreateFromObjectBuilderParallel(grid, true);
+                var newPosition = pos.Value;
+
+                /* Update GridsPosition if that doesnt work get out of here. */
+                if (!UpdateGridsPosition(grids, newPosition))
+                    return false;
+
+                foreach (var grid in grids) {
+                    MyEntities.CreateFromObjectBuilderParallel(grid, true);
+                }
+
                 Context.Respond("Grid has been pulled from the void!");
                 return true;
             }
 
             return false;
+        }
+
+        private bool UpdateGridsPosition(MyObjectBuilder_CubeGrid[] grids, Vector3D newPosition) {
+
+            bool firstGrid = true;
+            double deltaX = 0;
+            double deltaY = 0;
+            double deltaZ = 0;
+
+            foreach (var grid in grids) 
+            {
+                var position = grid.PositionAndOrientation;
+
+                if (position == null) 
+                {
+                    Context.Respond($"Grid is missing location Information!");
+                    return false;
+                }
+
+                var realPosition = position.Value;
+
+                var currentPosition = realPosition.Position;
+
+                if (firstGrid) 
+                {
+                    deltaX = newPosition.X - currentPosition.X;
+                    deltaY = newPosition.Y - currentPosition.Y;
+                    deltaZ = newPosition.Z - currentPosition.Z;
+
+                    currentPosition.X = newPosition.X;
+                    currentPosition.Y = newPosition.Y;
+                    currentPosition.Z = newPosition.Z;
+
+                    firstGrid = false;
+
+                    continue;
+                }
+
+                currentPosition.X += deltaX;
+                currentPosition.Y += deltaY;
+                currentPosition.Z += deltaZ;
+            }
+
+            return true;
+        }
+
+        private Vector3D? FindPastePosition(MyObjectBuilder_CubeGrid[] grids) {
+
+            Vector3? vector = null;
+            float radius = 0F;
+
+            foreach (var grid in grids) {
+
+                var gridSphere = grid.CalculateBoundingSphere();
+
+                /* If this is the first run, we use the center of that grid, and its radius as it is */
+                if (vector == null) {
+
+                    vector = gridSphere.Center;
+                    radius = gridSphere.Radius;
+                    continue;
+                }
+
+                /* 
+                 * If its not the first run, we use the vector we already have and 
+                 * figure out how far it is away from the center of the subgrids sphere. 
+                 */
+                float distance = Vector3.Distance(vector.Value, gridSphere.Center);
+
+                /* 
+                 * Now we figure out how big our new radius must be to house both grids
+                 * so the distance between the center points + the radius of our subgrid.
+                 */
+                float newRadius = distance + gridSphere.Radius;
+
+                /*
+                 * If the new radius is bigger than our old one we use that, otherwise the subgrid 
+                 * is contained in the other grid and therefore no need to make it bigger. 
+                 */
+                if (newRadius > radius)
+                    radius = newRadius;
+            }
+
+            /* 
+             * Now we know the radius that can house all grids which will now be 
+             * used to determine the perfect place to paste the grids to. 
+             */
+            return MyEntities.FindFreePlace(Context.Player.GetPosition(), radius);
         }
 
         [Command("grid", "Transfers the target grid to the target server")]
