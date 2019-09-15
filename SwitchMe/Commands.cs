@@ -640,16 +640,118 @@ namespace SwitchMe
                 externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
             }
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+
+            MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup = FindRelevantGroup(gridTarget, playerId);
+
+            if (relevantGroup != null)
+            {
+
+               /* 
+                * you found one group where is a grid, with the name you wanted and the player is owner 
+                * 
+                * All Grid of that group need to be exported if thats what you want.
+                * 
+                * Dont know if you can export a group directly, or need to export each grid.
+                * Sooooo yeah thats something you have to find out for yourselves. 
+                * 
+                * Dont forget ignore grids without physics as they are projections. 
+                */
+                foreach (var node in relevantGroup.Nodes)
+                {
+
+                    MyCubeGrid grid = node.NodeData;
+                        
+                    /* We wanna Skip Projections... always */
+                    if (grid.Physics == null)
+                        continue;
+                        
+
+                    /* DO STUFF */
+                    Log.Warn("Starting transfer");
+                    Directory.CreateDirectory("ExportedGrids");
+                    if (!SwitchMe.SwitchMePlugin.TryGetEntityByNameOrId(gridTarget, out var ent) || !(ent is IMyCubeGrid))
+                    {
+                        Context.Respond("Grid not found.");
+                        return;
+                    }
+
+                    var path = string.Format(ExportPath, Context.Player.SteamUserId + "-" + gridTarget);
+                    if (File.Exists(path))
+                    {
+                        Context.Respond("Export file already exists.");
+                        return;
+                    }
+                    MyObjectBuilderSerializer.SerializeXML(path, false, ent.GetObjectBuilder());
+                    System.Net.WebClient Client = new System.Net.WebClient();
+                    Client.Headers.Add("Content-Type", "binary/octet-stream");
+
+                    try
+                    {
+                        byte[] result = Client.UploadFile("http://switchplugin.net/gridHandle.php", "POST", path);
+                        Log.Fatal("Grid was uploaded to webserver!");
+
+
+                        String s = System.Text.Encoding.UTF8.GetString(result, 0, result.Length);
+
+                        if (s == "1")
+                        {
+                            var name = gridTarget;
+                            if (string.IsNullOrEmpty(name))
+                                return;
+
+                            if (!SwitchMe.SwitchMePlugin.TryGetEntityByNameOrId(name, out IMyEntity entity))
+                            {
+                                Context.Respond($"Entity '{name}' not found.");
+                                return;
+                            }
+                            entity.Close();
+                            Context.Respond("Connecting clients to " + serverTarget + " @ " + ip);
+                            Context.Respond("Grid has been sent to the void! - Good luck!");
+                            //ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
+                            using (WebClient client = new WebClient())
+                            {
+                                string pagesource = "";
+                                NameValueCollection postData = new NameValueCollection()
+                                {
+                                    //order: {"parameter name", "parameter value"}
+                                    {"steamID", Context.Player.SteamUserId + ""},
+                                    {"gridName", gridTarget },
+                                    {"targetIP", ip },
+                                    {"currentIP", currentIp },
+                                    {"fileName", Context.Player.SteamUserId + "-" + gridTarget }
+                                };
+                                pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
+                                File.Delete(path + ".xml");
+                            }
+
+                        }
+                        if (s == "0") { Context.Respond("Unable to switch grid!"); }
+                    }
+                    catch
+                    {
+                        Log.Fatal("Cannot upload grid");
+                    }
+
+                }
+            }
+            else
+            {
+                Context.Respond("Cannot transfer somone elses grid!");
+            }
+        }
+
+        private MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group FindRelevantGroup(string gridTarget, long playerId) {
+
             ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = GridFinder.findGridGroup(gridTarget);
 
             /* Each Physical Grid group (physical included Connectors) */
-            foreach (var group in groups)
+            foreach (var group in groups) 
             {
 
                 bool groupFound = false;
 
                 /* Check each grid */
-                foreach (var node in group.Nodes)
+                foreach (var node in group.Nodes) 
                 {
 
                     MyCubeGrid grid = node.NodeData;
@@ -688,111 +790,19 @@ namespace SwitchMe
                         gridOwner = bigOnwerIds[1];
 
                     /* Is the player ID the biggest owner? */
-                    if (gridOwner == playerId)
+                    if (gridOwner == playerId) 
                     {
                         Log.Fatal("checking was completed");
                         groupFound = true;
                         break;
                     }
-                    
                 }
 
                 if (groupFound)
-                {
-
-                    /* 
-                     * you found one group where is a grid, with the name you wanted and the player is owner 
-                     * 
-                     * All Grid of that group need to be exported if thats what you want.
-                     * 
-                     * Dont know if you can export a group directly, or need to export each grid.
-                     * Sooooo yeah thats something you have to find out for yourselves. 
-                     * 
-                     * Dont forget ignore grids without physics as they are projections. 
-                     */
-                    foreach (var node in group.Nodes)
-                    {
-
-                        MyCubeGrid grid = node.NodeData;
-                        
-                        /* We wanna Skip Projections... always */
-                        if (grid.Physics == null)
-                            continue;
-                        
-
-                        /* DO STUFF */
-                        Log.Warn("Starting transfer");
-                        Directory.CreateDirectory("ExportedGrids");
-                        if (!SwitchMe.SwitchMePlugin.TryGetEntityByNameOrId(gridTarget, out var ent) || !(ent is IMyCubeGrid))
-                        {
-                            Context.Respond("Grid not found.");
-                            return;
-                        }
-
-                        var path = string.Format(ExportPath, Context.Player.SteamUserId + "-" + gridTarget);
-                        if (File.Exists(path))
-                        {
-                            Context.Respond("Export file already exists.");
-                            return;
-                        }
-                        MyObjectBuilderSerializer.SerializeXML(path, false, ent.GetObjectBuilder());
-                        System.Net.WebClient Client = new System.Net.WebClient();
-                        Client.Headers.Add("Content-Type", "binary/octet-stream");
-
-                        try
-                        {
-                            byte[] result = Client.UploadFile("http://switchplugin.net/gridHandle.php", "POST", path);
-                            Log.Fatal("Grid was uploaded to webserver!");
-
-
-                            String s = System.Text.Encoding.UTF8.GetString(result, 0, result.Length);
-
-                            if (s == "1")
-                            {
-                                var name = gridTarget;
-                                if (string.IsNullOrEmpty(name))
-                                    return;
-
-                                if (!SwitchMe.SwitchMePlugin.TryGetEntityByNameOrId(name, out IMyEntity entity))
-                                {
-                                    Context.Respond($"Entity '{name}' not found.");
-                                    return;
-                                }
-                                entity.Close();
-                                Context.Respond("Connecting clients to " + serverTarget + " @ " + ip);
-                                Context.Respond("Grid has been sent to the void! - Good luck!");
-                                //ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
-                                using (WebClient client = new WebClient())
-                                {
-                                    string pagesource = "";
-                                    NameValueCollection postData = new NameValueCollection()
-                                    {
-                                        //order: {"parameter name", "parameter value"}
-                                        {"steamID", Context.Player.SteamUserId + ""},
-                                        {"gridName", gridTarget },
-                                        {"targetIP", ip },
-                                        {"currentIP", currentIp },
-                                        {"fileName", Context.Player.SteamUserId + "-" + gridTarget }
-                                    };
-                                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
-                                    File.Delete(path + ".xml");
-                                }
-
-                            }
-                            if (s == "0") { Context.Respond("Unable to switch grid!"); }
-                        }
-                        catch
-                        {
-                            Log.Fatal("Cannot upload grid");
-                        }
-
-                    }
-                }
-                else
-                {
-                    Context.Respond("Cannot transfer somone elses grid!");
-                }
+                    return group;
             }
+
+            return null;
         }
     }
 }
