@@ -711,17 +711,14 @@ namespace SwitchMe
 
             foreach (var node in relevantGroup.Nodes) 
             {
-
                 MyCubeGrid grid = node.NodeData;
 
                 /* We wanna Skip Projections... always */
                 if (grid.Physics == null)
                     continue;
 
-                MyObjectBuilder_CubeGrid objectBuilder = grid.GetObjectBuilder(true) as MyObjectBuilder_CubeGrid;
-
                 /* What else should it be? LOL? */
-                if (objectBuilder == null)
+                if (!(grid.GetObjectBuilder(true) is MyObjectBuilder_CubeGrid objectBuilder))
                     throw new ArgumentException(grid + " has a ObjectBuilder thats not for a CubeGrid");
 
                 objectBuilders.Add(objectBuilder);
