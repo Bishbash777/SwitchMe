@@ -534,9 +534,11 @@ namespace SwitchMe
                 if (!UpdateGridsPosition(grids, newPosition))
                     return false;
 
-                foreach (var grid in grids) {
+                /* Remapping to prevent any key problems upon paste. */
+                MyEntities.RemapObjectBuilderCollection(grids);
+
+                foreach (var grid in grids) 
                     MyEntities.CreateFromObjectBuilderParallel(grid, true);
-                }
 
                 Context.Respond("Grid has been pulled from the void!");
                 return true;
@@ -578,12 +580,15 @@ namespace SwitchMe
 
                     firstGrid = false;
 
-                    continue;
+                } else { 
+
+                    currentPosition.X += deltaX;
+                    currentPosition.Y += deltaY;
+                    currentPosition.Z += deltaZ;
                 }
 
-                currentPosition.X += deltaX;
-                currentPosition.Y += deltaY;
-                currentPosition.Z += deltaZ;
+                realPosition.Position = currentPosition;
+                grid.PositionAndOrientation = realPosition;
             }
 
             return true;
