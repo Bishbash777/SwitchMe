@@ -649,34 +649,16 @@ namespace SwitchMe
                 Directory.CreateDirectory("ExportedGrids");
 
                 var path = string.Format(ExportPath, Context.Player.SteamUserId + "-" + gridTarget);
-                if (File.Exists(path)) {
+                if (File.Exists(path)) 
+                {
                     Context.Respond("Export file already exists.");
                     return;
                 }
 
-                /* 
-                 * you found one group where is a grid, with the name you wanted and the player is owner 
-                 * 
-                 * All Grid of that group need to be exported if thats what you want.
-                 * 
-                 * Dont know if you can export a group directly, or need to export each grid.
-                 * Sooooo yeah thats something you have to find out for yourselves. 
-                 * 
-                 * Dont forget ignore grids without physics as they are projections. 
-                 */
-                foreach (var node in relevantGroup.Nodes) 
+                SerializeGridsToPath(relevantGroup, path);
+
+                if(UploadGrid(serverTarget, gridTarget, ip, currentIp, path)) 
                 {
-                    MyCubeGrid grid = node.NodeData;
-
-                    /* We wanna Skip Projections... always */
-                    if (grid.Physics == null)
-                        continue;
-
-                    /* FIXME: Shall work with multple grids */
-                    MyObjectBuilderSerializer.SerializeXML(path, false, grid.GetObjectBuilder());
-                }
-
-                if(UploadGrid(serverTarget, gridTarget, ip, currentIp, path)) {
 
                     /* Upload successful close the grids */
                     DeleteUploadedGrids(relevantGroup);
@@ -688,6 +670,32 @@ namespace SwitchMe
             else
             {
                 Context.Respond("Cannot transfer somone elses grid!");
+            }
+        }
+
+        private void SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup, string path) {
+
+            /* 
+             * you found one group where is a grid, with the name you wanted and the player is owner 
+             * 
+             * All Grid of that group need to be exported if thats what you want.
+             * 
+             * Dont know if you can export a group directly, or need to export each grid.
+             * Sooooo yeah thats something you have to find out for yourselves. 
+             * 
+             * Dont forget ignore grids without physics as they are projections. 
+             */
+            foreach (var node in relevantGroup.Nodes) 
+            {
+
+                MyCubeGrid grid = node.NodeData;
+
+                /* We wanna Skip Projections... always */
+                if (grid.Physics == null)
+                    continue;
+
+                /* FIXME: Shall work with multple grids */
+                MyObjectBuilderSerializer.SerializeXML(path, false, grid.GetObjectBuilder());
             }
         }
 
