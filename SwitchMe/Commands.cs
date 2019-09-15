@@ -393,7 +393,7 @@ namespace SwitchMe
                 Context.Respond("List of Servers available to switch to:");
                 Context.Respond(sb.ToString());
                 Context.Respond("--------------------------");
-                
+
             }
             else
             {
@@ -438,10 +438,8 @@ namespace SwitchMe
                     {"currentIP", currentIp },
                 };
                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
-                    Log.Fatal("HERE: " + pagesource);
-                    
+
                     string existance = pagesource.Substring(0, pagesource.IndexOf(":"));
-                    Log.Fatal("HERE me pls");
                     if (existance == "1")
                     {
                         string filename = pagesource.Split(':').Last() + ".xml";
@@ -469,6 +467,9 @@ namespace SwitchMe
                                 x.Position = pos.Value;
                                 grid.PositionAndOrientation = x;
                                 MyEntities.CreateFromObjectBuilderParallel(grid, true);
+                                Context.Respond("Grid has been pulled from the void!");
+                                File.Delete(targetFile);
+                                Plugin.DeleteFromWeb(filename);
                             }
                         }
                         catch
@@ -493,8 +494,6 @@ namespace SwitchMe
         [Permission(MyPromoteLevel.None)]
         public void Grid(string gridTarget, string serverTarget)
         {
-
-
             if (Context.Player == null)
             {
                 Context.Respond("Console cannot run this command");
@@ -509,119 +508,126 @@ namespace SwitchMe
                 string existanceCheck = "";
                 if (Plugin.Config.Enabled)
                 {
-
-                    IEnumerable<string> channelIds = Plugin.Config.Servers;
-                    foreach (string chId in channelIds)
+                    if (Plugin.Config.EnabledTransfers)
                     {
-                        ip = chId.Split(':')[1];
-                        name = chId.Split(':')[0];
-                        port = chId.Split(':')[2];
-                        i++;
 
-                    }
-                    channelIds = Plugin.Config.Servers.Where(c => c.Split(':')[0].Equals(serverTarget));
-                    foreach (string chId in channelIds)
-                    {
-                        ip = chId.Split(':')[1];
-                        name = chId.Split(':')[0];
-                        port = chId.Split(':')[2];
-
-                    }
-                    string target = ip + ":" + port;
-                    ip += ":" + port;
-                    string slotinfo = Plugin.CheckSlots(target);
-                    existanceCheck = slotinfo.Split(';').Last();
-                    bool paired = Plugin.CheckKey(target);
-                    if (target.Length > 1)
-                    {
-                        if (existanceCheck == "1")
+                        IEnumerable<string> channelIds = Plugin.Config.Servers;
+                        foreach (string chId in channelIds)
                         {
-                            if (paired == true)
+                            ip = chId.Split(':')[1];
+                            name = chId.Split(':')[0];
+                            port = chId.Split(':')[2];
+                            i++;
+
+                        }
+                        channelIds = Plugin.Config.Servers.Where(c => c.Split(':')[0].Equals(serverTarget));
+                        foreach (string chId in channelIds)
+                        {
+                            ip = chId.Split(':')[1];
+                            name = chId.Split(':')[0];
+                            port = chId.Split(':')[2];
+
+                        }
+                        string target = ip + ":" + port;
+                        ip += ":" + port;
+                        string slotinfo = Plugin.CheckSlots(target);
+                        existanceCheck = slotinfo.Split(';').Last();
+                        bool paired = Plugin.CheckKey(target);
+                        if (target.Length > 1)
+                        {
+                            if (existanceCheck == "1")
                             {
-                                Log.Warn("Checking " + target);
-                                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                                Log.Warn("MAX: " + max);
-                                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                                int maxi = int.Parse(max);
-                                int maxcheck = currentLocalPlayers + currentRemotePlayers;
-                                Context.Respond("Slot Checking...");
-                                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-
-                                if (maxcheck <= maxi)
+                                if (paired == true)
                                 {
-                                    if (ip == null || name == null || port == null)
-                                    {
-                                        Context.Respond("Invalid Configuration!");
-                                    }
-                                    Context.Respond("Slot checking passed!");
-                                    try
-                                    {
-                                        string externalIP;
-                                        if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
-                                        {
-                                            externalIP = Plugin.Config.LocalIP;
-                                        }
-                                        else
-                                        {
-                                            externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-                                        }
-                                        string pagesource = "";
-                                        string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-                                        using (WebClient client = new WebClient())
-                                        {
+                                    Log.Warn("Checking " + target);
+                                    int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+                                    string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+                                    Log.Warn("MAX: " + max);
+                                    int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+                                    int maxi = int.Parse(max);
+                                    int maxcheck = currentLocalPlayers + currentRemotePlayers;
+                                    Context.Respond("Slot Checking...");
+                                    Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
 
-                                            NameValueCollection postData = new NameValueCollection()
+                                    if (maxcheck <= maxi)
+                                    {
+                                        if (ip == null || name == null || port == null)
+                                        {
+                                            Context.Respond("Invalid Configuration!");
+                                        }
+                                        Context.Respond("Slot checking passed!");
+                                        try
+                                        {
+                                            string externalIP;
+                                            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
+                                            {
+                                                externalIP = Plugin.Config.LocalIP;
+                                            }
+                                            else
+                                            {
+                                                externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+                                            }
+                                            string pagesource = "";
+                                            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+                                            using (WebClient client = new WebClient())
+                                            {
+
+                                                NameValueCollection postData = new NameValueCollection()
                                                 {
                                                     //order: {"parameter name", "parameter value"}
                                                     {"steamID", Context.Player.SteamUserId + ""},
                                                     {"currentIP", currentIp },
                                                     {"gridCheck", ""}
                                                 };
-                                            pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
-                                            Log.Fatal(pagesource);
-                                        }
-                                        if (pagesource == "0")
-                                        {
-                                            SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target);
+                                                pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
 
-                                            Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
+                                            }
+                                            if (pagesource == "0")
+                                            {
+                                                SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target);
+
+                                                Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
+                                            }
+                                            else
+                                            {
+                                                Log.Fatal(pagesource);
+                                                Context.Respond("Cannot transfer! You already have a transfer ready to be recieved!");
+                                            }
                                         }
-                                        else
+                                        catch
                                         {
-                                            Log.Fatal(pagesource);
-                                            Context.Respond("Cannot transfer! You already have a transfer ready to be recieved!");
+                                            Context.Respond("Failure");
                                         }
                                     }
-                                    catch
+                                    else
                                     {
-                                        Context.Respond("Failure");
+                                        Context.Respond("Cannot switch, not enough slots available");
                                     }
                                 }
                                 else
                                 {
-                                    Context.Respond("Cannot switch, not enough slots available");
+                                    Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
                                 }
                             }
                             else
                             {
-                                Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
+                                Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
                             }
                         }
                         else
                         {
-                            Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
+                            Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
                         }
                     }
                     else
                     {
-                        Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
+                        Context.Respond("Grid Transfers are not enabled!");
                     }
                 }
             }
         }
 
-        public void SendGrid(string gridTarget,string serverTarget, long playerId, string ip)
+        public void SendGrid(string gridTarget, string serverTarget, long playerId, string ip)
         {
             string externalIP;
             if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
@@ -668,7 +674,6 @@ namespace SwitchMe
                     if (!grid.DisplayName.Equals(gridTarget))
                         continue;
 
-
                     /* Big Owners are guys that have 50% or more of the grid. */
                     List<long> bigOnwerIds = grid.BigOwners;
                     /* Nobody can have the Majority of Blocks so there can be serveral owners. */
@@ -688,6 +693,7 @@ namespace SwitchMe
                         groupFound = true;
                         break;
                     }
+                    
                 }
 
                 if (groupFound)
@@ -707,10 +713,11 @@ namespace SwitchMe
                     {
 
                         MyCubeGrid grid = node.NodeData;
-
+                        
                         /* We wanna Skip Projections... always */
                         if (grid.Physics == null)
                             continue;
+                        
 
                         /* DO STUFF */
                         Log.Warn("Starting transfer");
@@ -767,6 +774,7 @@ namespace SwitchMe
                                         {"fileName", Context.Player.SteamUserId + "-" + gridTarget }
                                     };
                                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
+                                    File.Delete(path + ".xml");
                                 }
 
                             }

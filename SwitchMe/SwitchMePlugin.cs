@@ -224,6 +224,7 @@ namespace SwitchMe
                 {
                     entity = ent;
                     return true;
+                    
                 }
             }
 
@@ -246,6 +247,20 @@ namespace SwitchMe
         private void InitPost()
         {
             StartTimer();
+        }
+
+
+        public void DeleteFromWeb(string filename)
+        {
+            using (WebClient client = new WebClient())
+            {
+                string pagesource = "";
+                NameValueCollection postData = new NameValueCollection()
+                    {   {"remove", "1"},{"filename", filename}
+                };
+
+                pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
+            }
         }
         private void _timer_Elapsed(object sender, ElapsedEventArgs e)
         {
@@ -283,7 +298,7 @@ namespace SwitchMe
                         { "currentplayers", currentPlayers },
                         { "maxplayers", maxPlayers },
                         { "serverip", currentIp},
-                        { "verion", "1.1.8"},
+                        { "verion", "1.2"},
                         { "bindKey", Config.LocalKey}
                     };
                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));

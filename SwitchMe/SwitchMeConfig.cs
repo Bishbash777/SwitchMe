@@ -8,6 +8,9 @@ namespace SwitchMe
         private bool _enabled = false;
         public bool Enabled { get => _enabled; set => SetValue(ref _enabled, value); }
 
+        private bool _enabledTransfers = true;
+        public bool EnabledTransfers { get => _enabledTransfers; set => SetValue(ref _enabledTransfers, value); }
+
         private string _localIP = "";
         public string LocalIP { get => _localIP; set => SetValue(ref _localIP, value); }
 
