@@ -641,7 +641,7 @@ namespace SwitchMe
             }
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
-            MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup = FindRelevantGroup(gridTarget, playerId);
+            MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group relevantGroup = FindRelevantGroup(gridTarget, playerId);
 
             if (relevantGroup != null)
             {
@@ -673,7 +673,7 @@ namespace SwitchMe
             }
         }
 
-        private void SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup, string gridTarget, string path) {
+        private void SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group relevantGroup, string gridTarget, string path) {
 
             List<MyObjectBuilder_CubeGrid> objectBuilders = new List<MyObjectBuilder_CubeGrid>();
 
@@ -767,7 +767,7 @@ namespace SwitchMe
             return false;
         }
 
-        private void DeleteUploadedGrids(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup) {
+        private void DeleteUploadedGrids(MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group relevantGroup) {
 
             foreach (var node in relevantGroup.Nodes) {
 
@@ -781,9 +781,9 @@ namespace SwitchMe
             }
         }
 
-        private MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group FindRelevantGroup(string gridTarget, long playerId) {
+        private MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group FindRelevantGroup(string gridTarget, long playerId) {
 
-            ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = GridFinder.findGridGroup(gridTarget);
+            ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> groups = GridFinder.findGridGroupMechanical(gridTarget);
 
             /* Each Physical Grid group (physical included Connectors) */
             foreach (var group in groups) 
