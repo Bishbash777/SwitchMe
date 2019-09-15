@@ -405,8 +405,9 @@ namespace SwitchMe
         [Permission(MyPromoteLevel.None)]
         public void SwitchHelp()
         {
-            Context.Respond("'!switch me <servername>' Switches you to selected server");
-            Context.Respond("'!switch list' Displays a list of valid Server names to connect to.");
+            Context.Respond("`!switch me <servername>` Switches you to selected server.");
+            Context.Respond("`!switch list` Displays a list of valid Server names to connect to.");
+            Context.Respond("`!switch grid '<targetgrid>' '<targetserver>'` Transfers the target grid to the target server.");
         }
 
         private readonly string ExportPath = "ExportedGrids\\{0}.xml";
@@ -490,7 +491,7 @@ namespace SwitchMe
         }
 
 
-        [Command("grid", "Displays a list of Valid Server names for !switch me <servername> ")]
+        [Command("grid", "Transfers the target grid to the target server")]
         [Permission(MyPromoteLevel.None)]
         public void Grid(string gridTarget, string serverTarget)
         {
