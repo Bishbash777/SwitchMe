@@ -491,15 +491,6 @@ namespace SwitchMe
             }
         }
 
-        [Command("debugrestore", "Displays a list of Valid Server names for the '!switch me <servername>' command. ")]
-        [Permission(MyPromoteLevel.None)]
-        public void DebugRestore(string gridTarget) {
-
-            string targetFile = "ExportedGrids\\" + gridTarget + ".xml";
-
-            DeserializeGridFromPath(targetFile, Context.Player.IdentityId);
-        }
-
         private bool DeserializeGridFromPath(string targetFile, long playerId) {
 
             if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) 
@@ -801,14 +792,6 @@ namespace SwitchMe
             {
                 Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
             }
-        }
-
-        [Command("debugsend", "Displays a list of Valid Server names for the '!switch me <servername>' command. ")]
-        [Permission(MyPromoteLevel.None)]
-        public void DebugSend(string gridTarget) {
-
-            SendGrid(gridTarget, "", Context.Player.IdentityId, "", true);
-
         }
 
         public void SendGrid(string gridTarget, string serverTarget, long playerId, string ip, bool debug = false)
