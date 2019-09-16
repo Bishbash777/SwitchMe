@@ -23,6 +23,10 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Collections.Specialized;
 using VRageMath;
+using VRage.Game.Entity;
+using Sandbox.Game.Entities.Cube;
+using Sandbox.Engine.Multiplayer;
+using VRage.Network;
 
 namespace SwitchMe
 {
@@ -424,7 +428,7 @@ namespace SwitchMe
 
             if (DownloadGrid(currentIp, out string targetFile, out string filename)) {
 
-                if(DeserializeGridFromPath(targetFile)) {
+                if(DeserializeGridFromPath(targetFile, Context.Player.IdentityId)) {
 
                     File.Delete(targetFile);
 
@@ -493,11 +497,10 @@ namespace SwitchMe
 
             string targetFile = "ExportedGrids\\" + gridTarget + ".xml";
 
-            DeserializeGridFromPath(targetFile);
-
+            DeserializeGridFromPath(targetFile, Context.Player.IdentityId);
         }
 
-        private bool DeserializeGridFromPath(string targetFile) {
+        private bool DeserializeGridFromPath(string targetFile, long playerId) {
 
             if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) 
             {
@@ -531,14 +534,53 @@ namespace SwitchMe
                 /* Remapping to prevent any key problems upon paste. */
                 MyEntities.RemapObjectBuilderCollection(grids);
 
-                foreach (var grid in grids) 
-                    MyEntities.CreateFromObjectBuilderParallel(grid, true);
+                foreach (var grid in grids) {
+
+                    MyCubeGrid cubeGrid = MyEntities.CreateFromObjectBuilderAndAdd(grid, true) as MyCubeGrid;
+
+                    if(cubeGrid != null)
+                        FixOwnerAndAuthorShip(cubeGrid, playerId);
+                }
 
                 Context.Respond("Grid has been pulled from the void!");
                 return true;
             }
 
             return false;
+        }
+
+        private void FixOwnerAndAuthorShip(MyCubeGrid myCubeGrid, long playerId) {
+
+            HashSet<long> authors = new HashSet<long>();
+            HashSet<MySlimBlock> blocks = new HashSet<MySlimBlock>(myCubeGrid.GetBlocks());
+            foreach (MySlimBlock block in blocks) {
+
+                if (block == null || block.CubeGrid == null || block.IsDestroyed)
+                    continue;
+
+                MyCubeBlock cubeBlock = block.FatBlock;
+                if (cubeBlock != null && cubeBlock.OwnerId != playerId) {
+
+                    myCubeGrid.ChangeOwnerRequest(myCubeGrid, cubeBlock, 0, MyOwnershipShareModeEnum.Faction);
+                    if (playerId != 0)
+                        myCubeGrid.ChangeOwnerRequest(myCubeGrid, cubeBlock, playerId, MyOwnershipShareModeEnum.Faction);
+                }
+
+                if (block.BuiltBy == 0) {
+
+                    /* 
+                    * Hack: TransferBlocksBuiltByID only transfers authorship if it has an author. 
+                    * Transfer Authorship Client just sets the author so we need to take care of limits ourselves. 
+                    */
+                    block.TransferAuthorshipClient(playerId);
+                    block.AddAuthorship();
+                }
+
+                authors.Add(block.BuiltBy);
+            }
+
+            foreach (long author in authors)
+                MyMultiplayer.RaiseEvent(myCubeGrid, x => new Action<long, long>(x.TransferBlocksBuiltByID), author, playerId, new EndpointId());
         }
 
         private bool UpdateGridsPosition(MyObjectBuilder_CubeGrid[] grids, Vector3D newPosition) {
