@@ -418,33 +418,33 @@ namespace SwitchMe
         [Permission(MyPromoteLevel.None)]
         public void Recover()
         {
-            if (Context.Player != null)
-            {
-                string externalIP;
-                if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
-                {
-                    externalIP = Plugin.Config.LocalIP;
-                }
-                else
-                {
-                    externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-                }
-                string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-
-                if (DownloadGrid(currentIp, out string targetFile, out string filename)) {
-
-                    if(DeserializeGridFromPath(targetFile)) {
-
-                        File.Delete(targetFile);
-
-                        Plugin.DeleteFromWeb(filename);
-                    }
-                }
-            }
-            else
+            if (Context.Player == null) 
             {
                 Context.Respond("Command cannot be ran from console");
+                return;
             }
+
+            string externalIP = CreateExternalIP();
+
+            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+
+            if (DownloadGrid(currentIp, out string targetFile, out string filename)) {
+
+                if(DeserializeGridFromPath(targetFile)) {
+
+                    File.Delete(targetFile);
+
+                    Plugin.DeleteFromWeb(filename);
+                }
+            }
+        }
+
+        private string CreateExternalIP() {
+
+            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168")) 
+                return Plugin.Config.LocalIP;
+
+            return Sandbox.MySandboxExternal.ConfigDedicated.IP;
         }
 
         private bool DownloadGrid(string currentIp, out string targetFile, out string filename) {
@@ -706,15 +706,8 @@ namespace SwitchMe
                                         Context.Respond("Slot checking passed!");
                                         try
                                         {
-                                            string externalIP;
-                                            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
-                                            {
-                                                externalIP = Plugin.Config.LocalIP;
-                                            }
-                                            else
-                                            {
-                                                externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-                                            }
+                                            string externalIP = CreateExternalIP();
+ 
                                             string pagesource = "";
                                             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
                                             using (WebClient client = new WebClient())
@@ -785,15 +778,7 @@ namespace SwitchMe
 
         public void SendGrid(string gridTarget, string serverTarget, long playerId, string ip, bool debug = false)
         {
-            string externalIP;
-            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
-            {
-                externalIP = Plugin.Config.LocalIP;
-            }
-            else
-            {
-                externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-            }
+            string externalIP = CreateExternalIP();
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
             MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group relevantGroup = FindRelevantGroup(gridTarget, playerId);
