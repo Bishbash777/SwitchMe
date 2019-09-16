@@ -684,7 +684,7 @@ namespace SwitchMe
             string port = "";
             string existanceCheck = "";
 
-            if (Plugin.Config.EnabledTransfers) 
+            if (!Plugin.Config.EnabledTransfers) 
             {
                 Context.Respond("Grid Transfers are not enabled!");
                 return;
@@ -715,7 +715,7 @@ namespace SwitchMe
             existanceCheck = slotinfo.Split(';').Last();
             bool paired = Plugin.CheckKey(target);
 
-            if (target.Length > 1) 
+            if (target.Length < 1) 
             {
                 Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
                 return;
@@ -888,7 +888,7 @@ namespace SwitchMe
 
                     Context.Respond("Connecting clients to " + serverTarget + " @ " + ip);
                     Context.Respond("Grid has been sent to the void! - Good luck!");
-                    //ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
+                    ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
                     using (WebClient client = new WebClient()) 
                     {
 
