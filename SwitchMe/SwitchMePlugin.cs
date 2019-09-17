@@ -22,7 +22,7 @@ using Torch.API.Session;
 using Torch.API;
 
 using System.IO;
-
+using Torch.Managers;
 
 namespace SwitchMe
 {
@@ -31,8 +31,6 @@ namespace SwitchMe
         public SwitchMeConfig Config => _config?.Data;
 
         private Persistent<SwitchMeConfig> _config;
-
-        //public SwitchMe DDBridge;
 
         private UserControl _control;
         public static string ip;
@@ -71,6 +69,7 @@ namespace SwitchMe
                 Log.Info("Create Default Config, because none was found!");
 
                 _config = new Persistent<SwitchMeConfig>(configFile, new SwitchMeConfig());
+                
                 
                 Save();
             }
@@ -248,7 +247,6 @@ namespace SwitchMe
         {
             StartTimer();
         }
-
 
         public void DeleteFromWeb(string filename)
         {

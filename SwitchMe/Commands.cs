@@ -763,6 +763,7 @@ namespace SwitchMe
                             }
                             if (pagesource == "0")
                             {
+                                
                                 SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target);
 
                                 Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
@@ -818,7 +819,7 @@ namespace SwitchMe
 
             SerializeGridsToPath(relevantGroup, gridTarget, path);
 
-            if(!debug && UploadGrid(serverTarget, gridTarget, ip, currentIp, path)) 
+            if (!debug && UploadGrid(serverTarget, gridTarget, ip, currentIp, path)) 
             {
 
                 /* Upload successful close the grids */
@@ -934,10 +935,14 @@ namespace SwitchMe
                 grid.Close();
             }
         }
+        
+
 
         private MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group FindRelevantGroup(string gridTarget, long playerId) {
 
             ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> groups = GridFinder.findGridGroupMechanical(gridTarget);
+
+            string pos = "";
 
             /* Each Physical Grid group (physical included Connectors) */
             foreach (var group in groups) 
@@ -977,7 +982,7 @@ namespace SwitchMe
                     /* Nobody can have the Majority of Blocks so there can be serveral owners. */
                     int ownerCount = bigOnwerIds.Count;
                     var gridOwner = 0L;
-
+                    pos = grid.PositionComp.GetPosition().ToString();
                     /* If nobody isnt the big owner then everythings fine. otherwise take the second biggest owner */
                     if (ownerCount > 0 && bigOnwerIds[0] != 0)
                         gridOwner = bigOnwerIds[0];
@@ -994,6 +999,7 @@ namespace SwitchMe
                 }
 
                 if (groupFound)
+                    Context.Respond(pos);
                     return group;
             }
 
