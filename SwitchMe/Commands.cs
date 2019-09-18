@@ -446,7 +446,7 @@ namespace SwitchMe
         }
 
         private bool DownloadGrid(string currentIp, out string targetFile, out string filename) {
-
+            Directory.CreateDirectory("ExportedGrids");
             using (WebClient client = new WebClient()) 
             {
                 string pagesource = "";
