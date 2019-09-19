@@ -888,7 +888,7 @@ namespace SwitchMe
 
                     Context.Respond("Connecting clients to " + serverTarget + " @ " + ip);
                     Context.Respond("Grid has been sent to the void! - Good luck!");
-                    ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
+                    ModCommunication.SendMessageTo(new JoinServerMessage(ip), Context.Player.SteamUserId);
                     using (WebClient client = new WebClient()) 
                     {
 
