@@ -30,10 +30,27 @@ using VRage.Network;
 
 namespace SwitchMe
 {
-    [Category("switch")]
+    
     public class Commands : CommandModule
     {
 
+        [Command("restore", "Automatically connect to your server of choice within this network. USAGE: !switch me <Insert Server name here>")]
+        [Permission(MyPromoteLevel.None)]
+        public void SingleRestore()
+        {
+            Recover();
+        }
+
+        [Command("recover", "Automatically connect to your server of choice within this network. USAGE: !switch me <Insert Server name here>")]
+        [Permission(MyPromoteLevel.None)]
+        public void SingleRecover()
+        {
+            Recover();
+        }
+
+
+
+        [Category("switch")]
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         public SwitchMePlugin Plugin => (SwitchMePlugin)Context.Plugin;
@@ -446,7 +463,7 @@ namespace SwitchMe
         }
 
         private bool DownloadGrid(string currentIp, out string targetFile, out string filename) {
-
+            Directory.CreateDirectory("ExportedGrids");
             using (WebClient client = new WebClient()) 
             {
                 string pagesource = "";
@@ -802,6 +819,8 @@ namespace SwitchMe
 
             MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group relevantGroup = FindRelevantGroup(gridTarget, playerId);
 
+            
+
             if (relevantGroup == null) 
             {
                 Context.Respond("Cannot transfer somone elses grid!");
@@ -889,7 +908,7 @@ namespace SwitchMe
 
                     Context.Respond("Connecting clients to " + serverTarget + " @ " + ip);
                     Context.Respond("Grid has been sent to the void! - Good luck!");
-                    ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
+                    ModCommunication.SendMessageTo(new JoinServerMessage(ip), Context.Player.SteamUserId);
                     using (WebClient client = new WebClient()) 
                     {
 
@@ -901,7 +920,8 @@ namespace SwitchMe
                             {"gridName", gridTarget },
                             {"targetIP", ip },
                             {"currentIP", currentIp },
-                            {"fileName", Context.Player.SteamUserId + "-" + gridTarget }
+                            {"fileName", Context.Player.SteamUserId + "-" + gridTarget },
+                            {"bindKey", Plugin.Config.LocalKey }
                         };
 
                         pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
@@ -1005,6 +1025,14 @@ namespace SwitchMe
 
             return null;
         }
+
+        [Command("restore", "Completes the transfer of one grid from one server to another")]
+        [Permission(MyPromoteLevel.None)]
+        public void restore()
+        {
+            Recover();
+        }
+
     }
 }
 
