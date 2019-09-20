@@ -443,9 +443,9 @@ namespace SwitchMe
 
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
-            if (DownloadGrid(currentIp, out string targetFile, out string filename)) {
+            if (DownloadGrid(currentIp, out string targetFile, out string filename, out Vector3D newPos)) {
 
-                if(DeserializeGridFromPath(targetFile, Context.Player.IdentityId)) {
+                if(DeserializeGridFromPath(targetFile, Context.Player.IdentityId, newPos)) {
 
                     File.Delete(targetFile);
 
@@ -462,11 +462,11 @@ namespace SwitchMe
             return Sandbox.MySandboxExternal.ConfigDedicated.IP;
         }
 
-        private bool DownloadGrid(string currentIp, out string targetFile, out string filename) {
+        private bool DownloadGrid(string currentIp, out string targetFile, out string filename, out Vector3D newPos) {
             Directory.CreateDirectory("ExportedGrids");
             using (WebClient client = new WebClient()) 
             {
-                string pagesource = "";
+                string source = "";
                 NameValueCollection postData = new NameValueCollection()
                 {
                     //order: {"parameter name", "parameter value"}
@@ -474,13 +474,31 @@ namespace SwitchMe
                     {"currentIP", currentIp },
                 };
 
-                pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
+                source = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
 
-                string existance = pagesource.Substring(0, pagesource.IndexOf(":"));
+                string POSsource = "";
+                postData = new NameValueCollection()
+                {
+                    //order: {"parameter name", "parameter value"}
+                    {"steamID", Context.Player.SteamUserId + ""},
+                    {"currentIP", currentIp },
+                };
+
+                POSsource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
+
+                string POS = POSsource.Substring(0, POSsource.IndexOf(":"));
+
+                Vector3D gps;
+                Vector3D.TryParse(POS, out gps);
+                newPos = gps;
+
+                
+
+                string existance = source.Substring(0, source.IndexOf(":"));
 
                 if (existance == "1") 
                 {
-                    filename = pagesource.Split(':').Last() + ".xml";
+                    filename = source.Split(':').Last() + ".xml";
 
                     try 
                     {
@@ -508,10 +526,17 @@ namespace SwitchMe
             }
         }
 
-        private bool DeserializeGridFromPath(string targetFile, long playerId) {
+        private bool DeserializeGridFromPath(string targetFile, long playerId, Vector3D newpos) {
 
             if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) 
             {
+
+                IMyEntity targetEntity = Context.Player?.Controller.ControlledEntity.Entity;
+
+                targetEntity.SetPosition(newpos);
+
+
+
                 Context.Respond($"Importing grid from {targetFile}");
 
                 var prefabs = myObjectBuilder_Definitions.Prefabs;
@@ -818,8 +843,13 @@ namespace SwitchMe
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
             MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group relevantGroup = FindRelevantGroup(gridTarget, playerId);
+            string pos = "";
+            foreach (var node in relevantGroup.Nodes)
+            {
+                MyCubeGrid grid = node.NodeData;
+                pos = grid.PositionComp.GetPosition().ToString();
+            }
 
-            
 
             if (relevantGroup == null) 
             {
@@ -838,7 +868,7 @@ namespace SwitchMe
 
             SerializeGridsToPath(relevantGroup, gridTarget, path);
 
-            if (!debug && UploadGrid(serverTarget, gridTarget, ip, currentIp, path)) 
+            if (!debug && UploadGrid(serverTarget, gridTarget, ip, currentIp, path, pos)) 
             {
 
                 /* Upload successful close the grids */
@@ -891,7 +921,7 @@ namespace SwitchMe
             Log.Fatal("exported " + path+ " "+worked);
         }
 
-        private bool UploadGrid(string serverTarget, string gridTarget, string ip, string currentIp, string path) {
+        private bool UploadGrid(string serverTarget, string gridTarget, string ip, string currentIp, string path, string pos) {
 
             /* DO we need a using here too? */
             System.Net.WebClient Client = new System.Net.WebClient();
@@ -921,7 +951,8 @@ namespace SwitchMe
                             {"targetIP", ip },
                             {"currentIP", currentIp },
                             {"fileName", Context.Player.SteamUserId + "-" + gridTarget },
-                            {"bindKey", Plugin.Config.LocalKey }
+                            {"bindKey", Plugin.Config.LocalKey },
+                            {"targetPOS", pos }
                         };
 
                         pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
