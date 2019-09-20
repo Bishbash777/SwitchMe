@@ -30,27 +30,10 @@ using VRage.Network;
 
 namespace SwitchMe
 {
-    
+    [Category("switch")]
     public class Commands : CommandModule
     {
 
-        [Command("restore", "Automatically connect to your server of choice within this network. USAGE: !switch me <Insert Server name here>")]
-        [Permission(MyPromoteLevel.None)]
-        public void SingleRestore()
-        {
-            Recover();
-        }
-
-        [Command("recover", "Automatically connect to your server of choice within this network. USAGE: !switch me <Insert Server name here>")]
-        [Permission(MyPromoteLevel.None)]
-        public void SingleRecover()
-        {
-            Recover();
-        }
-
-
-
-        [Category("switch")]
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         public SwitchMePlugin Plugin => (SwitchMePlugin)Context.Plugin;
