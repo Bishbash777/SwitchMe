@@ -30,27 +30,10 @@ using VRage.Network;
 
 namespace SwitchMe
 {
-    
+    [Category("switch")]
     public class Commands : CommandModule
     {
-
-        [Command("restore", "Automatically connect to your server of choice within this network. USAGE: !switch me <Insert Server name here>")]
-        [Permission(MyPromoteLevel.None)]
-        public void SingleRestore()
-        {
-            Recover();
-        }
-
-        [Command("recover", "Automatically connect to your server of choice within this network. USAGE: !switch me <Insert Server name here>")]
-        [Permission(MyPromoteLevel.None)]
-        public void SingleRecover()
-        {
-            Recover();
-        }
-
-
-
-        [Category("switch")]
+        
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         public SwitchMePlugin Plugin => (SwitchMePlugin)Context.Plugin;
@@ -466,8 +449,28 @@ namespace SwitchMe
             Directory.CreateDirectory("ExportedGrids");
             using (WebClient client = new WebClient()) 
             {
-                string source = "";
+
+
+
+                string POSsource = "";
                 NameValueCollection postData = new NameValueCollection()
+                {
+                    //order: {"parameter name", "parameter value"}
+                    {"steamID", Context.Player.SteamUserId + ""},
+                    {"currentIP", currentIp },
+                    {"posCheck", "check" }
+                };
+
+                POSsource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
+
+                string POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+
+                Vector3D gps;
+                Vector3D.TryParse(POS, out gps);
+                newPos = gps;
+
+                string source = "";
+                postData = new NameValueCollection()
                 {
                     //order: {"parameter name", "parameter value"}
                     {"steamID", Context.Player.SteamUserId + ""},
@@ -476,26 +479,8 @@ namespace SwitchMe
 
                 source = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
 
-                string POSsource = "";
-                postData = new NameValueCollection()
-                {
-                    //order: {"parameter name", "parameter value"}
-                    {"steamID", Context.Player.SteamUserId + ""},
-                    {"currentIP", currentIp },
-                };
-
-                POSsource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
-
-                string POS = POSsource.Substring(0, POSsource.IndexOf(":"));
-
-                Vector3D gps;
-                Vector3D.TryParse(POS, out gps);
-                newPos = gps;
-
-                
 
                 string existance = source.Substring(0, source.IndexOf(":"));
-
                 if (existance == "1") 
                 {
                     filename = source.Split(':').Last() + ".xml";
@@ -531,9 +516,21 @@ namespace SwitchMe
             if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) 
             {
 
-                IMyEntity targetEntity = Context.Player?.Controller.ControlledEntity.Entity;
+                if (Plugin.Config.EnabledMirror)
+                {
+                    var p = Context.Player;
+                    var parent = p.Character?.Parent;
+                    if (parent == null)
+                    {
+                    }
 
-                targetEntity.SetPosition(newpos);
+                    if (parent is MyShipController c)
+                    {
+                        c.RemoveUsers(false);
+                    }
+                    IMyEntity targetEntity = Context.Player?.Controller.ControlledEntity.Entity;
+                    targetEntity.SetPosition(newpos);
+                }
 
 
 
@@ -1050,7 +1047,6 @@ namespace SwitchMe
                 }
 
                 if (groupFound)
-                    Context.Respond(pos);
                     return group;
             }
 
