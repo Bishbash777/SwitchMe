@@ -20,6 +20,12 @@ using System.Net;
 using Timer = System.Timers.Timer;
 using Torch.API.Session;
 using Torch.API;
+using System.Collections.Generic;
+using Sandbox.Game;
+using Sandbox.ModAPI.Ingame;
+using Sandbox.ModAPI.Weapons;
+using VRage.Game;
+using VRage.Game.Components;
 
 using System.IO;
 using Torch.Managers;
@@ -37,7 +43,8 @@ namespace SwitchMe
         private Timer _timer;
         private DateTime timerStart = new DateTime(0);
         private TorchSessionManager _sessionManager;
-        
+        private IMultiplayerManagerBase _multibase;
+
 
 
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
@@ -73,6 +80,13 @@ namespace SwitchMe
                 
                 Save();
             }
+        }
+
+
+        private void _multibase_PlayerJoined(IPlayer obj)
+        {
+            if (!Config.Enabled) return;
+
         }
 
 
@@ -208,9 +222,28 @@ namespace SwitchMe
             }
             if (Torch.CurrentSession != null)
             {
+                _multibase.PlayerJoined += _multibase_PlayerJoined;
                 InitPost();
             }
         }
+
+
+
+        public override void Dispose()
+        {
+            if (_multibase != null)
+            {
+                _multibase.PlayerJoined -= _multibase_PlayerJoined;
+            }
+            _multibase = null;
+
+            if (_sessionManager != null)
+                _sessionManager.SessionStateChanged -= SessionChanged;
+            _sessionManager = null;;
+            StopTimer();
+        }
+
+
 
         public static bool TryGetEntityByNameOrId(string nameOrId, out IMyEntity entity)
         {

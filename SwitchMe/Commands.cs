@@ -515,6 +515,7 @@ namespace SwitchMe
 
             if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) 
             {
+                IMyEntity targetEntity = Context.Player?.Controller.ControlledEntity.Entity;
 
                 if (Plugin.Config.EnabledMirror)
                 {
@@ -528,7 +529,6 @@ namespace SwitchMe
                     {
                         c.RemoveUsers(false);
                     }
-                    IMyEntity targetEntity = Context.Player?.Controller.ControlledEntity.Entity;
                     targetEntity.SetPosition(newpos);
                 }
 
@@ -547,8 +547,12 @@ namespace SwitchMe
                 var prefab = prefabs[0];
                 var grids = prefab.CubeGrids;
 
+
                 /* Where do we want to paste the grids? Lets find out. */
                 var pos = FindPastePosition(grids);
+                targetEntity.SetPosition(pos.Value);
+
+                
                 if (pos == null) 
                 {
                     Context.Respond("No free place.");

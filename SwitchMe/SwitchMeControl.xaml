@@ -19,7 +19,12 @@
         </DockPanel>
         <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
         <CheckBox Content="Enable outbound grid transfers" Margin="3" IsChecked="{Binding EnabledTransfers}" ToolTip="Enable or disable grid transfers on SwitchMe"/>
+        <Label Height="3">
+            <LineBreak/>
+        </Label>
         <CheckBox Content="Force position mirroring" Margin="3,3,3,3" IsChecked="{Binding EnabledMirror}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
+        <Label Content="DO NOT ENABLE IF YOU HAVE A WORLD LIMIT!" FontSize="9" />
+
 
         <Label Content="Add Servers to link here:" />
         <Label Content="*Please note that the Target server IP has to be the same your players connect to!" FontSize="9" />
