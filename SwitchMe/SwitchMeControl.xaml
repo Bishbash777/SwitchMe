@@ -17,14 +17,22 @@
                 <Button Width="100" Content="Save Config" Click="SaveConfig_OnClick" Margin="3,4,10,4" HorizontalAlignment="Left" />
             </Border>
         </DockPanel>
-        <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
+        <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe" Checked="CheckBox_Checked"/>
         <CheckBox Content="Enable outbound grid transfers" Margin="3" IsChecked="{Binding EnabledTransfers}" ToolTip="Enable or disable grid transfers on SwitchMe"/>
         <Label Height="3">
             <LineBreak/>
         </Label>
         <CheckBox Content="Force position mirroring" Margin="3,3,3,3" IsChecked="{Binding EnabledMirror}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
         <Label Content="DO NOT ENABLE IF YOU HAVE A WORLD LIMIT!" FontSize="9" />
-
+        <CheckBox Content="Lock recoveries to a certain GPS position" Margin="3,3,3,3" IsChecked="{Binding LockedTransfer}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
+        <StackPanel Orientation="Horizontal">
+            <Label Content="X:"/>
+            <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding X-Cord}" />
+            <Label Content="Y:"/>
+            <TextBox Width="98" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding Y-Cord}" />
+            <Label Content="Z:"/>
+            <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding Z-Cord}" />
+        </StackPanel>
 
         <Label Content="Add Servers to link here:" />
         <Label Content="*Please note that the Target server IP has to be the same your players connect to!" FontSize="9" />
@@ -43,6 +51,7 @@
         <StackPanel Orientation="Horizontal">
             <Label Content="Activation Key:" Width="129"/>
             <TextBox x:Name="txtServerKey" Width="169" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding ActivationKey}" />
+            <Label Content="  *Only available for monthly donators" FontSize="9" Height="22" Width="166" />
         </StackPanel>
         <Label Width="Auto">
             <Hyperlink NavigateUri="https://www.paypal.com/paypalme2/startgatesurvival" RequestNavigate="Hyperlink_RequestNavigate">
