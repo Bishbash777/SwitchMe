@@ -17,6 +17,9 @@ namespace SwitchMe
         private string _localIP = "";
         public string LocalIP { get => _localIP; set => SetValue(ref _localIP, value); }
 
+        private string _ActivationKey = "";
+        public string ActivationKey { get => _ActivationKey; set => SetValue(ref _ActivationKey, value); }
+
         private string _localKey = "";
         public string LocalKey { get => _localKey; set => SetValue(ref _localKey, value); }
 

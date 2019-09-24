@@ -550,7 +550,10 @@ namespace SwitchMe
 
                 /* Where do we want to paste the grids? Lets find out. */
                 var pos = FindPastePosition(grids);
-                targetEntity.SetPosition(pos.Value);
+                if (Plugin.Config.EnabledMirror)
+                {
+                    targetEntity.SetPosition(pos.Value);
+                }
 
                 
                 if (pos == null) 
@@ -953,7 +956,8 @@ namespace SwitchMe
                             {"currentIP", currentIp },
                             {"fileName", Context.Player.SteamUserId + "-" + gridTarget },
                             {"bindKey", Plugin.Config.LocalKey },
-                            {"targetPOS", pos }
+                            {"targetPOS", pos },
+                            {"key", Plugin.Config.ActivationKey }
                         };
 
                         pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
