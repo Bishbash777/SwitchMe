@@ -329,7 +329,7 @@ namespace SwitchMe
                         { "currentplayers", currentPlayers },
                         { "maxplayers", maxPlayers },
                         { "serverip", currentIp},
-                        { "verion", "1.2"},
+                        { "verion", "1.2.2.1"},
                         { "bindKey", Config.LocalKey}
                     };
                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
