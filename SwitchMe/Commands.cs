@@ -451,7 +451,7 @@ namespace SwitchMe
             {
 
 
-
+                string POS = "";
                 string POSsource = "";
                 NameValueCollection postData = new NameValueCollection()
                 {
@@ -462,11 +462,13 @@ namespace SwitchMe
                 };
 
                 POSsource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
-
-                string POS = POSsource.Substring(0, POSsource.IndexOf("^"));
-
-                Vector3D gps;
-                Vector3D.TryParse(POS, out gps);
+                if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror)
+                {
+                    POS = "X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord;
+                    POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+                }
+                POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+                Vector3D.TryParse(POS, out Vector3D gps);
                 newPos = gps;
 
                 string source = "";
@@ -572,10 +574,7 @@ namespace SwitchMe
                 MyEntities.RemapObjectBuilderCollection(grids);
 
                 foreach (var grid in grids) {
-
-                    MyCubeGrid cubeGrid = MyEntities.CreateFromObjectBuilderAndAdd(grid, true) as MyCubeGrid;
-
-                    if(cubeGrid != null)
+                    if (MyEntities.CreateFromObjectBuilderAndAdd(grid, true) is MyCubeGrid cubeGrid)
                         FixOwnerAndAuthorShip(cubeGrid, playerId);
                 }
 

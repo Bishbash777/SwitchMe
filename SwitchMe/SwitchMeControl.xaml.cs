@@ -76,5 +76,10 @@ namespace SwitchMe
                 txtServerPort.Text = dataRow.PORT;
             }
         }
+
+        private void CheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }

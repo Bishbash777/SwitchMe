@@ -14,6 +14,18 @@ namespace SwitchMe
         private bool _enabledMirror = false;
         public bool EnabledMirror { get => _enabledMirror; set => SetValue(ref _enabledMirror, value); }
 
+        private bool _lockedTransfer = false;
+        public bool LockedTransfer { get => _lockedTransfer; set => SetValue(ref _lockedTransfer, value); }
+
+        private string _xcord = "";
+        public string XCord { get => _xcord; set => SetValue(ref _xcord, value); }
+
+        private string _ycord = "";
+        public string YCord { get => _ycord; set => SetValue(ref _ycord, value); }
+
+        private string _zcord = "";
+        public string ZCord { get => _zcord; set => SetValue(ref _zcord, value); }
+
         private string _localIP = "";
         public string LocalIP { get => _localIP; set => SetValue(ref _localIP, value); }
 
