@@ -782,6 +782,16 @@ namespace SwitchMe
 
                     if (maxcheck <= maxi)
                     {
+                        var p = Context.Player;
+                        var parent = p.Character?.Parent;
+                        if (parent == null)
+                        {
+                        }
+
+                        if (parent is MyShipController c)
+                        {
+                            c.RemoveUsers(false);
+                        }
                         if (ip == null || name == null || port == null)
                         {
                             Context.Respond("Invalid Configuration!");

@@ -17,8 +17,8 @@ namespace SwitchMe
         private bool _lockedTransfer = false;
         public bool LockedTransfer { get => _lockedTransfer; set => SetValue(ref _lockedTransfer, value); }
 
-        private string _xcord = "";
-        public string XCord { get => _xcord; set => SetValue(ref _xcord, value); }
+        private string _Xcord = "";
+        public string XCord { get => _Xcord; set => SetValue(ref _Xcord, value); }
 
         private string _ycord = "";
         public string YCord { get => _ycord; set => SetValue(ref _ycord, value); }

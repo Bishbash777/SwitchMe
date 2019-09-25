@@ -3,11 +3,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d" Height="731" Width="503">
-    <StackPanel Height="723" VerticalAlignment="Top">
-        <Label x:Name="popupTarget" FontWeight="Bold" FontSize="16" Content="SwitchMe Configuration:" Height="27" Margin="1,0,0,0" />
+             mc:Ignorable="d" Height="839.35" Width="503">
+    <StackPanel Height="840" VerticalAlignment="Top" Margin="0,0,0,-1">
+        <Label x:Name="popupTarget" FontWeight="Bold" FontSize="16" Content="SwitchMe Configuration:" Height="31" Margin="1,0,0,0" />
         <DockPanel Height="31" LastChildFill="False" Margin="0,0,20,0" HorizontalAlignment="Right" Width="481">
-            <Border DockPanel.Dock="Bottom" Height="29" Margin="0,0,-10,0" HorizontalAlignment="Right" Width="492">
+            <Border DockPanel.Dock="Bottom" Height="27" Margin="-1,0,-10,0" HorizontalAlignment="Right" Width="492">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="1,0" EndPoint="0,0">
                         <GradientStop Offset="1" Color="#55555555"/>
@@ -17,21 +17,23 @@
                 <Button Width="100" Content="Save Config" Click="SaveConfig_OnClick" Margin="3,4,10,4" HorizontalAlignment="Left" />
             </Border>
         </DockPanel>
-        <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe" Checked="CheckBox_Checked"/>
-        <CheckBox Content="Enable outbound grid transfers" Margin="3" IsChecked="{Binding EnabledTransfers}" ToolTip="Enable or disable grid transfers on SwitchMe"/>
+        <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
+        <CheckBox Content="Enable outbound grid transfers" Margin="3" IsChecked="{Binding EnabledTransfers}" ToolTip="Enable or disable grid transfers on SwitchMe" Height="18"/>
         <Label Height="3">
             <LineBreak/>
         </Label>
-        <CheckBox Content="Force position mirroring" Margin="3,3,3,3" IsChecked="{Binding EnabledMirror}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
+        <Label FontWeight="Bold" FontSize="13" Content="Position settings:" Height="26" Margin="1,0,0,0" />
         <Label Content="DO NOT ENABLE IF YOU HAVE A WORLD LIMIT!" FontSize="9" />
+        <CheckBox Content="Enable positioning" Margin="3,3,3,3" IsChecked="{Binding EnabledMirror}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
+        <Label Content="Positioning needs to be enabled to make locking take effect." FontSize="9" />
         <CheckBox Content="Lock recoveries to a certain GPS position" Margin="3,3,3,3" IsChecked="{Binding LockedTransfer}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
         <StackPanel Orientation="Horizontal">
             <Label Content="X:"/>
-            <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding X-Cord}" />
+            <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding XCord}" />
             <Label Content="Y:"/>
-            <TextBox Width="98" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding Y-Cord}" />
+            <TextBox Width="98" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding YCord}" />
             <Label Content="Z:"/>
-            <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding Z-Cord}" />
+            <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding ZCord}" />
         </StackPanel>
 
         <Label Content="Add Servers to link here:" />
@@ -92,8 +94,8 @@
             <Button x:Name="btnDelServer" Width="100" Content="Delete Server" Margin="3" Click="BtnDelServer_Click" />
         </StackPanel>
 
-        <StackPanel Orientation="Horizontal" Height="151">
-            <DataGrid x:Name="dgServerList" Width="497" Margin="3,3,3,-38" AutoGenerateColumns="False" SelectionChanged="DgServerList_SelectionChanged" IsReadOnly="True" Height="186" VerticalAlignment="Top">
+        <StackPanel Orientation="Horizontal" Height="199">
+            <DataGrid x:Name="dgServerList" Width="497" Margin="3,3,3,24" AutoGenerateColumns="False" SelectionChanged="DgServerList_SelectionChanged" IsReadOnly="True">
                 <DataGrid.Columns>
                     <DataGridTextColumn Binding="{Binding SERVER}" Header="Server Name" Width="165"/>
                     <DataGridTextColumn Binding="{Binding IP}" Header="Server IP" Width="165"/>
