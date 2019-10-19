@@ -73,7 +73,7 @@ namespace SwitchMe
             if (_config?.Data == null)
             {
 
-                Log.Info("Create Default Config, because none was found!");
+                Log.Info("Creating default confuration file, because none was found!");
 
                 _config = new Persistent<SwitchMeConfig>(configFile, new SwitchMeConfig());
                 
@@ -90,15 +90,35 @@ namespace SwitchMe
         }
 
 
-        public string CheckSlots(string targetIP)
+        public void Delete(string entityName)
+        {
+            var name = entityName;
+            if (string.IsNullOrEmpty(name))
+                return;
+
+            if (!TryGetEntityByNameOrId(name, out IMyEntity entity))
+            {
+                return;
+            }
+
+            if (entity is IMyCharacter)
+            {
+                return;
+            }
+
+            entity.Close();
+            Log.Warn("Entitiy deleted.");
+        }
+
+        public async Task<string> CheckSlotsAsync(string targetIP)
         {
             string pagesource = "";
             try
             {
                 string maxPlayers = MySession.Static.MaxPlayers.ToString();
-                
+
                 string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
-                
+
                 using (WebClient client = new WebClient())
                 {
 
@@ -107,9 +127,9 @@ namespace SwitchMe
                             //order: {"parameter name", "parameter value"}
                             { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"targetip", targetIP},
                         };
-                    
+
                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
-                    
+
                 }
             }
 
@@ -118,7 +138,7 @@ namespace SwitchMe
                 Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
             }
 
-            return pagesource;
+            return await Task.FromResult(pagesource);
         }
         private void SessionChanged(ITorchSession session, TorchSessionState state)
         {
@@ -150,7 +170,7 @@ namespace SwitchMe
         {
             if (_timer != null) StopTimer();
             _timer = new Timer(3000);
-            _timer.Elapsed += _timer_Elapsed;
+            Task.Run(() => _timer.Elapsed += _timer_Elapsed);
             _timer.Enabled = true;
             
         }
@@ -171,16 +191,13 @@ namespace SwitchMe
             Dispose();
         }
 
-        public bool CheckKey(string target)
+        public async Task<bool> CheckKeyAsync(string target)
         {
-            string pagesource;
+           string pagesource;
             try
             {
-
-
                 using (WebClient client = new WebClient())
                 {
-
                     NameValueCollection postData = new NameValueCollection()
                         {
                             //order: {"parameter name", "parameter value"}
@@ -188,23 +205,102 @@ namespace SwitchMe
                             {"bindKey", Config.LocalKey },
                             {"bindCheck", "1"}
                         };
-
                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
                     if (pagesource == Config.LocalKey)
                     {
-                        return true;
+                        return await Task.FromResult(true);
                     }
-
                 }
             }
-
             catch
             {
                 Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
             }
-
             return false;
         }
+
+        public bool CheckInbound(string target)
+        {
+            string pagesource;
+            try
+            {
+                using (WebClient client = new WebClient())
+                {
+                    NameValueCollection postData = new NameValueCollection()
+                        {
+                            //order: {"parameter name", "parameter value"}
+                            {"targetip", target},
+                        };
+                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/endpoint.php", postData));
+                    if (pagesource == "Y")
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
+            }
+            return false;
+        }
+
+        public string debug()
+        {
+            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+            if (Config.LocalKey == "10551Debug")
+            {
+                string pagesource;
+                try
+                {
+                    using (WebClient client = new WebClient())
+                    {
+                        NameValueCollection postData = new NameValueCollection()
+                        {
+                            //order: {"parameter name", "parameter value"}
+                            {"key", Config.ActivationKey},
+                            {"currentIP", currentIp}
+                        };
+                        pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/test.php", postData));
+                        return pagesource;
+                    }
+                }
+                catch
+                {
+                    Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
+                }
+            }
+            return null;
+        }
+
+
+        public bool CheckStatus(string target)
+        {
+            string pagesource;
+            try
+            {
+                using (WebClient client = new WebClient())
+                {
+                    NameValueCollection postData = new NameValueCollection()
+                        {
+                            //order: {"parameter name", "parameter value"}
+                            {"targetip", target},
+                        };
+                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/status.php", postData));
+                    if (pagesource == "ONLINE")
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
+            }
+            return false;
+        }
+
 
         public void LoadSEDB()
         {
@@ -295,9 +391,8 @@ namespace SwitchMe
         }
         private void _timer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            
-            
             string externalIP;
+            string Inbound = "N";
             if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
             {
                 externalIP = Config.LocalIP;
@@ -319,7 +414,10 @@ namespace SwitchMe
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
             if (Torch.CurrentSession != null && currentIp.Length > 1)
             {
-
+                if (Config.InboundTransfersState == true)
+                {
+                    Inbound = "Y";
+                }
                 using (WebClient client = new WebClient())
                 {
                     string pagesource = "";
@@ -329,16 +427,14 @@ namespace SwitchMe
                         { "currentplayers", currentPlayers },
                         { "maxplayers", maxPlayers },
                         { "serverip", currentIp},
-                        { "verion", "1.2.3"},
-                        { "bindKey", Config.LocalKey}
+                        { "verion", "1.2.4.1"},
+                        { "bindKey", Config.LocalKey},
+                        { "inbound", Inbound }
                     };
+                    
                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
                 }
             }
-            else
-            {
-            }
-
         }
     }
 }

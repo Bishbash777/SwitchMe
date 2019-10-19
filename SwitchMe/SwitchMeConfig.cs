@@ -11,6 +11,9 @@ namespace SwitchMe
         private bool _enabledTransfers = false;
         public bool EnabledTransfers { get => _enabledTransfers; set => SetValue(ref _enabledTransfers, value); }
 
+        private bool _inboundTransfersState = true;
+        public bool InboundTransfersState { get => _inboundTransfersState; set => SetValue(ref _inboundTransfersState, value); }
+
         private bool _enabledMirror = false;
         public bool EnabledMirror { get => _enabledMirror; set => SetValue(ref _enabledMirror, value); }
 

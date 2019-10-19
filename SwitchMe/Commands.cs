@@ -27,6 +27,11 @@ using VRage.Game.Entity;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Engine.Multiplayer;
 using VRage.Network;
+using VRage.Replication;
+using IMyDestroyableObject = VRage.Game.ModAPI.Interfaces.IMyDestroyableObject;
+using VRage.Collections;
+using Torch.Utils;
+using System.Collections;
 
 namespace SwitchMe
 {
@@ -34,342 +39,360 @@ namespace SwitchMe
     public class Commands : CommandModule
     {
 
+
+#pragma warning disable 649
+        [ReflectedGetter(Name = "m_clientStates")]
+        private static Func<MyReplicationServer, IDictionary> _clientStates;
+
+        private const string CLIENT_DATA_TYPE_NAME = "VRage.Network.MyClient, VRage";
+        [ReflectedGetter(TypeName = CLIENT_DATA_TYPE_NAME, Name = "Replicables")]
+        private static Func<object, MyConcurrentDictionary<IMyReplicable, MyReplicableClientData>> _replicables;
+
+        [ReflectedMethod(Name = "RemoveForClient", OverrideTypeNames = new[] { null, CLIENT_DATA_TYPE_NAME, null })]
+        private static Action<MyReplicationServer, IMyReplicable, object, bool> _removeForClient;
+
+        [ReflectedMethod(Name = "ForceReplicable")]
+        private static Action<MyReplicationServer, IMyReplicable, Endpoint> _forceReplicable;
+#pragma warning restore 649
+
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         public SwitchMePlugin Plugin => (SwitchMePlugin)Context.Plugin;
         [Command("me", "Automatically connect to your server of choice within this network. USAGE: !switch me <Insert Server name here>")]
         [Permission(MyPromoteLevel.None)]
-        public void SwitchLocal()
+        public async System.Threading.Tasks.Task SwitchLocalAsync()
         {
-            string ip = "";
-            string name = "";
-            string port = "";
-            string existanceCheck = "";
-            int i = 0;
+                string ip = "";
+                string name = "";
+                string port = "";
+                string existanceCheck = "";
+                int i = 0;
 
-            if (!Plugin.Config.Enabled) 
-            {
-                Context.Respond("Switching is not enabled!");
-                return;
-            }
-
-            if (Context.Player == null) 
-            {
-                Context.Respond("Cannot run this command from outside the server!");
-                return;
-            }
-
-            IEnumerable<string> channelIds = Plugin.Config.Servers;
-            foreach (string chId in channelIds)
-            {
-                ip = chId.Split(':')[1];
-                name = chId.Split(':')[0];
-                port = chId.Split(':')[2];
-                i++;
-
-            }
-            if (i == 1)
-            {
-                string target = ip + ":" + port;
-                ip += ":" + port;
-                string slotinfo = Plugin.CheckSlots(target);
-                existanceCheck = slotinfo.Split(';').Last();
-                bool paired = Plugin.CheckKey(target);
-                if (target.Length > 1)
+                if (!Plugin.Config.Enabled)
                 {
-                    if (existanceCheck == "1")
-                    {
-                        if (paired == true)
-                        {
-                            Log.Warn("Checking " + target);
-                            int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                            string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                            Log.Warn("MAX: " + max);
-                            int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                            int maxi = int.Parse(max);
-                            int maxcheck = (1 + currentRemotePlayers);
-                            Context.Respond("Slot Checking...");
-                            Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-
-
-                            if (maxcheck <= maxi)
-                            {
-                                if (ip == null || name == null || port == null)
-                                {
-                                    Context.Respond("Invalid Configuration!");
-                                }
-                                Context.Respond("Slot checking passed!");
-                                try
-                                {
-                                    ulong steamid = Context.Player.SteamUserId;
-                                    Context.Respond("Connecting client to " + name + " @ " + target);
-                                    ModCommunication.SendMessageTo(new JoinServerMessage(ip), steamid);
-                                    Log.Warn("Connected client to " + name + " @ " + ip);
-
-
-                                }
-                                catch
-                                {
-                                    Context.Respond("Failure");
-                                }
-                            }
-                            else
-                            {
-                                Context.Respond("Cannot switch, not enough slots available");
-                            }
-                        }
-                        else
-                        {
-                            Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
-                        }
-                    }
-                    else
-                    {
-                        Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
-                    }
-                }
-                else
-                {
-                    Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
+                    Context.Respond("Switching is not enabled!");
+                    return;
                 }
 
-            }
-            else
-            {
-                channelIds = Plugin.Config.Servers.Where(c => c.Split(':')[0].Equals(Context.RawArgs));
+                if (Context.Player == null)
+                {
+                    Context.Respond("Cannot run this command from outside the server!");
+                    return;
+                }
+
+                IEnumerable<string> channelIds = Plugin.Config.Servers;
                 foreach (string chId in channelIds)
                 {
                     ip = chId.Split(':')[1];
                     name = chId.Split(':')[0];
                     port = chId.Split(':')[2];
+                    i++;
 
                 }
-                string target = ip + ":" + port;
-                ip += ":" + port;
-                string slotinfo = Plugin.CheckSlots(target);
-                existanceCheck = slotinfo.Split(';').Last();
-                bool paired = Plugin.CheckKey(target);
-
-                if (target.Length > 1)
+                if (i == 1)
                 {
-                    if (existanceCheck == "1")
+                    string target = ip + ":" + port;
+                    ip += ":" + port;
+                    string slotinfo = await Plugin.CheckSlotsAsync(target);
+                    existanceCheck = slotinfo.Split(';').Last();
+                    bool paired = await Plugin.CheckKeyAsync(target);
+                    if (target.Length > 1)
                     {
-                        if (paired == true)
+                        if (existanceCheck == "1")
                         {
-                            Log.Warn("Checking " + target);
-                            int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                            string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                            Log.Warn("MAX: " + max);
-                            int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                            int maxi = int.Parse(max);
-                            int maxcheck = (1 + currentRemotePlayers);
-                            Context.Respond("Slot Checking...");
-                            Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-
-
-                            if (maxcheck <= maxi)
+                            if (paired == true)
                             {
-                                if (ip == null || name == null || port == null)
-                                {
-                                    Context.Respond("Invalid Configuration!");
-                                }
-                                Context.Respond("Slot checking passed!");
-                                try
-                                {
-                                    ulong steamid = Context.Player.SteamUserId;
-                                    Context.Respond("Connecting client to " + Context.RawArgs + " @ " + ip);
-                                    ModCommunication.SendMessageTo(new JoinServerMessage(ip), steamid);
-                                    Log.Warn("Connected client to " + Context.RawArgs + " @ " + ip);
+                                Log.Warn("Checking " + target);
+                                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+                                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+                                Log.Warn("MAX: " + max);
+                                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+                                int maxi = int.Parse(max);
+                                int maxcheck = (1 + currentRemotePlayers);
+                                Context.Respond("Slot Checking...");
+                                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
 
 
-                                }
-                                catch
+                                if (maxcheck <= maxi)
                                 {
-                                    Context.Respond("Failure");
+                                    if (ip == null || name == null || port == null)
+                                    {
+                                        Context.Respond("Invalid Configuration!");
+                                    }
+                                    Context.Respond("Slot checking passed!");
+                                    try
+                                    {
+                                        ulong steamid = Context.Player.SteamUserId;
+                                        Context.Respond("Connecting client to " + name + " @ " + target);
+                                        ModCommunication.SendMessageTo(new JoinServerMessage(ip), steamid);
+                                        Log.Warn("Connected client to " + name + " @ " + ip);
+
+
+                                    }
+                                    catch
+                                    {
+                                        Context.Respond("Failure");
+                                    }
+                                }
+                                else
+                                {
+                                    Context.Respond("Cannot switch, not enough slots available");
                                 }
                             }
                             else
                             {
-                                Context.Respond("Cannot switch, not enough slots available");
+                                Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
                             }
                         }
                         else
                         {
-                            Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
+                            Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
                         }
                     }
                     else
                     {
-                        Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
+                        Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
                     }
+
                 }
                 else
                 {
-                    Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
+                    channelIds = Plugin.Config.Servers.Where(c => c.Split(':')[0].Equals(Context.RawArgs));
+                    foreach (string chId in channelIds)
+                    {
+                        ip = chId.Split(':')[1];
+                        name = chId.Split(':')[0];
+                        port = chId.Split(':')[2];
+
+                    }
+                    string target = ip + ":" + port;
+                    ip += ":" + port;
+                    string slotinfo = await Plugin.CheckSlotsAsync(target);
+                    existanceCheck = slotinfo.Split(';').Last();
+                    bool paired = await Plugin.CheckKeyAsync(target);
+
+                    if (target.Length > 1)
+                    {
+                        if (existanceCheck == "1")
+                        {
+                            if (paired == true)
+                            {
+                                Log.Warn("Checking " + target);
+                                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+                                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+                                Log.Warn("MAX: " + max);
+                                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+                                int maxi = int.Parse(max);
+                                int maxcheck = (1 + currentRemotePlayers);
+                                Context.Respond("Slot Checking...");
+                                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
+
+
+                                if (maxcheck <= maxi)
+                                {
+                                    if (ip == null || name == null || port == null)
+                                    {
+                                        Context.Respond("Invalid Configuration!");
+                                    }
+                                    Context.Respond("Slot checking passed!");
+                                    try
+                                    {
+                                        ulong steamid = Context.Player.SteamUserId;
+                                        Context.Respond("Connecting client to " + Context.RawArgs + " @ " + ip);
+                                        ModCommunication.SendMessageTo(new JoinServerMessage(ip), steamid);
+                                        Log.Warn("Connected client to " + Context.RawArgs + " @ " + ip);
+
+
+                                    }
+                                    catch
+                                    {
+                                        Context.Respond("Failure");
+                                    }
+                                }
+                                else
+                                {
+                                    Context.Respond("Cannot switch, not enough slots available");
+                                }
+                            }
+                            else
+                            {
+                                Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
+                            }
+                        }
+                        else
+                        {
+                            Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
+                        }
+                    }
+                    else
+                    {
+                        Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
+                    }
                 }
-            }
         }
 
         [Command("all", "Automatically connects all players to your server of choice within this network. USAGE: !switch all <Insert Server name here>")]
         [Permission(MyPromoteLevel.Admin)]
-        public void SwitchAll()
+        public async System.Threading.Tasks.Task SwitchAllAsync()
         {
-            int i = 0;
-            string ip = "";
-            string name = "";
-            string port = "";
-            string existanceCheck = "";
 
-            if (!Plugin.Config.Enabled) 
-            {
-                Context.Respond("Switching is not enabled!");
-                return;
-            }
+                int i = 0;
+                string ip = "";
+                string name = "";
+                string port = "";
+                string existanceCheck = "";
 
-            IEnumerable<string> channelIds = Plugin.Config.Servers;
-            foreach (string chId in channelIds)
-            {
-                ip = chId.Split(':')[1];
-                name = chId.Split(':')[0];
-                port = chId.Split(':')[2];
-                i++;
-            }
-
-            if (i == 1)
-            {
-                string target = ip + ":" + port;
-                ip += ":" + port;
-                string slotinfo = Plugin.CheckSlots(target);
-                existanceCheck = slotinfo.Split(';').Last();
-                bool paired = Plugin.CheckKey(target);
-                if (target.Length > 1)
+                if (!Plugin.Config.Enabled)
                 {
-                    if (existanceCheck == "1")
-                    {
-                        if (paired == true)
-                        {
-                            Log.Warn("Checking " + target);
-                            int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                            string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                            Log.Warn("MAX: " + max);
-                            int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                            int maxi = int.Parse(max);
-                            int maxcheck = currentLocalPlayers + currentRemotePlayers;
-                            Context.Respond("Slot Checking...");
-                            Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-
-                            if (maxcheck <= maxi)
-                            {
-                                if (ip == null || name == null || port == null)
-                                {
-                                    Context.Respond("Invalid Configuration!");
-                                }
-                                Context.Respond("Slot checking passed!");
-                                try
-                                {
-                                    Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip);
-                                    ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
-                                    Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip);
-                                }
-                                catch
-                                {
-                                    Context.Respond("Failure");
-                                }
-                            }
-                            else
-                            {
-                                Context.Respond("Cannot switch, not enough slots available");
-                            }
-                        }
-                        else
-                        {
-                            Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
-                        }
-                    }
-                    else
-                    {
-                        Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
-                    }
+                    Context.Respond("Switching is not enabled!");
+                    return;
                 }
-                else
-                {
-                    Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
-                }
-            }
-            else
-            {
 
-                channelIds = Plugin.Config.Servers.Where(c => c.Split(':')[0].Equals(Context.RawArgs));
+                IEnumerable<string> channelIds = Plugin.Config.Servers;
                 foreach (string chId in channelIds)
                 {
                     ip = chId.Split(':')[1];
                     name = chId.Split(':')[0];
                     port = chId.Split(':')[2];
+                    i++;
                 }
 
-                string target = ip + ":" + port;
-                ip += ":" + port;
-                string slotinfo = Plugin.CheckSlots(target);
-                existanceCheck = slotinfo.Split(';').Last();
-                bool paired = Plugin.CheckKey(target);
-                if (target.Length > 1)
+                if (i == 1)
                 {
-                    if (existanceCheck == "1")
+                    string target = ip + ":" + port;
+                    ip += ":" + port;
+                    string slotinfo = await Plugin.CheckSlotsAsync(target);
+                    existanceCheck = slotinfo.Split(';').Last();
+                    bool paired = await Plugin.CheckKeyAsync(target);
+                    if (target.Length > 1)
                     {
-                        if (paired == true)
+                        if (existanceCheck == "1")
                         {
-                            Log.Warn("Checking " + target);
-                            int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                            string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                            Log.Warn("MAX: " + max);
-                            int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                            int maxi = int.Parse(max);
-                            int maxcheck = currentLocalPlayers + currentRemotePlayers;
-                            Context.Respond("Slot Checking...");
-                            Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-
-                            if (maxcheck <= maxi)
+                            if (paired == true)
                             {
-                                if (ip == null || name == null || port == null)
+                                Log.Warn("Checking " + target);
+                                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+                                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+                                Log.Warn("MAX: " + max);
+                                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+                                int maxi = int.Parse(max);
+                                int maxcheck = currentLocalPlayers + currentRemotePlayers;
+                                Context.Respond("Slot Checking...");
+                                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
+
+                                if (maxcheck <= maxi)
                                 {
-                                    Context.Respond("Invalid Configuration!");
+                                    if (ip == null || name == null || port == null)
+                                    {
+                                        Context.Respond("Invalid Configuration!");
+                                    }
+                                    Context.Respond("Slot checking passed!");
+                                    try
+                                    {
+                                        Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip);
+                                        ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
+                                        Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip);
+                                    }
+                                    catch
+                                    {
+                                        Context.Respond("Failure");
+                                    }
                                 }
-                                Context.Respond("Slot checking passed!");
-                                try
+                                else
                                 {
-                                    Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip);
-                                    ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
-                                    Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip);
-                                }
-                                catch
-                                {
-                                    Context.Respond("Failure");
+                                    Context.Respond("Cannot switch, not enough slots available");
                                 }
                             }
                             else
                             {
-                                Context.Respond("Cannot switch, not enough slots available");
+                                Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
                             }
                         }
                         else
                         {
-                            Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
+                            Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
                         }
                     }
                     else
                     {
-                        Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
+                        Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
                     }
                 }
                 else
                 {
-                    Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
+
+                    channelIds = Plugin.Config.Servers.Where(c => c.Split(':')[0].Equals(Context.RawArgs));
+                    foreach (string chId in channelIds)
+                    {
+                        ip = chId.Split(':')[1];
+                        name = chId.Split(':')[0];
+                        port = chId.Split(':')[2];
+                    }
+
+                    string target = ip + ":" + port;
+                    ip += ":" + port;
+                    string slotinfo = await Plugin.CheckSlotsAsync(target);
+                    existanceCheck = slotinfo.Split(';').Last();
+                    bool paired = await Plugin.CheckKeyAsync(target);
+                    if (target.Length > 1)
+                    {
+                        if (existanceCheck == "1")
+                        {
+                            if (paired == true)
+                            {
+                                Log.Warn("Checking " + target);
+                                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+                                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+                                Log.Warn("MAX: " + max);
+                                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+                                int maxi = int.Parse(max);
+                                int maxcheck = currentLocalPlayers + currentRemotePlayers;
+                                Context.Respond("Slot Checking...");
+                                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
+
+                                if (maxcheck <= maxi)
+                                {
+                                    if (ip == null || name == null || port == null)
+                                    {
+                                        Context.Respond("Invalid Configuration!");
+                                    }
+                                    Context.Respond("Slot checking passed!");
+                                    try
+                                    {
+                                        Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip);
+                                        ModCommunication.SendMessageToClients(new JoinServerMessage(ip));
+                                        Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Context.Respond("Failure");
+                                        Log.Warn(e.Message);
+                                    }
+                                }
+                                else
+                                {
+                                    Context.Respond("Cannot switch, not enough slots available");
+                                }
+                            }
+                            else
+                            {
+                                Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
+                            }
+                        }
+                        else
+                        {
+                            Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
+                        }
+                    }
+                    else
+                    {
+                        Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
+                    }
                 }
-            }
         }
         [Command("list", "Displays a list of Valid Server names for the '!switch me <servername>' command. ")]
         [Permission(MyPromoteLevel.None)]
-        public void SwitchList()
+        public async System.Threading.Tasks.Task SwitchListAsync()
         {
             if (!Plugin.Config.Enabled) 
             {
@@ -387,7 +410,7 @@ namespace SwitchMe
                 string ip = chId.Split(':')[1];
                 string port = chId.Split(':')[2];
                 string target = ip + ":" + port;
-                bool paired = Plugin.CheckKey(target);
+                bool paired = await Plugin.CheckKeyAsync(target);
                 if (paired == true)
                 {
                     sb.Append("'" + name + "' ");
@@ -409,6 +432,15 @@ namespace SwitchMe
             Context.Respond("`!switch grid '<targetgrid>' '<targetserver>'` Transfers the target grid to the target server.");
         }
 
+        [Command("debug", "")]
+        [Permission(MyPromoteLevel.None)]
+        public void SwitchDebug()
+        {
+            string output = Plugin.debug();
+            Context.Respond(output);
+            Log.Warn(output);
+        }
+
         private readonly string ExportPath = "ExportedGrids\\{0}.xml";
 
 
@@ -428,12 +460,36 @@ namespace SwitchMe
 
             if (DownloadGrid(currentIp, out string targetFile, out string filename, out Vector3D newPos)) {
 
-                if(DeserializeGridFromPath(targetFile, Context.Player.IdentityId, newPos)) {
+                if(DeserializeGridFromPath(targetFile, Context.Player.Character.EntityId, newPos)) {
+                        File.Delete(targetFile);
 
-                    File.Delete(targetFile);
-
-                    Plugin.DeleteFromWeb(filename);
+                        Plugin.DeleteFromWeb(filename);
                 }
+                var playerEndpoint = new Endpoint(Context.Player.SteamUserId, 0);
+                var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
+                var clientDataDict = _clientStates.Invoke(replicationServer);
+                object clientData;
+                try
+                {
+                    clientData = clientDataDict[playerEndpoint];
+                }
+                catch
+                {
+                    return;
+                }
+
+                var clientReplicables = _replicables.Invoke(clientData);
+
+                var replicableList = new List<IMyReplicable>(clientReplicables.Count);
+                foreach (var pair in clientReplicables)
+                    replicableList.Add(pair.Key);
+
+                foreach (var replicable in replicableList)
+                {
+                    _removeForClient.Invoke(replicationServer, replicable, clientData, true);
+                    _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
+                }
+
             }
         }
 
@@ -462,12 +518,11 @@ namespace SwitchMe
                 };
 
                 POSsource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
+                POS = POSsource.Substring(0, POSsource.IndexOf("^"));
                 if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror)
                 {
-                    POS = "X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord;
-                    POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+                    POS = "{X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord + "}";
                 }
-                POS = POSsource.Substring(0, POSsource.IndexOf("^"));
                 Vector3D.TryParse(POS, out Vector3D gps);
                 newPos = gps;
 
@@ -531,7 +586,7 @@ namespace SwitchMe
                     {
                         c.RemoveUsers(false);
                     }
-                    targetEntity.SetPosition(newpos);
+
                 }
 
 
@@ -552,17 +607,12 @@ namespace SwitchMe
 
                 /* Where do we want to paste the grids? Lets find out. */
                 var pos = FindPastePosition(grids);
-                if (Plugin.Config.EnabledMirror)
-                {
-                    targetEntity.SetPosition(pos.Value);
-                }
-
-                
-                if (pos == null) 
+                if (pos == null)
                 {
                     Context.Respond("No free place.");
                     return false;
                 }
+
 
                 var newPosition = pos.Value;
 
@@ -577,7 +627,12 @@ namespace SwitchMe
                     if (MyEntities.CreateFromObjectBuilderAndAdd(grid, true) is MyCubeGrid cubeGrid)
                         FixOwnerAndAuthorShip(cubeGrid, playerId);
                 }
+                if (Plugin.Config.EnabledMirror)
+                {
 
+                    targetEntity.SetPosition(newpos);
+                    Context.Respond("***Transporting***");
+                }
                 Context.Respond("Grid has been pulled from the void!");
                 return true;
             }
@@ -707,12 +762,17 @@ namespace SwitchMe
              * Now we know the radius that can house all grids which will now be 
              * used to determine the perfect place to paste the grids to. 
              */
+
+            if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror)
+            {
+                return MyEntities.FindFreePlace(Context.Player.GetPosition(), 50);
+            }
             return MyEntities.FindFreePlace(Context.Player.GetPosition(), radius);
         }
 
         [Command("grid", "Transfers the target grid to the target server")]
         [Permission(MyPromoteLevel.None)]
-        public void Grid(string gridTarget, string serverTarget)
+        public async System.Threading.Tasks.Task GridAsync(string gridTarget, string serverTarget)
         {
             if (Context.Player == null)
             {
@@ -734,7 +794,6 @@ namespace SwitchMe
                 Context.Respond("Grid Transfers are not enabled!");
                 return;
             }
-
             IEnumerable<string> channelIds = Plugin.Config.Servers;
             foreach (string chId in channelIds)
             {
@@ -756,9 +815,10 @@ namespace SwitchMe
 
             string target = ip + ":" + port;
             ip += ":" + port;
-            string slotinfo = Plugin.CheckSlots(target);
+            string slotinfo = await Plugin.CheckSlotsAsync(target);
             existanceCheck = slotinfo.Split(';').Last();
-            bool paired = Plugin.CheckKey(target);
+
+            bool paired = await Plugin.CheckKeyAsync(target);
 
             if (target.Length < 1) 
             {
@@ -768,6 +828,17 @@ namespace SwitchMe
 
             if (existanceCheck == "1")
             {
+                if (!Plugin.CheckStatus(target))
+                {
+                    Context.Respond("Target server is offline, preventing switch");
+                    return;
+                }
+                if (!Plugin.CheckInbound(target))
+                {
+                    Context.Respond("The target server does not allow inbound transfers");
+                    return;
+                }
+                
                 if (paired == true)
                 {
                     Log.Warn("Checking " + target);
@@ -826,12 +897,14 @@ namespace SwitchMe
                             else
                             {
                                 Log.Fatal(pagesource);
-                                Context.Respond("Cannot transfer! You already have a transfer ready to be recieved!");
+                                Context.Respond("Cannot transfer! You have a transfer ready to be recieved!");
                             }
                         }
-                        catch
+                        catch (Exception e)
                         {
                             Context.Respond("Failure");
+                            Log.Warn(e.Message);
+                            Log.Fatal("Error" + e.ToString());
                         }
                     }
                     else
@@ -854,84 +927,98 @@ namespace SwitchMe
         {
             string externalIP = CreateExternalIP();
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-
-            MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group relevantGroup = FindRelevantGroup(gridTarget, playerId);
-            string pos = "";
-            foreach (var node in relevantGroup.Nodes)
+            try
             {
-                MyCubeGrid grid = node.NodeData;
-                pos = grid.PositionComp.GetPosition().ToString();
+                Log.Warn("Getting Group");
+                MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group relevantGroup = FindRelevantGroup(gridTarget, playerId);
+                string pos = "";
+                foreach (var node in relevantGroup.Nodes)
+                {
+                    MyCubeGrid grid = node.NodeData;
+                    pos = grid.PositionComp.GetPosition().ToString();
+                }
+
+
+                if (relevantGroup == null) 
+                {
+                    Context.Respond("Cannot transfer somone elses grid!");
+                    return;
+                }
+
+                Directory.CreateDirectory("ExportedGrids");
+
+                var path = string.Format(ExportPath, Context.Player.SteamUserId + "-" + gridTarget);
+                if (File.Exists(path)) 
+                {
+                    Context.Respond("Export file already exists.");
+                    return;
+                }
+                Log.Warn("Exproted");
+                SerializeGridsToPath(relevantGroup, gridTarget, path);
+
+                if (!debug && UploadGrid(serverTarget, gridTarget, ip, currentIp, path, pos))
+                {
+                    Log.Warn("Uploaded");
+                    /* Upload successful close the grids */
+                    DeleteUploadedGrids(relevantGroup);
+
+                    /* Also delete local file */
+                    File.Delete(path);
+                }
             }
-
-
-            if (relevantGroup == null) 
+            catch (Exception e)
             {
-                Context.Respond("Cannot transfer somone elses grid!");
-                return;
-            }
-
-            Directory.CreateDirectory("ExportedGrids");
-
-            var path = string.Format(ExportPath, Context.Player.SteamUserId + "-" + gridTarget);
-            if (File.Exists(path)) 
-            {
-                Context.Respond("Export file already exists.");
-                return;
-            }
-
-            SerializeGridsToPath(relevantGroup, gridTarget, path);
-
-            if (!debug && UploadGrid(serverTarget, gridTarget, ip, currentIp, path, pos)) 
-            {
-
-                /* Upload successful close the grids */
-                DeleteUploadedGrids(relevantGroup);
-
-                /* Also delete local file */
-                File.Delete(path);
+                Log.Fatal("Target:" + gridTarget + "Server: " + serverTarget + "id: " + playerId);
+                Log.Fatal("ERROR AT SENDGRID: " + e.ToString());
             }
         }
 
         private void SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group relevantGroup, string gridTarget, string path) {
-
-            List<MyObjectBuilder_CubeGrid> objectBuilders = new List<MyObjectBuilder_CubeGrid>();
-
-            foreach (var node in relevantGroup.Nodes) 
+            try
             {
-                MyCubeGrid grid = node.NodeData;
+                List<MyObjectBuilder_CubeGrid> objectBuilders = new List<MyObjectBuilder_CubeGrid>();
 
-                /* We wanna Skip Projections... always */
-                if (grid.Physics == null)
-                    continue;
-
-                /* What else should it be? LOL? */
-                if (!(grid.GetObjectBuilder(true) is MyObjectBuilder_CubeGrid objectBuilder))
-                    throw new ArgumentException(grid + " has a ObjectBuilder thats not for a CubeGrid");
-
-                objectBuilders.Add(objectBuilder);
-            }
-
-            MyObjectBuilder_PrefabDefinition definition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_PrefabDefinition>();
-
-            definition.Id = new MyDefinitionId(new MyObjectBuilderType(typeof(MyObjectBuilder_PrefabDefinition)), gridTarget);
-            definition.CubeGrids = objectBuilders.Select(x => (MyObjectBuilder_CubeGrid)x.Clone()).ToArray();
-
-            /* Reset ownership as it will be different on the new server anyway */
-            foreach (MyObjectBuilder_CubeGrid cubeGrid in definition.CubeGrids) 
-            {
-                foreach (MyObjectBuilder_CubeBlock cubeBlock in cubeGrid.CubeBlocks) 
+                foreach (var node in relevantGroup.Nodes)
                 {
-                    cubeBlock.Owner = 0L;
-                    cubeBlock.BuiltBy = 0L;
+                    MyCubeGrid grid = node.NodeData;
+
+                    /* We wanna Skip Projections... always */
+                    if (grid.Physics == null)
+                        continue;
+
+                    /* What else should it be? LOL? */
+                    if (!(grid.GetObjectBuilder(true) is MyObjectBuilder_CubeGrid objectBuilder))
+                        throw new ArgumentException(grid + " has a ObjectBuilder thats not for a CubeGrid");
+
+                    objectBuilders.Add(objectBuilder);
                 }
+
+                MyObjectBuilder_PrefabDefinition definition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_PrefabDefinition>();
+
+                definition.Id = new MyDefinitionId(new MyObjectBuilderType(typeof(MyObjectBuilder_PrefabDefinition)), gridTarget);
+                definition.CubeGrids = objectBuilders.Select(x => (MyObjectBuilder_CubeGrid)x.Clone()).ToArray();
+
+                /* Reset ownership as it will be different on the new server anyway */
+                foreach (MyObjectBuilder_CubeGrid cubeGrid in definition.CubeGrids)
+                {
+                    foreach (MyObjectBuilder_CubeBlock cubeBlock in cubeGrid.CubeBlocks)
+                    {
+                        cubeBlock.Owner = 0L;
+                        cubeBlock.BuiltBy = 0L;
+                    }
+                }
+
+                MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
+                builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
+
+                bool worked = MyObjectBuilderSerializer.SerializeXML(path, false, builderDefinition);
+
+                Log.Fatal("exported " + path + " " + worked);
             }
-
-            MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
-            builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
-
-            bool worked = MyObjectBuilderSerializer.SerializeXML(path, false, builderDefinition);
-
-            Log.Fatal("exported " + path+ " "+worked);
+            catch (Exception e)
+            {
+                Log.Fatal("ERROR AT SERIALIZATION: " + e.Message);
+            }
         }
 
         private bool UploadGrid(string serverTarget, string gridTarget, string ip, string currentIp, string path, string pos) {
@@ -971,6 +1058,7 @@ namespace SwitchMe
 
                         pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
                     }
+                    Plugin.Delete(Context.Player.DisplayName);
 
                     return true;
                 }
@@ -979,11 +1067,10 @@ namespace SwitchMe
                     Context.Respond("Unable to switch grid!");
                 }
             } 
-            catch 
+            catch (Exception e)
             {
-                Log.Fatal("Cannot upload grid");
+                Log.Fatal("Cannot upload grid: " + e.Message);
             }
-
             return false;
         }
 
@@ -1009,70 +1096,77 @@ namespace SwitchMe
 
             string pos = "";
 
-            /* Each Physical Grid group (physical included Connectors) */
-            foreach (var group in groups) 
+            try
             {
-
-                bool groupFound = false;
-
-                /* Check each grid */
-                foreach (var node in group.Nodes) 
+                /* Each Physical Grid group (physical included Connectors) */
+                foreach (var group in groups)
                 {
 
-                    MyCubeGrid grid = node.NodeData;
+                    bool groupFound = false;
 
-                    /* We wanna Skip Projections... always */
-                    if (grid.Physics == null)
-                        continue;
-
-                    /*
-                     * Gridname is wrong ignore. I have not yet found out how to relibably get the most 
-                     * dominant grid on the group (usually its the base grid, or the biggest one?)
-                     * 
-                     * Since you passed a gridname I just ignore all other grids of the group. 
-                     * This however means a player could just use the name of a piston he happens 
-                     * to own. So this one should be optimized. 
-                     * 
-                     * You need to debug that. Keen is a Mess. IMyCubeGrid has a CustomName that should 
-                     * show DisplayName. But MyCubeGrid has not. So I use DisplayName instead. 
-                     * 
-                     * If this does not work you can cast to IMyCubeGrid also and use CustomName as 
-                     * GridFinder does
-                     */
-                    if (!grid.DisplayName.Equals(gridTarget))
-                        continue;
-
-                    /* Big Owners are guys that have 50% or more of the grid. */
-                    List<long> bigOnwerIds = grid.BigOwners;
-                    /* Nobody can have the Majority of Blocks so there can be serveral owners. */
-                    int ownerCount = bigOnwerIds.Count;
-                    var gridOwner = 0L;
-                    pos = grid.PositionComp.GetPosition().ToString();
-                    /* If nobody isnt the big owner then everythings fine. otherwise take the second biggest owner */
-                    if (ownerCount > 0 && bigOnwerIds[0] != 0)
-                        gridOwner = bigOnwerIds[0];
-                    else if (ownerCount > 1)
-                        gridOwner = bigOnwerIds[1];
-
-                    /* Is the player ID the biggest owner? */
-                    if (gridOwner == playerId) 
+                    /* Check each grid */
+                    foreach (var node in group.Nodes)
                     {
-                        Log.Fatal("checking was completed");
-                        groupFound = true;
-                        break;
+
+                        MyCubeGrid grid = node.NodeData;
+
+                        /* We wanna Skip Projections... always */
+                        if (grid.Physics == null)
+                            continue;
+
+                        /*
+                         * Gridname is wrong ignore. I have not yet found out how to relibably get the most 
+                         * dominant grid on the group (usually its the base grid, or the biggest one?)
+                         * 
+                         * Since you passed a gridname I just ignore all other grids of the group. 
+                         * This however means a player could just use the name of a piston he happens 
+                         * to own. So this one should be optimized. 
+                         * 
+                         * You need to debug that. Keen is a Mess. IMyCubeGrid has a CustomName that should 
+                         * show DisplayName. But MyCubeGrid has not. So I use DisplayName instead. 
+                         * 
+                         * If this does not work you can cast to IMyCubeGrid also and use CustomName as 
+                         * GridFinder does
+                         */
+                        if (!grid.DisplayName.Equals(gridTarget))
+                            continue;
+                        /* Big Owners are guys that have 50% or more of the grid. */
+                        List<long> bigOnwerIds = grid.BigOwners;
+                        /* Nobody can have the Majority of Blocks so there can be serveral owners. */
+                        int ownerCount = bigOnwerIds.Count;
+                        var gridOwner = 0L;
+                        pos = grid.PositionComp.GetPosition().ToString();
+                        /* If nobody isnt the big owner then everythings fine. otherwise take the second biggest owner */
+                        if (ownerCount > 0 && bigOnwerIds[0] != 0)
+                            gridOwner = bigOnwerIds[0];
+                        else if (ownerCount > 1)
+                            gridOwner = bigOnwerIds[1];
+
+                        /* Is the player ID the biggest owner? */
+                        if (gridOwner == playerId)
+                        {
+                            Log.Fatal("checking was completed");
+                            groupFound = true;
+                            break;
+                        }
                     }
+
+                    if (groupFound)
+                        return group;
                 }
 
-                if (groupFound)
-                    return group;
+                return null;
             }
-
-            return null;
+            catch (Exception e)
+            {
+                Log.Fatal("Error at groupfinder: " + e.ToString());
+                return null;
+            }
         }
 
         [Command("restore", "Completes the transfer of one grid from one server to another")]
         [Permission(MyPromoteLevel.None)]
-        public void restore()
+        public void Restore()
         {
             Recover();
         }

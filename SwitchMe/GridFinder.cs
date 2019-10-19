@@ -1,5 +1,6 @@
 ﻿using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,13 +8,14 @@ using System.Threading.Tasks;
 using VRage.Game.ModAPI;
 using VRage.Groups;
 using VRage.ModAPI;
+using NLog;
 using VRageMath;
 using IMyCubeGrid = VRage.Game.ModAPI.IMyCubeGrid;
 
 namespace SwitchMe {
 
     class GridFinder {
-
+        public static readonly Logger Log = LogManager.GetCurrentClassLogger();
         public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> findGridGroup(string gridName) {
 
             ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group>();
@@ -104,25 +106,35 @@ namespace SwitchMe {
 
         public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> findGridGroupMechanical(string gridName) {
 
-            ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> groups = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group>();
-            Parallel.ForEach(MyCubeGridGroups.Static.Mechanical.Groups, group => {
+            try
+            {
 
-                foreach (MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Node groupNodes in group.Nodes) {
+                ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> groups = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group>();
+                Parallel.ForEach(MyCubeGridGroups.Static.Mechanical.Groups, group =>
+                {
 
-                    IMyCubeGrid grid = groupNodes.NodeData;
+                    foreach (MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Node groupNodes in group.Nodes)
+                    {
 
-                    if (grid.Physics == null)
-                        continue;
+                        IMyCubeGrid grid = groupNodes.NodeData;
 
-                    /* Gridname is wrong ignore */
-                    if (!grid.CustomName.Equals(gridName))
-                        continue;
+                        if (grid.Physics == null)
+                            continue;
 
-                    groups.Add(group);
-                }
-            });
+                        /* Gridname is wrong ignore */
+                        if (!grid.CustomName.Equals(gridName))
+                            continue;
 
-            return groups;
+                        groups.Add(group);
+                    }
+                });
+                return groups;
+            }
+            catch (Exception e)
+            {
+                Log.Fatal("Error at GridFinder: " + e.ToString());
+                return null;
+            }
         }
 
         public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> findLookAtGridGroupMechanical(IMyCharacter controlledEntity) {
