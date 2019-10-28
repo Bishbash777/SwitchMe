@@ -1,5 +1,4 @@
 ﻿using Sandbox.Game.Entities;
-using Sandbox.ModAPI;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -7,12 +6,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using VRage.Game.ModAPI;
 using VRage.Groups;
-using VRage.ModAPI;
 using NLog;
 using VRageMath;
 using IMyCubeGrid = VRage.Game.ModAPI.IMyCubeGrid;
 
-namespace SwitchMe {
+namespace SwitchMe
+{
 
     class GridFinder {
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
@@ -123,8 +122,9 @@ namespace SwitchMe {
 
                         /* Gridname is wrong ignore */
                         if (!grid.CustomName.Equals(gridName))
+                        {
                             continue;
-
+                        }
                         groups.Add(group);
                     }
                 });

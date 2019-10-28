@@ -32,6 +32,7 @@ using IMyDestroyableObject = VRage.Game.ModAPI.Interfaces.IMyDestroyableObject;
 using VRage.Collections;
 using Torch.Utils;
 using System.Collections;
+using System.Threading.Tasks;
 
 namespace SwitchMe
 {
@@ -430,6 +431,7 @@ namespace SwitchMe
             Context.Respond("`!switch me <servername>` Switches you to selected server.");
             Context.Respond("`!switch list` Displays a list of valid Server names to connect to.");
             Context.Respond("`!switch grid '<targetgrid>' '<targetserver>'` Transfers the target grid to the target server.");
+            Context.Respond("`!switch recover` Completes the transfer of a grid");
         }
 
         [Command("debug", "")]
@@ -459,10 +461,8 @@ namespace SwitchMe
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
             if (DownloadGrid(currentIp, out string targetFile, out string filename, out Vector3D newPos)) {
-
-                if(DeserializeGridFromPath(targetFile, Context.Player.Character.EntityId, newPos)) {
+                if(DeserializeGridFromPath(targetFile, Context.Player.IdentityId, newPos)) {
                         File.Delete(targetFile);
-
                         Plugin.DeleteFromWeb(filename);
                 }
                 var playerEndpoint = new Endpoint(Context.Player.SteamUserId, 0);
@@ -614,10 +614,8 @@ namespace SwitchMe
                 }
 
 
-                var newPosition = pos.Value;
-
                 /* Update GridsPosition if that doesnt work get out of here. */
-                if (!UpdateGridsPosition(grids, newPosition))
+                if (!UpdateGridsPosition(grids, newpos))
                     return false;
 
                 /* Remapping to prevent any key problems upon paste. */
@@ -627,7 +625,7 @@ namespace SwitchMe
                     if (MyEntities.CreateFromObjectBuilderAndAdd(grid, true) is MyCubeGrid cubeGrid)
                         FixOwnerAndAuthorShip(cubeGrid, playerId);
                 }
-                if (Plugin.Config.EnabledMirror)
+                if (Plugin.Config.EnabledMirror || Plugin.Config.LockedTransfer)
                 {
 
                     targetEntity.SetPosition(newpos);
@@ -763,10 +761,12 @@ namespace SwitchMe
              * used to determine the perfect place to paste the grids to. 
              */
 
-            if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror)
+            if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror || Plugin.Config.EnabledMirror)
             {
-                return MyEntities.FindFreePlace(Context.Player.GetPosition(), 50);
+                Vector3D.TryParse("{X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord + "}", out Vector3D gps);
+                return MyEntities.FindFreePlace(gps, 100F);
             }
+
             return MyEntities.FindFreePlace(Context.Player.GetPosition(), radius);
         }
 
@@ -845,9 +845,8 @@ namespace SwitchMe
                     int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
                     string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
                     Log.Warn("MAX: " + max);
-                    int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
                     int maxi = int.Parse(max);
-                    int maxcheck = currentLocalPlayers + currentRemotePlayers;
+                    int maxcheck = 1 + currentRemotePlayers;
                     Context.Respond("Slot Checking...");
                     Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
 
@@ -1087,14 +1086,53 @@ namespace SwitchMe
                 grid.Close();
             }
         }
-        
+
+        public ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> findGridGroupMechanical(string gridName)
+        {
+
+            try
+            {
+
+                ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> groups = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group>();
+                Parallel.ForEach(MyCubeGridGroups.Static.Mechanical.Groups, group =>
+                {
+
+                    foreach (MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Node groupNodes in group.Nodes)
+                    {
+
+                        IMyCubeGrid grid = groupNodes.NodeData;
+
+                        if (grid.Physics == null)
+                            continue;
+
+                        /* Gridname is wrong ignore */
+                        if (!grid.CustomName.Equals(gridName))
+                        {
+                            continue;
+                        }
+                        groups.Add(group);
+                    }
+                });
+                if (groups == null)
+                {
+                    Context.Respond("No grid found");
+                }
+                return groups;
+            }
+            catch (Exception e)
+            {
+                Log.Fatal("Error at Mechanical GridFinder: " + e.ToString());
+                return null;
+            }
+        }
 
 
         private MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group FindRelevantGroup(string gridTarget, long playerId) {
 
-            ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> groups = GridFinder.findGridGroupMechanical(gridTarget);
+            ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> groups = findGridGroupMechanical(gridTarget);
 
             string pos = "";
+            Log.Warn("Target and ID:   " + gridTarget + " | " + playerId);
 
             try
             {
@@ -1148,6 +1186,15 @@ namespace SwitchMe
                             Log.Fatal("checking was completed");
                             groupFound = true;
                             break;
+                        }
+                        else if (gridOwner == 0)
+                        {
+                            groupFound = true;
+                        }
+                        else
+                        {
+                            Context.Respond("You are not the grid Owner");
+                            Log.Warn("Conditionals... GridOwner: " + gridOwner + "Player: " + playerId);
                         }
                     }
 

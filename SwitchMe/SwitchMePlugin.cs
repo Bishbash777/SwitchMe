@@ -427,9 +427,10 @@ namespace SwitchMe
                         { "currentplayers", currentPlayers },
                         { "maxplayers", maxPlayers },
                         { "serverip", currentIp},
-                        { "verion", "1.2.4.1"},
+                        { "verion", "1.2.5"},
                         { "bindKey", Config.LocalKey},
-                        { "inbound", Inbound }
+                        { "inbound", Inbound },
+                        { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName }
                     };
                     
                     pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
