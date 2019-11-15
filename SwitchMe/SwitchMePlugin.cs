@@ -377,16 +377,16 @@ namespace SwitchMe
             StartTimer();
         }
 
-        public void DeleteFromWeb(string filename)
+        public void DeleteFromWeb(string ip)
         {
             using (WebClient client = new WebClient())
             {
                 string pagesource = "";
                 NameValueCollection postData = new NameValueCollection()
-                    {   {"remove", "1"},{"filename", filename}
+                    {   {"posCheck", "processed"},{"currentIP", ip}
                 };
 
-                pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
+                pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/recovery.php", postData));
             }
         }
         private void _timer_Elapsed(object sender, ElapsedEventArgs e)
@@ -427,7 +427,7 @@ namespace SwitchMe
                         { "currentplayers", currentPlayers },
                         { "maxplayers", maxPlayers },
                         { "serverip", currentIp},
-                        { "verion", "1.2.5"},
+                        { "verion", "1.2.6"},
                         { "bindKey", Config.LocalKey},
                         { "inbound", Inbound },
                         { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName }

@@ -16,10 +16,9 @@ namespace SwitchMe
     class GridFinder {
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
         public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> findGridGroup(string gridName) {
-
+            int i = 0;
             ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group>();
             Parallel.ForEach(MyCubeGridGroups.Static.Physical.Groups, group => {
-
                 foreach (MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Node groupNodes in group.Nodes) {
 
                     IMyCubeGrid grid = groupNodes.NodeData;
@@ -29,12 +28,18 @@ namespace SwitchMe
 
                     /* Gridname is wrong ignore */
                     if (!grid.CustomName.Equals(gridName))
+                    {
+                        i++;
                         continue;
+                    }
 
                     groups.Add(group);
                 }
             });
+            if (i >= 1 )
+            {
 
+            }
             return groups;
         }
 

@@ -36,10 +36,13 @@ using System.Threading.Tasks;
 
 namespace SwitchMe
 {
+
+
+
+
     [Category("switch")]
     public class Commands : CommandModule
     {
-
 
 #pragma warning disable 649
         [ReflectedGetter(Name = "m_clientStates")]
@@ -463,7 +466,7 @@ namespace SwitchMe
             if (DownloadGrid(currentIp, out string targetFile, out string filename, out Vector3D newPos)) {
                 if(DeserializeGridFromPath(targetFile, Context.Player.IdentityId, newPos)) {
                         File.Delete(targetFile);
-                        Plugin.DeleteFromWeb(filename);
+                        Plugin.DeleteFromWeb(currentIp);
                 }
                 var playerEndpoint = new Endpoint(Context.Player.SteamUserId, 0);
                 var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
@@ -493,6 +496,40 @@ namespace SwitchMe
             }
         }
 
+
+        public ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> findGridGroup(string gridName)
+        {
+            int i = 0;
+            bool foundIdentifier = false;
+            ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group>();
+            Parallel.ForEach(MyCubeGridGroups.Static.Physical.Groups, group => {
+                foreach (MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Node groupNodes in group.Nodes)
+                {
+
+                    IMyCubeGrid grid = groupNodes.NodeData;
+
+                    if (grid.Physics == null)
+                        continue;
+
+                    /* Gridname is wrong ignore */
+                    if (!grid.CustomName.Equals(gridName))
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    groups.Add(group);
+                    foundIdentifier = true;
+
+                }
+            });
+            if (i >= 1 && !foundIdentifier)
+            {
+                Context.Respond("No grid found...");
+            }
+            return groups;
+        }
+
         private string CreateExternalIP() {
 
             if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168")) 
@@ -514,18 +551,21 @@ namespace SwitchMe
                     //order: {"parameter name", "parameter value"}
                     {"steamID", Context.Player.SteamUserId + ""},
                     {"currentIP", currentIp },
-                    {"posCheck", "check" }
+                    {"posCheck", "1" }
                 };
 
-                POSsource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
-                POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+                POSsource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/recovery.php", postData));
+                POS = Context.Player.GetPosition().ToString();
                 if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror)
                 {
                     POS = "{X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord + "}";
                 }
+                else if (Plugin.Config.EnabledMirror && !Plugin.Config.LockedTransfer)
+                {
+                    POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+                }
                 Vector3D.TryParse(POS, out Vector3D gps);
                 newPos = gps;
-
                 string source = "";
                 postData = new NameValueCollection()
                 {
@@ -534,7 +574,7 @@ namespace SwitchMe
                     {"currentIP", currentIp },
                 };
 
-                source = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridRecovery.php", postData));
+                source = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/recovery.php", postData));
 
 
                 string existance = source.Substring(0, source.IndexOf(":"));
@@ -761,13 +801,13 @@ namespace SwitchMe
              * used to determine the perfect place to paste the grids to. 
              */
 
-            if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror || Plugin.Config.EnabledMirror)
-            {
-                Vector3D.TryParse("{X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord + "}", out Vector3D gps);
-                return MyEntities.FindFreePlace(gps, 100F);
-            }
+            //if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror || Plugin.Config.EnabledMirror)
+            //{
+            //    Vector3D.TryParse("{X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord + "}", out Vector3D gps);
+            //    return MyEntities.FindFreePlace(gps, 100F);
+            //}
 
-            return MyEntities.FindFreePlace(Context.Player.GetPosition(), radius);
+            return MyEntities.FindFreePlace(Context.Player.GetPosition(), 50F);
         }
 
         [Command("grid", "Transfers the target grid to the target server")]
@@ -929,7 +969,7 @@ namespace SwitchMe
             try
             {
                 Log.Warn("Getting Group");
-                MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group relevantGroup = FindRelevantGroup(gridTarget, playerId);
+                MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup = FindRelevantGroup(gridTarget, playerId);
                 string pos = "";
                 foreach (var node in relevantGroup.Nodes)
                 {
@@ -972,7 +1012,7 @@ namespace SwitchMe
             }
         }
 
-        private void SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group relevantGroup, string gridTarget, string path) {
+        private void SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup, string gridTarget, string path) {
             try
             {
                 List<MyObjectBuilder_CubeGrid> objectBuilders = new List<MyObjectBuilder_CubeGrid>();
@@ -1045,7 +1085,7 @@ namespace SwitchMe
                         NameValueCollection postData = new NameValueCollection()
                         {
                             //order: {"parameter name", "parameter value"}
-                            {"steamID", Context.Player.SteamUserId + ""},
+                            {"steamID", Context.Player.SteamUserId.ToString()},
                             {"gridName", gridTarget },
                             {"targetIP", ip },
                             {"currentIP", currentIp },
@@ -1073,7 +1113,7 @@ namespace SwitchMe
             return false;
         }
 
-        private void DeleteUploadedGrids(MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group relevantGroup) {
+        private void DeleteUploadedGrids(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup) {
 
             foreach (var node in relevantGroup.Nodes) {
 
@@ -1107,9 +1147,7 @@ namespace SwitchMe
 
                         /* Gridname is wrong ignore */
                         if (!grid.CustomName.Equals(gridName))
-                        {
                             continue;
-                        }
                         groups.Add(group);
                     }
                 });
@@ -1127,9 +1165,9 @@ namespace SwitchMe
         }
 
 
-        private MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group FindRelevantGroup(string gridTarget, long playerId) {
+        private MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group FindRelevantGroup(string gridTarget, long playerId) {
 
-            ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> groups = findGridGroupMechanical(gridTarget);
+            ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = findGridGroup(gridTarget);
 
             string pos = "";
             Log.Warn("Target and ID:   " + gridTarget + " | " + playerId);
