@@ -585,6 +585,8 @@ namespace SwitchMe {
 
                             string pagesource = "";
                             string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
+
+                            /* Not sure what this does but it does not belong here */
                             using (WebClient client = new WebClient()) {
 
                                 NameValueCollection postData = new NameValueCollection()
