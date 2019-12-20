@@ -6,3 +6,5 @@
 /.vs/SwitchMe/v16/Server/sqlite3
 /.vs/SwitchMe/v16
 /SwitchMe/bin/Debug
+/SwitchMe/obj/Release
+/.vs

@@ -29,6 +29,7 @@ using VRage.Game.Components;
 
 using System.IO;
 using Torch.Managers;
+using System.Net.Http;
 
 namespace SwitchMe
 {
@@ -112,33 +113,27 @@ namespace SwitchMe
 
         public async Task<string> CheckSlotsAsync(string targetIP)
         {
+
+            string maxPlayers = MySession.Static.MaxPlayers.ToString();
+            string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
             string pagesource = "";
-            try
+            using (HttpClient client = new HttpClient())
             {
-                string maxPlayers = MySession.Static.MaxPlayers.ToString();
-
-                string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
-
-                using (WebClient client = new WebClient())
+                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                 {
-
-                    NameValueCollection postData = new NameValueCollection()
-                        {
-                            //order: {"parameter name", "parameter value"}
-                            { "currentplayers", currentPlayers }, {"maxplayers", maxPlayers }, {"targetip", targetIP},
-                        };
-
-                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
-
-                }
+                    new KeyValuePair<string, string>("currentplayers", currentPlayers ),
+                    new KeyValuePair<string, string>("maxplayers", maxPlayers),
+                    new KeyValuePair<string, string>("targetip", targetIP)
+                };
+                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/index.php", content);
+                HttpResponseMessage response = httpResponseMessage;
+                httpResponseMessage = null;
+                string text = await response.Content.ReadAsStringAsync();
+                pagesource = text;
             }
 
-            catch
-            {
-                Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
-            }
-
-            return await Task.FromResult(pagesource);
+            return pagesource;
         }
         private void SessionChanged(ITorchSession session, TorchSessionState state)
         {
@@ -193,56 +188,72 @@ namespace SwitchMe
 
         public async Task<bool> CheckKeyAsync(string target)
         {
-           string pagesource;
+            string pagesource;
+
             try
             {
-                using (WebClient client = new WebClient())
+                using (HttpClient client = new HttpClient())
                 {
-                    NameValueCollection postData = new NameValueCollection()
-                        {
-                            //order: {"parameter name", "parameter value"}
-                            {"targetip", target},
-                            {"bindKey", Config.LocalKey },
-                            {"bindCheck", "1"}
-                        };
-                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
-                    if (pagesource == Config.LocalKey)
-                    {
-                        return await Task.FromResult(true);
-                    }
+                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("targetip", target),
+                    new KeyValuePair<string, string>("bindKey", Config.LocalKey),
+                    new KeyValuePair<string, string>("bindCheck", "1")
+                };
+                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                    HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/index.php", content);
+                    HttpResponseMessage response = httpResponseMessage;
+                    httpResponseMessage = null;
+                    string text = await response.Content.ReadAsStringAsync();
+                    pagesource = text;
+                }
+
+                if (pagesource == Config.LocalKey)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
                 }
             }
-            catch
+            catch (Exception e)
             {
-                Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
+                Log.Warn("Error communcating with API: " + e.ToString());
+                return false;
             }
-            return false;
         }
 
-        public bool CheckInbound(string target)
+        public async Task<bool> CheckInboundAsync(string target)
         {
             string pagesource;
             try
             {
-                using (WebClient client = new WebClient())
+                using (HttpClient client = new HttpClient())
                 {
-                    NameValueCollection postData = new NameValueCollection()
-                        {
-                            //order: {"parameter name", "parameter value"}
-                            {"targetip", target},
-                        };
-                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/endpoint.php", postData));
-                    if (pagesource == "Y")
-                    {
-                        return true;
-                    }
+                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("targetip", target),
+                };
+                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                    HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/endpoint.php", content);
+                    HttpResponseMessage response = httpResponseMessage;
+                    httpResponseMessage = null;
+                    string text = await response.Content.ReadAsStringAsync();
+                    pagesource = text;
                 }
+                if (pagesource == "Y")
+                {
+                    return true;
+                }
+                return false;
             }
-            catch
+            catch (Exception e)
             {
-                Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
+                Log.Warn("Error communcating with API: " + e.ToString());
+                return false;
             }
-            return false;
+
         }
 
         public string debug()
@@ -414,26 +425,25 @@ namespace SwitchMe
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
             if (Torch.CurrentSession != null && currentIp.Length > 1)
             {
-                if (Config.InboundTransfersState == true)
+                if (Config.InboundTransfersState)
                 {
                     Inbound = "Y";
                 }
                 using (WebClient client = new WebClient())
                 {
-                    string pagesource = "";
                     NameValueCollection postData = new NameValueCollection()
                     {
                         //order: {"parameter name", "parameter value"}
                         { "currentplayers", currentPlayers },
                         { "maxplayers", maxPlayers },
                         { "serverip", currentIp},
-                        { "verion", "1.2.6"},
+                        { "verion", "1.2.9"},
                         { "bindKey", Config.LocalKey},
                         { "inbound", Inbound },
                         { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName }
                     };
                     
-                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/index.php", postData));
+                    client.UploadValues("http://switchplugin.net/index.php", postData);
                 }
             }
         }

@@ -237,7 +237,7 @@ namespace SwitchMe
 
         [Command("all", "Automatically connects all players to your server of choice within this network. USAGE: !switch all <Insert Server name here>")]
         [Permission(MyPromoteLevel.Admin)]
-        public async System.Threading.Tasks.Task SwitchAllAsync()
+        public async Task SwitchAllAsync()
         {
 
                 int i = 0;
@@ -592,9 +592,9 @@ namespace SwitchMe
 
                         return true;
                     } 
-                    catch 
+                    catch (Exception error)
                     {
-                        Log.Fatal("Unable to download grid");
+                        Log.Fatal("Unable to download grid: " + error.ToString());
                     }
                 } 
                 else 
@@ -873,7 +873,8 @@ namespace SwitchMe
                     Context.Respond("Target server is offline, preventing switch");
                     return;
                 }
-                if (!Plugin.CheckInbound(target))
+                bool InboundCheck = await Plugin.CheckInboundAsync(target);
+                if (!InboundCheck)
                 {
                     Context.Respond("The target server does not allow inbound transfers");
                     return;
