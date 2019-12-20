@@ -1133,7 +1133,7 @@ namespace SwitchMe
 
             try
             {
-
+                bool foundIdentifer = false;
                 ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> groups = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group>();
                 Parallel.ForEach(MyCubeGridGroups.Static.Mechanical.Groups, group =>
                 {
@@ -1150,9 +1150,10 @@ namespace SwitchMe
                         if (!grid.CustomName.Equals(gridName))
                             continue;
                         groups.Add(group);
+                        foundIdentifer = true;
                     }
                 });
-                if (groups == null)
+                if (!foundIdentifer)
                 {
                     Context.Respond("No grid found");
                 }
