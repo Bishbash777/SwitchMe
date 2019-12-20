@@ -119,6 +119,8 @@
     <Compile Include="SwitchMeControl.xaml.cs" />
     <Compile Include="SwitchMePlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utilities.cs" />
+    <Compile Include="VoidManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <Page Include="SwitchMeControl.xaml">
