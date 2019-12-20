@@ -13,6 +13,7 @@ using IMyCubeGrid = VRage.Game.ModAPI.IMyCubeGrid;
 namespace SwitchMe {
 
     class GridFinder {
+
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> FindGridGroup(string gridName) {

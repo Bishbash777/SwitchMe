@@ -7,28 +7,18 @@ using Sandbox.ModAPI;
 using Torch;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
-using VRage.Utils;
 using Torch.API.Plugins;
 using Torch.Session;
 using System.Windows.Controls;
-using System.Threading;
 using Torch.API.Managers;
 using System;
 using System.Timers;
 using System.Collections.Specialized;
 using System.Net;
-using Timer = System.Timers.Timer;
 using Torch.API.Session;
 using Torch.API;
 using System.Collections.Generic;
-using Sandbox.Game;
-using Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Weapons;
-using VRage.Game;
-using VRage.Game.Components;
-
 using System.IO;
-using Torch.Managers;
 using System.Net.Http;
 
 namespace SwitchMe {
@@ -80,13 +70,11 @@ namespace SwitchMe {
             }
         }
 
-
-        private void _multibase_PlayerJoined(IPlayer obj) {
+        private void Multibase_PlayerJoined(IPlayer obj) {
 
             if (!Config.Enabled)
                 return;
         }
-
 
         public void Delete(string entityName) {
 
@@ -323,7 +311,7 @@ namespace SwitchMe {
             }
 
             if (Torch.CurrentSession != null) {
-                _multibase.PlayerJoined += _multibase_PlayerJoined;
+                _multibase.PlayerJoined += Multibase_PlayerJoined;
                 InitPost();
             }
         }
@@ -331,7 +319,7 @@ namespace SwitchMe {
         public override void Dispose() {
 
             if (_multibase != null)
-                _multibase.PlayerJoined -= _multibase_PlayerJoined;
+                _multibase.PlayerJoined -= Multibase_PlayerJoined;
 
             _multibase = null;
 
