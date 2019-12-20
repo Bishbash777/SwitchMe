@@ -10,15 +10,19 @@ using NLog;
 using VRageMath;
 using IMyCubeGrid = VRage.Game.ModAPI.IMyCubeGrid;
 
-namespace SwitchMe
-{
+namespace SwitchMe {
 
     class GridFinder {
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
-        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> findGridGroup(string gridName) {
+
+        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> FindGridGroup(string gridName) {
+
             int i = 0;
+
             ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group>();
+
             Parallel.ForEach(MyCubeGridGroups.Static.Physical.Groups, group => {
+
                 foreach (MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Node groupNodes in group.Nodes) {
 
                     IMyCubeGrid grid = groupNodes.NodeData;
@@ -27,8 +31,7 @@ namespace SwitchMe
                         continue;
 
                     /* Gridname is wrong ignore */
-                    if (!grid.CustomName.Equals(gridName))
-                    {
+                    if (!grid.CustomName.Equals(gridName)) {
                         i++;
                         continue;
                     }
@@ -36,14 +39,13 @@ namespace SwitchMe
                     groups.Add(group);
                 }
             });
-            if (i >= 1 )
-            {
-
+            if (i >= 1) {
+                
             }
             return groups;
         }
 
-        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> findLookAtGridGroup(IMyCharacter controlledEntity) {
+        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> FindLookAtGridGroup(IMyCharacter controlledEntity) {
 
             const float range = 5000;
             Matrix worldMatrix;
@@ -77,9 +79,8 @@ namespace SwitchMe
 
                                 double distance = (startPosition - cubeGrid.GridIntegerToWorld(hit.Value)).Length();
 
-                                double oldDistance;
 
-                                if (list.TryGetValue(group, out oldDistance)) {
+                                if (list.TryGetValue(group, out double oldDistance)) {
 
                                     if (distance < oldDistance) {
                                         list.Remove(group);
@@ -108,17 +109,14 @@ namespace SwitchMe
             return bag;
         }
 
-        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> findGridGroupMechanical(string gridName) {
+        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> FindGridGroupMechanical(string gridName) {
 
-            try
-            {
+            try {
 
                 ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> groups = new ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group>();
-                Parallel.ForEach(MyCubeGridGroups.Static.Mechanical.Groups, group =>
-                {
+                Parallel.ForEach(MyCubeGridGroups.Static.Mechanical.Groups, group => {
 
-                    foreach (MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Node groupNodes in group.Nodes)
-                    {
+                    foreach (MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Node groupNodes in group.Nodes) {
 
                         IMyCubeGrid grid = groupNodes.NodeData;
 
@@ -127,22 +125,21 @@ namespace SwitchMe
 
                         /* Gridname is wrong ignore */
                         if (!grid.CustomName.Equals(gridName))
-                        {
                             continue;
-                        }
+
                         groups.Add(group);
                     }
                 });
+
                 return groups;
-            }
-            catch (Exception e)
-            {
+
+            } catch (Exception e) {
                 Log.Fatal("Error at GridFinder: " + e.ToString());
                 return null;
             }
         }
 
-        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> findLookAtGridGroupMechanical(IMyCharacter controlledEntity) {
+        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridMechanicalGroupData>.Group> FindLookAtGridGroupMechanical(IMyCharacter controlledEntity) {
 
             const float range = 5000;
             Matrix worldMatrix;
@@ -176,9 +173,8 @@ namespace SwitchMe
 
                                 double distance = (startPosition - cubeGrid.GridIntegerToWorld(hit.Value)).Length();
 
-                                double oldDistance;
 
-                                if (list.TryGetValue(group, out oldDistance)) {
+                                if (list.TryGetValue(group, out double oldDistance)) {
 
                                     if (distance < oldDistance) {
                                         list.Remove(group);

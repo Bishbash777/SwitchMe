@@ -1,10 +1,9 @@
 ﻿using System.Collections.ObjectModel;
 using Torch;
 
-namespace SwitchMe
-{
-    public class SwitchMeConfig : ViewModel
-    {
+namespace SwitchMe {
+    public class SwitchMeConfig : ViewModel {
+
         private bool _enabled = false;
         public bool Enabled { get => _enabled; set => SetValue(ref _enabled, value); }
 
