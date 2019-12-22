@@ -31,7 +31,7 @@ namespace SwitchMe {
             this.Context = Context;
         }
 
-        public async void SendGrid(string gridTarget, string serverTarget, long playerId, string ip, bool debug = false) {
+        public async Task<bool> SendGrid(string gridTarget, string serverTarget, long playerId, string ip, bool debug = false) {
 
             string externalIP = Utilities.CreateExternalIP(Plugin.Config);
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
@@ -52,7 +52,7 @@ namespace SwitchMe {
 
                 if (relevantGroup == null) {
                     Context.Respond("Cannot transfer somone elses grid!");
-                    return;
+                    return false;
                 }
 
                 Directory.CreateDirectory("ExportedGrids");
@@ -60,12 +60,14 @@ namespace SwitchMe {
                 var path = string.Format(ExportPath, Context.Player.SteamUserId + "-" + gridTarget);
                 if (File.Exists(path)) {
                     Context.Respond("Export file already exists.");
-                    return;
+                    return false;
                 }
 
                 Log.Warn("Exproted");
 
-                new GridImporter(Plugin, Context).SerializeGridsToPath(relevantGroup, gridTarget, path);
+                if (!new GridImporter(Plugin, Context).SerializeGridsToPath(relevantGroup, gridTarget, path)) {
+                    return false;
+                }
 
                 if (await UploadGridAsync(serverTarget, gridTarget, ip, currentIp, path, pos)) {
 
@@ -76,11 +78,14 @@ namespace SwitchMe {
 
                     /* Also delete local file */
                     File.Delete(path);
+                    return true;
                 }
 
             } catch (Exception e) {
                 Log.Fatal(e, "Target:" + gridTarget + "Server: " + serverTarget + "id: " + playerId);
+                return false;
             }
+            return false;
         }
 
         public async Task<Tuple<string, string, Vector3D>> DownloadGridAsync(string currentIp) {

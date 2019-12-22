@@ -93,7 +93,7 @@ namespace SwitchMe {
             return false;
         }
 
-        public void SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup, string gridTarget, string path) {
+        public bool SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup, string gridTarget, string path) {
 
             try {
 
@@ -117,24 +117,39 @@ namespace SwitchMe {
 
                 definition.Id = new MyDefinitionId(new MyObjectBuilderType(typeof(MyObjectBuilder_PrefabDefinition)), gridTarget);
                 definition.CubeGrids = objectBuilders.Select(x => (MyObjectBuilder_CubeGrid)x.Clone()).ToArray();
-
+                long i = 0;
                 /* Reset ownership as it will be different on the new server anyway */
                 foreach (MyObjectBuilder_CubeGrid cubeGrid in definition.CubeGrids) {
                     foreach (MyObjectBuilder_CubeBlock cubeBlock in cubeGrid.CubeBlocks) {
                         cubeBlock.Owner = 0L;
                         cubeBlock.BuiltBy = 0L;
+                        i++;
                     }
                 }
 
+
+                //Economy stuff
+                i = 25 * i;
+                long balance;
+                long withdraw = i;
+                Context.Player.TryGetBalanceInfo(out balance);
+                long mathResult = (balance - withdraw); 
+                if (mathResult < 0) {
+                    Context.Respond("Not enough funds for transfer");
+                    return false;
+                } 
+                Context.Player.RequestChangeBalance(-withdraw);
                 MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
                 builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
 
                 bool worked = MyObjectBuilderSerializer.SerializeXML(path, false, builderDefinition);
 
                 Log.Fatal("exported " + path + " " + worked);
+                return true;
 
             } catch (Exception e) {
                 Log.Fatal(e, "ERROR AT SERIALIZATION: " + e.Message);
+                return false;
             }
         }
 
