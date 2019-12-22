@@ -2,15 +2,18 @@
 using Sandbox.Game.Entities;
 using System;
 using System.Collections.Specialized;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using Torch.Commands;
 using Torch.Mod;
 using Torch.Mod.Messages;
 using VRage.Groups;
 using VRageMath;
+using System.Threading.Tasks;
 
 namespace SwitchMe {
 
@@ -80,23 +83,33 @@ namespace SwitchMe {
             }
         }
 
-        public bool DownloadGrid(string currentIp, out string targetFile, out string filename, out Vector3D newPos) {
+        public async Task<Tuple<string, string, Vector3D>> DownloadGridAsync(string currentIp) {
 
             Directory.CreateDirectory("ExportedGrids");
             using (WebClient client = new WebClient()) {
 
+                Vector3D newPos;
                 string POS = "";
                 string POSsource = "";
-
-                NameValueCollection postData = new NameValueCollection()
+                string filename;
+                string targetFile;
+                using (HttpClient clients = new HttpClient())
                 {
-                    //order: {"parameter name", "parameter value"}
-                    {"steamID", Context.Player.SteamUserId + ""},
-                    {"currentIP", currentIp },
-                    {"posCheck", "1" }
-                };
+                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                    {
+                        new KeyValuePair<string, string>("steamID", Context.Player.SteamUserId.ToString()),
+                        new KeyValuePair<string, string>("posCheck", "1"),
+                        new KeyValuePair<string, string>("currentIP", currentIp)
+                    };
+                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                    HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
+                    HttpResponseMessage response = httpResponseMessage;
+                    httpResponseMessage = null;
+                    string text = await response.Content.ReadAsStringAsync();
+                    POSsource = text;
+                }
 
-                POSsource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/recovery.php", postData));
+
                 POS = Context.Player.GetPosition().ToString();
 
                 var config = Plugin.Config;
@@ -109,14 +122,22 @@ namespace SwitchMe {
                 Vector3D.TryParse(POS, out Vector3D gps);
                 newPos = gps;
                 string source = "";
-                postData = new NameValueCollection()
-                {
-                    //order: {"parameter name", "parameter value"}
-                    {"steamID", Context.Player.SteamUserId + ""},
-                    {"currentIP", currentIp },
-                };
 
-                source = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/recovery.php", postData));
+                using (HttpClient clients = new HttpClient())
+                {
+                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                    {
+                        new KeyValuePair<string, string>("steamID", Context.Player.SteamUserId.ToString()),
+                        new KeyValuePair<string, string>("currentIP", currentIp)
+                    };
+                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                    HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
+                    HttpResponseMessage response = httpResponseMessage;
+                    httpResponseMessage = null;
+                    string text = await response.Content.ReadAsStringAsync();
+                    source = text;
+                }
+       
 
                 string existance = source.Substring(0, source.IndexOf(":"));
                 if (existance == "1") {
@@ -130,8 +151,7 @@ namespace SwitchMe {
 
                         WebClient myWebClient = new WebClient();
                         myWebClient.DownloadFile(remoteUri, targetFile);
-
-                        return true;
+                        return new Tuple<string, string, Vector3D>(targetFile, filename, newPos);
 
                     } catch (Exception error) {
                         Log.Fatal("Unable to download grid: " + error.ToString());
@@ -139,11 +159,10 @@ namespace SwitchMe {
 
                 } else {
                     Context.Respond("You have no grids in active transport!");
-                    filename = null;
+                    targetFile = null;
                 }
-
-                targetFile = null;
-                return false;
+                return null;
+                
             }
         }
 

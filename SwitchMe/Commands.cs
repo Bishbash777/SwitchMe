@@ -24,6 +24,7 @@ using VRage.Collections;
 using Torch.Utils;
 using System.Collections;
 using System.Threading.Tasks;
+using Sandbox.ModAPI;
 
 namespace SwitchMe {
 
@@ -394,7 +395,7 @@ namespace SwitchMe {
 
         [Command("recover", "Completes the transfer of one grid from one server to another")]
         [Permission(MyPromoteLevel.None)]
-        public async Task Recover() {
+        public async void Recover() {
 
             if (Context.Player == null) {
                 Context.Respond("Command cannot be ran from console");
@@ -406,38 +407,45 @@ namespace SwitchMe {
 
             VoidManager voidManager = new VoidManager(Plugin, Context);
 
-            if (voidManager.DownloadGrid(currentIp, out string targetFile, out string filename, out Vector3D newPos)) {
+            
+            Tuple<string, string, Vector3D> data = await voidManager.DownloadGridAsync(currentIp);
 
+            if (data == null)
+            {
+                return;
+            }
+            string targetFile = data.Item1;
+            string filename = data.Item2;
+            Vector3D newPos = data.Item3;
+            MyAPIGateway.Utilities.InvokeOnGameThread(() => {
                 GridImporter gridManager = new GridImporter(Plugin, Context);
-
-                if (gridManager.DeserializeGridFromPath(targetFile, Context.Player.IdentityId, newPos)) {
-
+                if (gridManager.DeserializeGridFromPath(targetFile, Context.Player.IdentityId, newPos))
+                {
                     File.Delete(targetFile);
                     Plugin.DeleteFromWeb(currentIp);
                 }
+            });
+            var playerEndpoint = new Endpoint(Context.Player.SteamUserId, 0);
+            var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
+            var clientDataDict = _clientStates.Invoke(replicationServer);
+            object clientData;
 
-                var playerEndpoint = new Endpoint(Context.Player.SteamUserId, 0);
-                var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
-                var clientDataDict = _clientStates.Invoke(replicationServer);
-                object clientData;
+            try {
+                clientData = clientDataDict[playerEndpoint];
+            } catch {
+                return;
+            }
 
-                try {
-                    clientData = clientDataDict[playerEndpoint];
-                } catch {
-                    return;
-                }
+            var clientReplicables = _replicables.Invoke(clientData);
 
-                var clientReplicables = _replicables.Invoke(clientData);
+            var replicableList = new List<IMyReplicable>(clientReplicables.Count);
+            foreach (var pair in clientReplicables)
+                replicableList.Add(pair.Key);
 
-                var replicableList = new List<IMyReplicable>(clientReplicables.Count);
-                foreach (var pair in clientReplicables)
-                    replicableList.Add(pair.Key);
+            foreach (var replicable in replicableList) {
 
-                foreach (var replicable in replicableList) {
-
-                    _removeForClient.Invoke(replicationServer, replicable, clientData, true);
-                    _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
-                }
+                _removeForClient.Invoke(replicationServer, replicable, clientData, true);
+                _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
             }
         }
 
