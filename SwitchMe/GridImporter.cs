@@ -222,7 +222,7 @@ namespace SwitchMe {
             //    return MyEntities.FindFreePlace(gps, 100F);
             //}
 
-            return MyEntities.FindFreePlace(Context.Player.GetPosition(), 50F);
+            return MyEntities.FindFreePlace(Context.Player.GetPosition(), radius);
         }
 
         private bool UpdateGridsPosition(MyObjectBuilder_CubeGrid[] grids, Vector3D newPosition) {
