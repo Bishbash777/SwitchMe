@@ -49,6 +49,12 @@ namespace SwitchMe {
         private long _transferCost = 30;
         public long TransferCost { get => _transferCost; set => SetValue(ref _transferCost, value); }
 
+        private int _cooldownInSeconds = 15 * 60; //15 Minutes
+        public int ConfirmationInSeconds { get => _confirmationInSeconds; set => SetValue(ref _confirmationInSeconds, value); }
+
+        private int _confirmationInSeconds = 30; //30 Seconds
+        public int CooldownInSeconds { get => _cooldownInSeconds; set => SetValue(ref _cooldownInSeconds, value); }
+
         private ObservableCollection<string> _switchServers = new ObservableCollection<string>();
         public ObservableCollection<string> Servers { get => _switchServers; set => SetValue(ref _switchServers, value); }
     }

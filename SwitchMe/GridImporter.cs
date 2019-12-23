@@ -143,13 +143,16 @@ namespace SwitchMe {
                     Context.Player.TryGetBalanceInfo(out balance);
                     long mathResult = (balance - withdraw);
                     Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
-                    if (mathResult < 0) {
-                        Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
-                        Context.Respond("Not enough funds for transfer");
-                        return false;
+                    Commands commands = new Commands(Plugin, Context);
+                    if (!commands.Confirm(i)) {
+                        if (mathResult < 0) {
+                            Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
+                            Context.Respond("Not enough funds for transfer");
+                            return false;
+                        }
+
+                        Context.Player.RequestChangeBalance(-withdraw);
                     }
-                    
-                    Context.Player.RequestChangeBalance(-withdraw);
                 }
                 MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
                 builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
