@@ -140,7 +140,7 @@ namespace SwitchMe {
                     Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
                     CurrentCooldown cooldown = new CurrentCooldown(Plugin, Context);
                     //verify that user wants to go ahead with transfer.
-                    if (!cooldown.Confirm(i)) {
+                    if (cooldown.Confirm(i)) {
                         if (mathResult < 0) {
                             Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
                             Context.Respond("Not enough funds for transfer");
