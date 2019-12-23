@@ -148,6 +148,7 @@ namespace SwitchMe {
                         }
                         Context.Player.RequestChangeBalance(-withdraw);
                     }
+                    return false;
                 }
                 MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
                 builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
