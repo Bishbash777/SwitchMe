@@ -72,19 +72,16 @@ namespace SwitchMe {
 
                 /* Remapping to prevent any key problems upon paste. */
                 MyEntities.RemapObjectBuilderCollection(grids);
-
                 foreach (var grid in grids) {
 
                     if (MyEntities.CreateFromObjectBuilderAndAdd(grid, true) is MyCubeGrid cubeGrid)
                         FixOwnerAndAuthorShip(cubeGrid, playerId);
                 }
-
                 if (Plugin.Config.EnabledMirror || Plugin.Config.LockedTransfer) {
 
                     targetEntity.SetPosition(newpos);
                     Context.Respond("***Transporting***");
                 }
-
                 Context.Respond("Grid has been pulled from the void!");
 
                 return true;
@@ -93,7 +90,7 @@ namespace SwitchMe {
             return false;
         }
 
-        public void SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup, string gridTarget, string path) {
+        public bool SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup, string gridTarget, string path) {
 
             try {
 
@@ -109,7 +106,6 @@ namespace SwitchMe {
                     /* What else should it be? LOL? */
                     if (!(grid.GetObjectBuilder(true) is MyObjectBuilder_CubeGrid objectBuilder))
                         throw new ArgumentException(grid + " has a ObjectBuilder thats not for a CubeGrid");
-
                     objectBuilders.Add(objectBuilder);
                 }
 
@@ -117,24 +113,52 @@ namespace SwitchMe {
 
                 definition.Id = new MyDefinitionId(new MyObjectBuilderType(typeof(MyObjectBuilder_PrefabDefinition)), gridTarget);
                 definition.CubeGrids = objectBuilders.Select(x => (MyObjectBuilder_CubeGrid)x.Clone()).ToArray();
-
+                long i = 0;
                 /* Reset ownership as it will be different on the new server anyway */
                 foreach (MyObjectBuilder_CubeGrid cubeGrid in definition.CubeGrids) {
                     foreach (MyObjectBuilder_CubeBlock cubeBlock in cubeGrid.CubeBlocks) {
                         cubeBlock.Owner = 0L;
                         cubeBlock.BuiltBy = 0L;
+                        i++;
                     }
                 }
-
+                //Economy stuff
+                if (Plugin.Config.EnableEcon && Plugin.Config.PerTransfer && Plugin.Config.PerBlock) {
+                    Log.Warn("Invalid econ setup");
+                    Context.Respond("Invalid econ setup - please notify an admin.");
+                    return false;
+                }
+                if (Plugin.Config.EnableEcon) {
+                    i = Plugin.Config.TransferCost * i;
+                    if (Plugin.Config.PerTransfer) {
+                        i = Plugin.Config.TransferCost;
+                    }
+                    long balance;
+                    long withdraw = i;
+                    Context.Player.TryGetBalanceInfo(out balance);
+                    long mathResult = (balance - withdraw);
+                    Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
+                    CurrentCooldown cooldown = new CurrentCooldown(Plugin, Context);
+                    //verify that user wants to go ahead with transfer.
+                    if (cooldown.Confirm(i)) {
+                        if (mathResult < 0) {
+                            Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
+                            Context.Respond("Not enough funds for transfer");
+                            return false;
+                        }
+                        Context.Player.RequestChangeBalance(-withdraw);
+                    }
+                    return false;
+                }
                 MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
                 builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
-
                 bool worked = MyObjectBuilderSerializer.SerializeXML(path, false, builderDefinition);
-
-                Log.Fatal("exported " + path + " " + worked);
+                Log.Debug("exported " + path + " " + worked);
+                return true;
 
             } catch (Exception e) {
                 Log.Fatal(e, "ERROR AT SERIALIZATION: " + e.Message);
+                return false;
             }
         }
 
@@ -156,9 +180,7 @@ namespace SwitchMe {
                     if (playerId != 0)
                         myCubeGrid.ChangeOwnerRequest(myCubeGrid, cubeBlock, playerId, MyOwnershipShareModeEnum.Faction);
                 }
-
                 if (block.BuiltBy == 0) {
-
                     /* 
                     * Hack: TransferBlocksBuiltByID only transfers authorship if it has an author. 
                     * Transfer Authorship Client just sets the author so we need to take care of limits ourselves. 
@@ -166,7 +188,6 @@ namespace SwitchMe {
                     block.TransferAuthorshipClient(playerId);
                     block.AddAuthorship();
                 }
-
                 authors.Add(block.BuiltBy);
             }
 
@@ -222,7 +243,7 @@ namespace SwitchMe {
             //    return MyEntities.FindFreePlace(gps, 100F);
             //}
 
-            return MyEntities.FindFreePlace(Context.Player.GetPosition(), 50F);
+            return MyEntities.FindFreePlace(Context.Player.GetPosition(), radius);
         }
 
         private bool UpdateGridsPosition(MyObjectBuilder_CubeGrid[] grids, Vector3D newPosition) {

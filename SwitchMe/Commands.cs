@@ -289,7 +289,10 @@ namespace SwitchMe {
 
                 if (pagesource == "0") {
 
-                    new VoidManager(Plugin, Context).SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target);
+                    if (!await new VoidManager(Plugin, Context).SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target))
+                    {
+                        return;
+                    }
                     Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
                 } else {
 
@@ -308,7 +311,7 @@ namespace SwitchMe {
         [Permission(MyPromoteLevel.None)]
         public void Restore() {
             Recover();
-        }
+        } 
     }
 }
 

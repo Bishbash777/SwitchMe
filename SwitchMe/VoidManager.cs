@@ -32,7 +32,7 @@ namespace SwitchMe {
             this.Context = Context;
         }
 
-        public void SendGrid(string gridTarget, string serverTarget, long playerId, string ip, bool debug = false) {
+        public async Task<bool> SendGrid(string gridTarget, string serverTarget, long playerId, string ip, bool debug = false) {
 
             string externalIP = Utilities.CreateExternalIP(Plugin.Config);
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
@@ -53,7 +53,7 @@ namespace SwitchMe {
 
                 if (relevantGroup == null) {
                     Context.Respond("Cannot transfer somone elses grid!");
-                    return;
+                    return false;
                 }
 
                 Directory.CreateDirectory("ExportedGrids");
@@ -61,14 +61,16 @@ namespace SwitchMe {
                 var path = string.Format(ExportPath, Context.Player.SteamUserId + "-" + gridTarget);
                 if (File.Exists(path)) {
                     Context.Respond("Export file already exists.");
-                    return;
+                    return false;
                 }
 
                 Log.Warn("Exproted");
 
-                new GridImporter(Plugin, Context).SerializeGridsToPath(relevantGroup, gridTarget, path);
+                if (!new GridImporter(Plugin, Context).SerializeGridsToPath(relevantGroup, gridTarget, path)) {
+                    return false;
+                }
 
-                if (!debug && UploadGrid(serverTarget, gridTarget, ip, currentIp, path, pos)) {
+                if (await UploadGridAsync(serverTarget, gridTarget, ip, currentIp, path, pos)) {
 
                     Log.Warn("Uploaded");
 
@@ -77,11 +79,14 @@ namespace SwitchMe {
 
                     /* Also delete local file */
                     File.Delete(path);
+                    return true;
                 }
 
             } catch (Exception e) {
                 Log.Fatal(e, "Target:" + gridTarget + "Server: " + serverTarget + "id: " + playerId);
+                return false;
             }
+            return false;
         }
 
         public async Task<Tuple<string, string, Vector3D>> DownloadGridAsync(string currentIp) {
@@ -167,7 +172,7 @@ namespace SwitchMe {
             }
         }
 
-        private bool UploadGrid(string serverTarget, string gridTarget, string ip, string currentIp, string path, string pos) {
+        private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string ip, string currentIp, string path, string pos) {
 
             /* DO we need a using here too? */
             WebClient Client = new WebClient();
@@ -187,23 +192,24 @@ namespace SwitchMe {
 
                     ModCommunication.SendMessageTo(new JoinServerMessage(ip), Context.Player.SteamUserId);
 
-                    using (WebClient client = new WebClient()) {
-
-                        string pagesource = "";
-                        NameValueCollection postData = new NameValueCollection()
-                        {
-                            //order: {"parameter name", "parameter value"}
-                            {"steamID", Context.Player.SteamUserId.ToString()},
-                            {"gridName", gridTarget },
-                            {"targetIP", ip },
-                            {"currentIP", currentIp },
-                            {"fileName", Context.Player.SteamUserId + "-" + gridTarget },
-                            {"bindKey", Plugin.Config.LocalKey },
-                            {"targetPOS", pos },
-                            {"key", Plugin.Config.ActivationKey }
-                        };
-
-                        pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
+                    using (HttpClient clients = new HttpClient())
+                    {
+                        List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                    {
+                        new KeyValuePair<string, string>("steamID", Context.Player.SteamUserId.ToString()),
+                        new KeyValuePair<string, string>("targetIP", ip ),
+                        new KeyValuePair<string, string>("fileName", Context.Player.SteamUserId + "-" + gridTarget ),
+                        new KeyValuePair<string, string>("bindKey", Plugin.Config.LocalKey ),
+                        new KeyValuePair<string, string>("targetPOS", pos ),
+                        new KeyValuePair<string, string>("gridName", gridTarget ),
+                        new KeyValuePair<string, string>("key", Plugin.Config.ActivationKey ),
+                        new KeyValuePair<string, string>("currentIP", currentIp)
+                    };
+                        FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                        HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
+                        HttpResponseMessage response = httpResponseMessage;
+                        httpResponseMessage = null;
+                        string text = await response.Content.ReadAsStringAsync();
                     }
 
                     Plugin.Delete(Context.Player.DisplayName);

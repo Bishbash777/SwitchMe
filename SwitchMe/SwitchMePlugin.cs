@@ -38,6 +38,13 @@ namespace SwitchMe {
 
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
+        public Dictionary<long, CurrentCooldown> CurrentCooldownMap { get; } = new Dictionary<long, CurrentCooldown>();
+
+        public Dictionary<long, CurrentCooldown> ConfirmationsMap { get; } = new Dictionary<long, CurrentCooldown>();
+
+        public long Cooldown { get { return Config.CooldownInSeconds * 1000; } }
+        public long CooldownConfirmationSeconds { get { return Config.ConfirmationInSeconds; } }
+        public long CooldownConfirmation { get { return Config.ConfirmationInSeconds * 1000; } }
         /// <inheritdoc />
         public UserControl GetControl() => _control ?? (_control = new SwitchMeControl(this));
 
