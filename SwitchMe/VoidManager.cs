@@ -241,6 +241,11 @@ namespace SwitchMe {
             string port = "";
             string existanceCheck = "";
 
+            if (type == "single" && Context.Player == null) {
+                Context.Respond("Console cannot run this command");
+                return;
+            }
+
             if (!Plugin.Config.Enabled) {
                 Context.Respond("Switching is not enabled!");
                 return;
@@ -307,7 +312,7 @@ namespace SwitchMe {
 
                 /// Connection phase
                 try {
-                    Context.Respond("Connecting clients to " + Context.RawArgs + " @ " + ip);
+                    Context.Respond("Connecting client(s) to " + Context.RawArgs + " @ " + ip);
                     Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip);
                     if (type == "single") {
                         ModCommunication.SendMessageTo(new JoinServerMessage(ip), Context.Player.SteamUserId);
