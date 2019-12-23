@@ -31,13 +31,7 @@ namespace SwitchMe {
     [Category("switch")]
     public class Commands : CommandModule {
 
-        private readonly CommandContext Context;
-
-        public Commands(SwitchMePlugin Plugin, CommandContext Context) {
-            this.Context = Context;
-        }
-
-#pragma warning disable 649
+        #pragma warning disable 649
         [ReflectedGetter(Name = "m_clientStates")]
         private static Func<MyReplicationServer, IDictionary> _clientStates;
 

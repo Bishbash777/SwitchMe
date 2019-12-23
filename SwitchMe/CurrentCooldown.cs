@@ -63,7 +63,7 @@ namespace SwitchMe {
             }
             confirmationCooldown = CreateNewCooldown(confirmationCooldownMap, executingPlayerId, Plugin.CooldownConfirmation);
 
-            Context.Respond("This action will cost " + cost + "Space credits. Are you sure you want to continue? Enter the command again within " + Plugin.CooldownConfirmationSeconds + " seconds to confirm.");
+            Context.Respond("This action will cost " + cost + " Space credits. Are you sure you want to continue? Enter the command again within " + Plugin.CooldownConfirmationSeconds + " seconds to confirm.");
             confirmationCooldown.StartCooldown(playerName);
 
             return false;
