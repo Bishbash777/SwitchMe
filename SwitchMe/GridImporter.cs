@@ -126,19 +126,31 @@ namespace SwitchMe {
                         i++;
                     }
                 }
-
-
                 //Economy stuff
-                i = 25 * i;
-                long balance;
-                long withdraw = i;
-                Context.Player.TryGetBalanceInfo(out balance);
-                long mathResult = (balance - withdraw); 
-                if (mathResult < 0) {
-                    Context.Respond("Not enough funds for transfer");
+
+                if (Plugin.Config.EnableEcon && Plugin.Config.PerTransfer && Plugin.Config.PerBlock) {
+                    Log.Warn("Invalid econ setup");
+                    Context.Respond("Invalid econ setup - please notify an admin.");
                     return false;
-                } 
-                Context.Player.RequestChangeBalance(-withdraw);
+                }
+                if (Plugin.Config.EnableEcon) {
+                    i = Plugin.Config.TransferCost * i;
+                    if (Plugin.Config.PerTransfer) {
+                        i = Plugin.Config.TransferCost;
+                    }
+                    long balance;
+                    long withdraw = i;
+                    Context.Player.TryGetBalanceInfo(out balance);
+                    long mathResult = (balance - withdraw);
+                    Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
+                    if (mathResult < 0) {
+                        Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
+                        Context.Respond("Not enough funds for transfer");
+                        return false;
+                    }
+                    
+                    Context.Player.RequestChangeBalance(-withdraw);
+                }
                 MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
                 builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
 
@@ -171,9 +183,7 @@ namespace SwitchMe {
                     if (playerId != 0)
                         myCubeGrid.ChangeOwnerRequest(myCubeGrid, cubeBlock, playerId, MyOwnershipShareModeEnum.Faction);
                 }
-
                 if (block.BuiltBy == 0) {
-
                     /* 
                     * Hack: TransferBlocksBuiltByID only transfers authorship if it has an author. 
                     * Transfer Authorship Client just sets the author so we need to take care of limits ourselves. 
@@ -181,7 +191,6 @@ namespace SwitchMe {
                     block.TransferAuthorshipClient(playerId);
                     block.AddAuthorship();
                 }
-
                 authors.Add(block.BuiltBy);
             }
 

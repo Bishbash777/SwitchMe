@@ -6,7 +6,10 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Navigation;
+using System.Text.RegularExpressions;
+
 using VRage.Game;
+using System.Windows.Input;
 
 namespace SwitchMe {
 
@@ -57,6 +60,11 @@ namespace SwitchMe {
 
                 dgServerList.Items.MoveCurrentToLast();
             }
+        }
+
+        private void NumberValidationTextBox(object sender, TextCompositionEventArgs e) {
+            Regex regex = new Regex("[^0-9]+");
+            e.Handled = regex.IsMatch(e.Text);
         }
 
         private void BtnDelServer_Click(object sender, RoutedEventArgs e) {
