@@ -72,19 +72,16 @@ namespace SwitchMe {
 
                 /* Remapping to prevent any key problems upon paste. */
                 MyEntities.RemapObjectBuilderCollection(grids);
-
                 foreach (var grid in grids) {
 
                     if (MyEntities.CreateFromObjectBuilderAndAdd(grid, true) is MyCubeGrid cubeGrid)
                         FixOwnerAndAuthorShip(cubeGrid, playerId);
                 }
-
                 if (Plugin.Config.EnabledMirror || Plugin.Config.LockedTransfer) {
 
                     targetEntity.SetPosition(newpos);
                     Context.Respond("***Transporting***");
                 }
-
                 Context.Respond("Grid has been pulled from the void!");
 
                 return true;
@@ -109,7 +106,6 @@ namespace SwitchMe {
                     /* What else should it be? LOL? */
                     if (!(grid.GetObjectBuilder(true) is MyObjectBuilder_CubeGrid objectBuilder))
                         throw new ArgumentException(grid + " has a ObjectBuilder thats not for a CubeGrid");
-
                     objectBuilders.Add(objectBuilder);
                 }
 
@@ -127,7 +123,6 @@ namespace SwitchMe {
                     }
                 }
                 //Economy stuff
-
                 if (Plugin.Config.EnableEcon && Plugin.Config.PerTransfer && Plugin.Config.PerBlock) {
                     Log.Warn("Invalid econ setup");
                     Context.Respond("Invalid econ setup - please notify an admin.");
@@ -143,23 +138,21 @@ namespace SwitchMe {
                     Context.Player.TryGetBalanceInfo(out balance);
                     long mathResult = (balance - withdraw);
                     Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
-                    Commands commands = new Commands(Plugin, Context);
-                    if (!commands.Confirm(i)) {
+                    CurrentCooldown cooldown = new CurrentCooldown(Plugin, Context);
+                    //verify that user wants to go ahead with transfer.
+                    if (!cooldown.Confirm(i)) {
                         if (mathResult < 0) {
                             Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
                             Context.Respond("Not enough funds for transfer");
                             return false;
                         }
-
                         Context.Player.RequestChangeBalance(-withdraw);
                     }
                 }
                 MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
                 builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
-
                 bool worked = MyObjectBuilderSerializer.SerializeXML(path, false, builderDefinition);
-
-                Log.Fatal("exported " + path + " " + worked);
+                Log.Debug("exported " + path + " " + worked);
                 return true;
 
             } catch (Exception e) {
