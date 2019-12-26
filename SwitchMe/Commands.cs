@@ -215,6 +215,7 @@ namespace SwitchMe {
             ip += ":" + port;
             if (ip == null || name == null || port == null) {
                 Context.Respond("Invalid Configuration!");
+                return;
             }
 
 
@@ -229,6 +230,7 @@ namespace SwitchMe {
 
             if (existanceCheck != "1") {
                 Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
+                return;
             }
 
             if (!Plugin.CheckStatus(target)) {
@@ -256,10 +258,9 @@ namespace SwitchMe {
             Context.Respond("Slot Checking...");
             Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
             if (maxcheck > maxi) {
-                Context.Respond("Cannot switch, not enough slots available");
+                Log.Warn("Not enough slots available.");
+                return;
             }
-            Context.Respond("Slot checking passed!");
-
             var p = Context.Player;
             var parent = p.Character?.Parent;
             if (parent == null) {
@@ -267,8 +268,6 @@ namespace SwitchMe {
             if (parent is MyShipController sc) {
                 sc.RemoveUsers(false);
             }
-
-
             try {
 
                 string externalIP = Utilities.CreateExternalIP(Plugin.Config);
@@ -288,19 +287,17 @@ namespace SwitchMe {
                 }
 
                 if (pagesource == "0") {
-
                     if (!await new VoidManager(Plugin, Context).SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target))
                     {
                         return;
                     }
                     Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
-                } else {
-
+                } 
+                else {
                     Log.Fatal(pagesource);
                     Context.Respond("Cannot transfer! You have a transfer ready to be recieved!");
                     return;
                 }
-
             } catch (Exception e) {
                 Log.Fatal(e, e.Message);
                 Context.Respond("Failure");

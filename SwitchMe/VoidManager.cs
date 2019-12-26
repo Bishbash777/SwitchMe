@@ -310,10 +310,8 @@ namespace SwitchMe {
                 Context.Respond("Slot Checking...");
                 Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
                 if (maxcheck > maxi) {
-                    Context.Respond("Cannot switch, not enough slots available");
                     return;
                 }
-                Context.Respond("Slot checking passed!");
 
 
                 /// Connection phase

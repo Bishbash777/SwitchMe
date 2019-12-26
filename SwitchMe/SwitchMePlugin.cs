@@ -273,7 +273,6 @@ namespace SwitchMe {
                     Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
                 }
             }
-
             return null;
         }
 
