@@ -49,7 +49,7 @@
         <RadioButton GroupName="block" IsChecked="{Binding BlockDisallow}" Content="Disallow transfers with Certain Blocks" Margin="28,0,0,0"/>
         <StackPanel Orientation="Horizontal" Margin="28,0,0,0">
             <Label Content="Subtypes to whitelist/blacklist:"/>
-            <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding SubTypes}" />
+            <TextBox Width="278" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding SubTypes}" />
         </StackPanel>
         <Label Content="Seperate by - (e.g: SmallBlockSmallThrust-LargeBlockSmallThrust)" FontSize="9" Margin="28,0,0,0" />
 
