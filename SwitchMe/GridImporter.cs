@@ -114,14 +114,30 @@ namespace SwitchMe {
                 definition.Id = new MyDefinitionId(new MyObjectBuilderType(typeof(MyObjectBuilder_PrefabDefinition)), gridTarget);
                 definition.CubeGrids = objectBuilders.Select(x => (MyObjectBuilder_CubeGrid)x.Clone()).ToArray();
                 long i = 0;
-                /* Reset ownership as it will be different on the new server anyway */
+                bool BlockCheck = false;
+                string SubTypes = Plugin.Config.SubTypes;
+                string[] SubTypesArray = SubTypes.Split('-');
+                /* Reset ownership as it will be different on the new server anyway and chceck to see if any listed blocks are included*/
                 foreach (MyObjectBuilder_CubeGrid cubeGrid in definition.CubeGrids) {
                     foreach (MyObjectBuilder_CubeBlock cubeBlock in cubeGrid.CubeBlocks) {
                         cubeBlock.Owner = 0L;
                         cubeBlock.BuiltBy = 0L;
                         i++;
+                        if (SubTypesArray.Contains(cubeBlock.SubtypeId.ToString())) {
+                            BlockCheck = true;
+                        }
                     }
                 }
+                //Block checking;
+                if (Plugin.Config.EnableBlockEnforcement && Plugin.Config.BlockAllow && !BlockCheck) {
+                    Context.Respond("You do not have the required block for Switching.");
+                    return false;
+                }
+                if (Plugin.Config.EnableBlockEnforcement && Plugin.Config.BlockDisallow && BlockCheck) {
+                    Context.Respond("You have disallowed blocks on your grid!");
+                    return false;
+                }
+
                 //Economy stuff
                 if (Plugin.Config.EnableEcon && Plugin.Config.PerTransfer && Plugin.Config.PerBlock) {
                     Log.Warn("Invalid econ setup");

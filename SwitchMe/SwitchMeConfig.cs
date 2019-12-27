@@ -49,7 +49,19 @@ namespace SwitchMe {
         private long _transferCost = 30;
         public long TransferCost { get => _transferCost; set => SetValue(ref _transferCost, value); }
 
-        private int _cooldownInSeconds = 15 * 60; //15 Minutes
+        private bool _enableBlockEnforcement = false;
+        public bool EnableBlockEnforcement { get => _enableBlockEnforcement; set => SetValue(ref _enableBlockEnforcement, value); }
+
+        private bool _blockAllow = false;
+        public bool BlockAllow { get => _blockAllow; set => SetValue(ref _blockAllow, value); }
+
+        private bool _blockDisllow = false;
+        public bool BlockDisallow { get => _blockDisllow; set => SetValue(ref _blockDisllow, value); }
+
+        private string _subTypes = "";
+        public string SubTypes { get => _subTypes; set => SetValue(ref _subTypes, value); }
+
+        private int _cooldownInSeconds = 5 * 60; //15 Minutes
         public int ConfirmationInSeconds { get => _confirmationInSeconds; set => SetValue(ref _confirmationInSeconds, value); }
 
         private int _confirmationInSeconds = 30; //30 Seconds

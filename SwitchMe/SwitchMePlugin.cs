@@ -425,7 +425,7 @@ namespace SwitchMe {
                         { "currentplayers", currentPlayers },
                         { "maxplayers", maxPlayers },
                         { "serverip", currentIp},
-                        { "verion", "1.2.9"},
+                        { "verion", "1.2.9-Test-build"},
                         { "bindKey", Config.LocalKey},
                         { "inbound", Inbound },
                         { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName }
