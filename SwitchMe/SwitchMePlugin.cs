@@ -77,12 +77,38 @@ namespace SwitchMe {
             }
         }
 
-        private void Multibase_PlayerJoined(IPlayer obj) {
-
-            if (!Config.Enabled)
+        private async void Multibase_PlayerJoined(IPlayer obj) {
+            if (!Config.Enabled) 
                 return;
+            bool SwitchConnection = await CheckConnection(obj);
+            if (!SwitchConnection)
+                return;
+
+            Log.Info("Player connected - Starting SwitchMe handle");
+
         }
 
+        public async Task<bool> CheckConnection(IPlayer player) {
+            string pagesource;
+            using (HttpClient client = new HttpClient()) {
+                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("BindKey", Config.LocalKey),
+                    new KeyValuePair<string, string>("ConnectionCheck", player.SteamId.ToString())
+                };
+                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/api/index.php", content);
+                HttpResponseMessage response = httpResponseMessage;
+                httpResponseMessage = null;
+                string text = await response.Content.ReadAsStringAsync();
+                pagesource = text;
+            }
+
+            if (pagesource.Contains("connecting=false")) {
+                return false;
+            }
+            return true ;
+        }
         public void Delete(string entityName) {
 
             var name = entityName;

@@ -194,16 +194,16 @@ namespace SwitchMe {
                     using (HttpClient clients = new HttpClient())
                     {
                         List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                    {
-                        new KeyValuePair<string, string>("steamID", Context.Player.SteamUserId.ToString()),
-                        new KeyValuePair<string, string>("targetIP", ip ),
-                        new KeyValuePair<string, string>("fileName", Context.Player.SteamUserId + "-" + gridTarget ),
-                        new KeyValuePair<string, string>("bindKey", Plugin.Config.LocalKey ),
-                        new KeyValuePair<string, string>("targetPOS", pos ),
-                        new KeyValuePair<string, string>("gridName", gridTarget ),
-                        new KeyValuePair<string, string>("key", Plugin.Config.ActivationKey ),
-                        new KeyValuePair<string, string>("currentIP", currentIp)
-                    };
+                        {
+                            new KeyValuePair<string, string>("steamID", Context.Player.SteamUserId.ToString()),
+                            new KeyValuePair<string, string>("targetIP", ip ),
+                            new KeyValuePair<string, string>("fileName", Context.Player.SteamUserId + "-" + gridTarget ),
+                            new KeyValuePair<string, string>("bindKey", Plugin.Config.LocalKey ),
+                            new KeyValuePair<string, string>("targetPOS", pos ),
+                            new KeyValuePair<string, string>("gridName", gridTarget ),
+                            new KeyValuePair<string, string>("key", Plugin.Config.ActivationKey ),
+                            new KeyValuePair<string, string>("currentIP", currentIp)
+                        };
                         FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
                         HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/gridHandle.php", content);
                         HttpResponseMessage response = httpResponseMessage;
@@ -211,8 +211,16 @@ namespace SwitchMe {
                         string text = await response.Content.ReadAsStringAsync();
                     }
 
+                    using (HttpClient client = new HttpClient()) {
+                        List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                        {
+                            new KeyValuePair<string, string>("BindKey", Plugin.Config.LocalKey),
+                            new KeyValuePair<string, string>("AddConnection", Context.Player.SteamUserId.ToString())
+                        };
+                        FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                        HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/api/index.php", content);
+                    }
                     Plugin.Delete(Context.Player.DisplayName);
-
                     return true;
 
                 } else {
