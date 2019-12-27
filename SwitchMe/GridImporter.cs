@@ -137,7 +137,6 @@ namespace SwitchMe {
                     Context.Respond("You have disallowed blocks on your grid!");
                     return false;
                 }
-
                 //Economy stuff
                 if (Plugin.Config.EnableEcon && Plugin.Config.PerTransfer && Plugin.Config.PerBlock) {
                     Log.Warn("Invalid econ setup");
