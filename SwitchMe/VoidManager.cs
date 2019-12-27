@@ -57,7 +57,6 @@ namespace SwitchMe {
                 }
 
                 Directory.CreateDirectory("ExportedGrids");
-
                 var path = string.Format(ExportPath, Context.Player.SteamUserId + "-" + gridTarget);
                 if (File.Exists(path)) {
                     Context.Respond("Export file already exists.");
@@ -206,7 +205,7 @@ namespace SwitchMe {
                         new KeyValuePair<string, string>("currentIP", currentIp)
                     };
                         FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                        HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
+                        HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/gridHandle.php", content);
                         HttpResponseMessage response = httpResponseMessage;
                         httpResponseMessage = null;
                         string text = await response.Content.ReadAsStringAsync();

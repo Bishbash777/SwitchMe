@@ -224,7 +224,7 @@ namespace SwitchMe {
             bool paired = await Plugin.CheckKeyAsync(target);
 
             if (target.Length < 1) {
-                Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
+                Context.Respond("Unknown Server. Please use '!switch list' to see a list of validated servers!");
                 return;
             }
 
@@ -233,19 +233,19 @@ namespace SwitchMe {
                 return;
             }
 
+            if (!paired) {
+                Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
+                return;
+            }
+
             if (!Plugin.CheckStatus(target)) {
-                Context.Respond("Target server is offline, preventing switch");
+                Context.Respond("Target server is offline... preventing switch");
                 return;
             }
 
             bool InboundCheck = await Plugin.CheckInboundAsync(target);
             if (!InboundCheck) {
                 Context.Respond("The target server does not allow inbound transfers");
-                return;
-            }
-
-            if (!paired) {
-                Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
                 return;
             }
 
@@ -259,6 +259,7 @@ namespace SwitchMe {
             Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
             if (maxcheck > maxi) {
                 Log.Warn("Not enough slots available.");
+                Context.Respond("No slots available.");
                 return;
             }
             var p = Context.Player;
