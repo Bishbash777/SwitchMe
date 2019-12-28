@@ -257,7 +257,7 @@ namespace SwitchMe {
             int maxcheck = 1 + currentRemotePlayers;
             Context.Respond("Slot Checking...");
             Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-            if (maxcheck > maxi) {
+            if (maxcheck > maxi && !Context.Player.IsPromoted) {
                 Log.Warn("Not enough slots available.");
                 Context.Respond("No slots available.");
                 return;
@@ -279,7 +279,6 @@ namespace SwitchMe {
                 using (WebClient client = new WebClient()) {
                     NameValueCollection postData = new NameValueCollection()
                     {
-                        //order: {"parameter name", "parameter value"}
                         {"steamID", Context.Player.SteamUserId + ""},
                         {"currentIP", currentIp },
                         {"gridCheck", ""}

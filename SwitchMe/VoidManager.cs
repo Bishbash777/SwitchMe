@@ -219,6 +219,10 @@ namespace SwitchMe {
                         };
                         FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
                         HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/api/index.php", content);
+                        HttpResponseMessage response = httpResponseMessage;
+                        httpResponseMessage = null;
+                        string text = await response.Content.ReadAsStringAsync();
+                        Log.Warn(text);
                     }
                     Plugin.Delete(Context.Player.DisplayName);
                     return true;
@@ -228,7 +232,7 @@ namespace SwitchMe {
                 }
 
             } catch (Exception e) {
-                Log.Fatal("Cannot upload grid: " + e.Message);
+                Log.Fatal("Cannot upload grid: " + e.ToString());
             }
 
             return false;

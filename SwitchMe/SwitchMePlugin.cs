@@ -9,6 +9,7 @@ using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using Torch.API.Plugins;
 using Torch.Session;
+using System.Runtime;
 using System.Windows.Controls;
 using Torch.API.Managers;
 using System;
@@ -17,9 +18,12 @@ using System.Collections.Specialized;
 using System.Net;
 using Torch.API.Session;
 using Torch.API;
+using VRageMath;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using Sandbox.Game;
+using Sandbox.ModAPI.Ingame;
 
 namespace SwitchMe {
 
@@ -57,7 +61,7 @@ namespace SwitchMe {
             var configFile = Path.Combine(StoragePath, "SwitchMe.cfg");
 
             try {
-
+                LoadSEDB();
                 StartTimer();
 
                 _config = Persistent<SwitchMeConfig>.Load(configFile);
@@ -76,19 +80,29 @@ namespace SwitchMe {
                 Save();
             }
         }
-
+        
+        
         private async void Multibase_PlayerJoined(IPlayer obj) {
+            Log.Info( obj.SteamId.ToString() + " connected - Starting SwitchMe handle");
             if (!Config.Enabled) 
                 return;
             bool SwitchConnection = await CheckConnection(obj);
             if (!SwitchConnection)
                 return;
+            Random random = new Random();
 
-            Log.Info("Player connected - Starting SwitchMe handle");
-
+            Vector3D VectorCords = new Vector3D(random.Next(), random.Next(), random.Next());
+            MatrixD matrix = new MatrixD(MatrixD.CreateTranslation(VectorCords));
+            Vector3 velocity = new Vector3(0);
+            IMyEntity spawnedby = null;
+            MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                MyAPIGateway.Session.Player.SpawnAt(matrix, velocity , spawnedby);
+            });
         }
 
+
         public async Task<bool> CheckConnection(IPlayer player) {
+            Log.Warn("Checking inbound conneciton for " + player.SteamId);
             string pagesource;
             using (HttpClient client = new HttpClient()) {
                 List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
@@ -102,6 +116,7 @@ namespace SwitchMe {
                 httpResponseMessage = null;
                 string text = await response.Content.ReadAsStringAsync();
                 pagesource = text;
+                Log.Warn(pagesource);
             }
 
             if (pagesource.Contains("connecting=false")) {
@@ -343,7 +358,15 @@ namespace SwitchMe {
             }
 
             if (Torch.CurrentSession != null) {
-                _multibase.PlayerJoined += Multibase_PlayerJoined;
+                if (_multibase == null) {
+                    _multibase = Torch.CurrentSession.Managers.GetManager<IMultiplayerManagerBase>();
+                    if (_multibase == null) {
+                        Log.Warn("No join/leave manager loaded!");
+                    }
+                    else {
+                        _multibase.PlayerJoined += Multibase_PlayerJoined;
+                    }
+                }
                 InitPost();
             }
         }
@@ -451,7 +474,7 @@ namespace SwitchMe {
                         { "currentplayers", currentPlayers },
                         { "maxplayers", maxPlayers },
                         { "serverip", currentIp},
-                        { "verion", "1.2.9-Test-build"},
+                        { "verion", "1.3.0-Test-build-Framework"},
                         { "bindKey", Config.LocalKey},
                         { "inbound", Inbound },
                         { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName }
