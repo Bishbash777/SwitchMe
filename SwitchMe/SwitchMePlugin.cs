@@ -24,6 +24,13 @@ using System.IO;
 using System.Net.Http;
 using Sandbox.Game;
 using Sandbox.ModAPI.Ingame;
+using VRage.Utils;
+using VRage.Network;
+using Sandbox.Engine.Multiplayer;
+using Torch.Utils;
+using System.Collections;
+using VRage.Collections;
+using VRage.Replication;
 
 namespace SwitchMe {
 
@@ -32,7 +39,20 @@ namespace SwitchMe {
         public SwitchMeConfig Config => _config?.Data;
 
         private Persistent<SwitchMeConfig> _config;
+#pragma warning disable 649
+        [ReflectedGetter(Name = "m_clientStates")]
+        private static Func<MyReplicationServer, IDictionary> _clientStates;
 
+        private const string CLIENT_DATA_TYPE_NAME = "VRage.Network.MyClient, VRage";
+        [ReflectedGetter(TypeName = CLIENT_DATA_TYPE_NAME, Name = "Replicables")]
+        private static Func<object, MyConcurrentDictionary<IMyReplicable, MyReplicableClientData>> _replicables;
+
+        [ReflectedMethod(Name = "RemoveForClient", OverrideTypeNames = new[] { null, CLIENT_DATA_TYPE_NAME, null })]
+        private static Action<MyReplicationServer, IMyReplicable, object, bool> _removeForClient;
+
+        [ReflectedMethod(Name = "ForceReplicable")]
+        private static Action<MyReplicationServer, IMyReplicable, Endpoint> _forceReplicable;
+#pragma warning restore 649
         private UserControl _control;
         public static string ip;
         private Timer _timer;
@@ -40,10 +60,17 @@ namespace SwitchMe {
         private TorchSessionManager _sessionManager;
         private IMultiplayerManagerBase _multibase;
 
+        private readonly List<long> player_ids_to_spawn = new List<long>();
+        private ulong Steamid;
+        private readonly List<IMyPlayer> all_players = new List<IMyPlayer>();
+        private readonly Dictionary<long, IMyPlayer> current_player_ids = new Dictionary<long, IMyPlayer>();
+        private readonly List<long> clear_ids = new List<long>();
+        public bool connecting = false;
+        private Vector3D spawn_vector_location = Vector3D.One;
+        private MatrixD spawn_matrix = MatrixD.Identity;
+        private int _timerSpawn = 0;
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
-
         public Dictionary<long, CurrentCooldown> CurrentCooldownMap { get; } = new Dictionary<long, CurrentCooldown>();
-
         public Dictionary<long, CurrentCooldown> ConfirmationsMap { get; } = new Dictionary<long, CurrentCooldown>();
 
         public long Cooldown { get { return Config.CooldownInSeconds * 1000; } }
@@ -55,28 +82,19 @@ namespace SwitchMe {
         public void Save() => _config?.Save();
 
         public override void Init(ITorchBase torch) {
-
             base.Init(torch);
-
             var configFile = Path.Combine(StoragePath, "SwitchMe.cfg");
-
             try {
                 LoadSEDB();
                 StartTimer();
-
                 _config = Persistent<SwitchMeConfig>.Load(configFile);
                 timerStart = new DateTime(0);
-
             } catch (Exception e) {
                 Log.Warn(e);
             }
-
             if (_config?.Data == null) {
-
                 Log.Info("Creating default confuration file, because none was found!");
-
                 _config = new Persistent<SwitchMeConfig>(configFile, new SwitchMeConfig());
-
                 Save();
             }
         }
@@ -89,17 +107,76 @@ namespace SwitchMe {
             bool SwitchConnection = await CheckConnection(obj);
             if (!SwitchConnection)
                 return;
-            Random random = new Random();
-
-            Vector3D VectorCords = new Vector3D(random.Next(), random.Next(), random.Next());
-            MatrixD matrix = new MatrixD(MatrixD.CreateTranslation(VectorCords));
-            Vector3 velocity = new Vector3(0);
-            IMyEntity spawnedby = null;
-            MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-                MyAPIGateway.Session.Player.SpawnAt(matrix, velocity , spawnedby);
-            });
+            Steamid = obj.SteamId;
+            connecting = true;
         }
 
+        public override void Update() {
+
+            _timerSpawn += 1;
+            if (_timerSpawn % 60 == 0) {
+
+                all_players.Clear();
+                current_player_ids.Clear();
+
+                MyAPIGateway.Multiplayer.Players.GetPlayers(all_players);
+                foreach (var player in all_players)
+                    current_player_ids.Add(player.IdentityId, player); //Refresh player list every second
+
+                clear_ids.Clear();
+
+                foreach (var player_id in player_ids_to_spawn) {
+
+                    if (!current_player_ids.ContainsKey(player_id))
+                        continue;
+
+                    if (current_player_ids[player_id].Character != null && current_player_ids[player_id].Controller?.ControlledEntity?.Entity != null) {
+
+                        clear_ids.Add(player_id); //Avoids spawning people who are in grids / Character already exists
+
+                    }
+                    else {
+
+                        spawn_matrix = MatrixD.CreateWorld(spawn_vector_location * MyUtils.GetRandomFloat(1f, 1000000f)); //Randomiser
+
+                        MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
+
+                        var playerEndpoint = new Endpoint(Steamid, 0);
+                        var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
+                        var clientDataDict = _clientStates.Invoke(replicationServer);
+                        object clientData;
+                        try {
+                            clientData = clientDataDict[playerEndpoint];
+                        }
+                        catch {
+                            return;
+                        }
+                        var clientReplicables = _replicables.Invoke(clientData);
+
+                        var replicableList = new List<IMyReplicable>(clientReplicables.Count);
+                        foreach (var pair in clientReplicables)
+                            replicableList.Add(pair.Key);
+
+                        foreach (var replicable in replicableList) {
+                            _removeForClient.Invoke(replicationServer, replicable, clientData, true);
+                            _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
+                        }
+                        clear_ids.Add(player_id);
+                    }
+                }
+
+                foreach (var clear_id in clear_ids) {
+                    player_ids_to_spawn.Remove(clear_id); //Cleanup
+                }
+            }
+        }
+
+        private void PlayerConnect(long playerId) {
+
+            if (!player_ids_to_spawn.Contains(playerId) && connecting)
+                Log.Info("Spawning player");
+                player_ids_to_spawn.Add(playerId);
+        }
 
         public async Task<bool> CheckConnection(IPlayer player) {
             Log.Warn("Checking inbound conneciton for " + player.SteamId);
@@ -120,6 +197,7 @@ namespace SwitchMe {
             }
 
             if (pagesource.Contains("connecting=false")) {
+                connecting = false;
                 return false;
             }
             return true ;
@@ -180,11 +258,13 @@ namespace SwitchMe {
 
                 case TorchSessionState.Loaded:
                     //load
+                    MyVisualScriptLogicProvider.PlayerConnected += PlayerConnect;
                     LoadSEDB();
                     break;
 
                 case TorchSessionState.Unloaded:
                     //unload
+                    MyVisualScriptLogicProvider.PlayerConnected -= PlayerConnect;
                     timerStart = new DateTime(0);
                     UnloadSEDB();
                     break;
@@ -286,10 +366,8 @@ namespace SwitchMe {
         }
 
         public string Debug() {
-
             string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-
             if (Config.LocalKey == "10551Debug") {
 
                 string pagesource;
