@@ -261,7 +261,7 @@ namespace SwitchMe {
             return MyEntities.FindFreePlace(Context.Player.GetPosition(), radius);
         }
 
-        private bool UpdateGridsPosition(MyObjectBuilder_CubeGrid[] grids, Vector3D newPosition) {
+        public bool UpdateGridsPosition(MyObjectBuilder_CubeGrid[] grids, Vector3D newPosition) {
 
             bool firstGrid = true;
             double deltaX = 0;

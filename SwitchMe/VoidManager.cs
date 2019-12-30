@@ -88,13 +88,12 @@ namespace SwitchMe {
             return false;
         }
 
-        public async Task<Tuple<string, string, Vector3D>> DownloadGridAsync(string currentIp) {
+        public async Task<Tuple<string, string, Vector3D>> DownloadGridAsync(string currentIp, ulong steamid, string POS) {
 
             Directory.CreateDirectory("ExportedGrids");
             using (WebClient client = new WebClient()) {
 
                 Vector3D newPos;
-                string POS = "";
                 string POSsource = "";
                 string filename;
                 string targetFile;
@@ -102,7 +101,7 @@ namespace SwitchMe {
                 {
                     List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                     {
-                        new KeyValuePair<string, string>("steamID", Context.Player.SteamUserId.ToString()),
+                        new KeyValuePair<string, string>("steamID", steamid.ToString()),
                         new KeyValuePair<string, string>("posCheck", "1"),
                         new KeyValuePair<string, string>("currentIP", currentIp)
                     };
@@ -114,8 +113,6 @@ namespace SwitchMe {
                     POSsource = text;
                 }
 
-
-                POS = Context.Player.GetPosition().ToString();
 
                 var config = Plugin.Config;
 
@@ -132,7 +129,7 @@ namespace SwitchMe {
                 {
                     List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                     {
-                        new KeyValuePair<string, string>("steamID", Context.Player.SteamUserId.ToString()),
+                        new KeyValuePair<string, string>("steamID", steamid.ToString()),
                         new KeyValuePair<string, string>("currentIP", currentIp)
                     };
                     FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);

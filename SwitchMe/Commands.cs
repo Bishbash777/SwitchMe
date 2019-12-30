@@ -131,7 +131,7 @@ namespace SwitchMe {
             VoidManager voidManager = new VoidManager(Plugin, Context);
 
             
-            Tuple<string, string, Vector3D> data = await voidManager.DownloadGridAsync(currentIp);
+            Tuple<string, string, Vector3D> data = await voidManager.DownloadGridAsync(currentIp, Context.Player.SteamUserId, Context.Player.GetPosition().ToString());
 
             if (data == null)
             {

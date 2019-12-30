@@ -8,8 +8,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Torch.Commands;
+using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Groups;
+using VRageMath;
 
 namespace SwitchMe {
 
