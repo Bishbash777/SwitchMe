@@ -264,9 +264,7 @@ namespace SwitchMe {
             }
         }
 
-        private async 
-        Task
-recovery(long playerid, Vector3D spawn_vector_location) {
+        private async Task recovery(long playerid, Vector3D spawn_vector_location) {
             ulong steamid = MySession.Static.Players.TryGetSteamId(playerid);
             connecting.Remove(steamid);
 
@@ -307,6 +305,9 @@ recovery(long playerid, Vector3D spawn_vector_location) {
                     }
                 });
                 Log.Info("Grid has been pulled from the void!");
+                string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+                string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+                DeleteFromWeb(currentIp);
                 await RemoveConnection(steamid);
 
                 return ;
@@ -788,7 +789,7 @@ recovery(long playerid, Vector3D spawn_vector_location) {
                     { "currentIP", ip}
                 };
 
-                pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/recovery.php", postData));
+                client.UploadValues("http://switchplugin.net/recovery.php", postData);
             }
         }
 
