@@ -25,6 +25,7 @@ using Torch.Utils;
 using System.Collections;
 using System.Threading.Tasks;
 using Sandbox.ModAPI;
+using System.Net.Http;
 
 namespace SwitchMe {
 
@@ -148,6 +149,7 @@ namespace SwitchMe {
                     Plugin.DeleteFromWeb(currentIp);
                 }
             });
+            await RemoveConnection(Context.Player.SteamUserId);
             var playerEndpoint = new Endpoint(Context.Player.SteamUserId, 0);
             var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
             var clientDataDict = _clientStates.Invoke(replicationServer);
@@ -169,6 +171,19 @@ namespace SwitchMe {
 
                 _removeForClient.Invoke(replicationServer, replicable, clientData, true);
                 _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
+            }
+        }
+
+        public async Task RemoveConnection(ulong player) {
+            Log.Warn("Removing conneciton flag for " + player);
+            using (HttpClient client = new HttpClient()) {
+                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("BindKey", Plugin.Config.LocalKey),
+                    new KeyValuePair<string, string>("RemoveConnection", player.ToString())
+                };
+                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                await client.PostAsync("http://switchplugin.net/api/index.php", content);
             }
         }
 
@@ -257,50 +272,52 @@ namespace SwitchMe {
             int maxcheck = 1 + currentRemotePlayers;
             Context.Respond("Slot Checking...");
             Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-            if (maxcheck > maxi && !Context.Player.IsPromoted) {
+            if (maxcheck > maxi && !Context.Player.IsAdmin) {
                 Log.Warn("Not enough slots available.");
                 Context.Respond("No slots available.");
                 return;
             }
-            var p = Context.Player;
-            var parent = p.Character?.Parent;
-            if (parent == null) {
-            }
-            if (parent is MyShipController sc) {
-                sc.RemoveUsers(false);
-            }
-            try {
+            var player = MySession.Static.Players.GetPlayerByName(Context.Player.DisplayName);
+            if (player != null) {
+                /* If he is online we check if he is currently seated. If he is eject him. */
+                if (player?.Controller.ControlledEntity is MyCockpit controller) {
+                    MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                        controller.Use();
+                    });
+                }
+                try {
 
-                string externalIP = Utilities.CreateExternalIP(Plugin.Config);
-                string pagesource = "";
-                string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
+                    string externalIP = Utilities.CreateExternalIP(Plugin.Config);
+                    string pagesource = "";
+                    string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
 
-                /* Not sure what this does but it does not belong here */
-                using (WebClient client = new WebClient()) {
-                    NameValueCollection postData = new NameValueCollection()
-                    {
+                    /* Not sure what this does but it does not belong here */
+                    using (WebClient client = new WebClient()) {
+                        NameValueCollection postData = new NameValueCollection()
+                        {
                         {"steamID", Context.Player.SteamUserId + ""},
                         {"currentIP", currentIp },
                         {"gridCheck", ""}
                     };
-                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
-                }
+                        pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
+                    }
 
-                if (pagesource == "0") {
-                    if (!await new VoidManager(Plugin, Context).SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target))
-                    {
+                    if (pagesource == "0") {
+                        if (!await new VoidManager(Plugin, Context).SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target)) {
+                            return;
+                        }
+                        Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
+                    }
+                    else {
+                        Log.Fatal(pagesource);
+                        Context.Respond("Cannot transfer! You have a transfer ready to be recieved!");
                         return;
                     }
-                    Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
-                } 
-                else {
-                    Log.Fatal(pagesource);
-                    Context.Respond("Cannot transfer! You have a transfer ready to be recieved!");
-                    return;
                 }
-            } catch (Exception e) {
-                Log.Fatal(e, e.Message);
-                Context.Respond("Failure");
+                catch (Exception e) {
+                    Log.Fatal(e, e.Message);
+                    Context.Respond("Failure");
+                }
             }
         }
 

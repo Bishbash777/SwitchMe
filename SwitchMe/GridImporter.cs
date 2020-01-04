@@ -3,11 +3,14 @@ using Sandbox;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Cube;
+using Sandbox.Game.World;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Torch;
 using Torch.Commands;
 using VRage.Game;
+using VRage.Game.ModAPI;
 using VRage.Groups;
 using VRage.ModAPI;
 using VRage.Network;
@@ -22,6 +25,7 @@ namespace SwitchMe {
 
         private readonly SwitchMePlugin Plugin;
         private readonly CommandContext Context;
+        private MyPlayer player;
 
         public GridImporter(SwitchMePlugin Plugin, CommandContext Context) {
             this.Plugin = Plugin;
@@ -60,7 +64,7 @@ namespace SwitchMe {
                 var grids = prefab.CubeGrids;
 
                 /* Where do we want to paste the grids? Lets find out. */
-                var pos = FindPastePosition(grids);
+                var pos = FindPastePosition(grids, newpos);
                 if (pos == null) {
                     Context.Respond("No free place.");
                     return false;
@@ -77,13 +81,7 @@ namespace SwitchMe {
                     if (MyEntities.CreateFromObjectBuilderAndAdd(grid, true) is MyCubeGrid cubeGrid)
                         FixOwnerAndAuthorShip(cubeGrid, playerId);
                 }
-                if (Plugin.Config.EnabledMirror || Plugin.Config.LockedTransfer) {
-
-                    targetEntity.SetPosition(newpos);
-                    Context.Respond("***Transporting***");
-                }
                 Context.Respond("Grid has been pulled from the void!");
-
                 return true;
             }
 
@@ -181,6 +179,8 @@ namespace SwitchMe {
 
             HashSet<long> authors = new HashSet<long>();
             HashSet<MySlimBlock> blocks = new HashSet<MySlimBlock>(myCubeGrid.GetBlocks());
+            MyPlayer id = MySession.Static.Players.TryGetPlayerBySteamId(Context.Player.SteamUserId);
+            MySession.Static.Players.TryGetPlayerById(id.Id, out player);
 
             foreach (MySlimBlock block in blocks) {
 
@@ -204,13 +204,18 @@ namespace SwitchMe {
                     block.AddAuthorship();
                 }
                 authors.Add(block.BuiltBy);
+
+                IMyCharacter character = player.Character;
+
+                if (cubeBlock is Sandbox.ModAPI.IMyCockpit cockpit && cockpit.CanControlShip)
+                    cockpit.AttachPilot(character);
             }
 
             foreach (long author in authors)
                 MyMultiplayer.RaiseEvent(myCubeGrid, x => new Action<long, long>(x.TransferBlocksBuiltByID), author, playerId, new EndpointId());
         }
 
-        private Vector3D? FindPastePosition(MyObjectBuilder_CubeGrid[] grids) {
+        private Vector3D? FindPastePosition(MyObjectBuilder_CubeGrid[] grids, Vector3D pos) {
 
             Vector3? vector = null;
             float radius = 0F;
@@ -252,11 +257,10 @@ namespace SwitchMe {
              * used to determine the perfect place to paste the grids to. 
              */
 
-            //if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror || Plugin.Config.EnabledMirror)
-            //{
-            //    Vector3D.TryParse("{X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord + "}", out Vector3D gps);
-            //    return MyEntities.FindFreePlace(gps, 100F);
-            //}
+            if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror || Plugin.Config.EnabledMirror)
+            {
+                return MyEntities.FindFreePlace(pos, radius);
+            }
 
             return MyEntities.FindFreePlace(Context.Player.GetPosition(), radius);
         }

@@ -22,7 +22,7 @@ namespace SwitchMe {
 
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
-        private readonly string ExportPath = "ExportedGrids\\{0}.xml";
+        private readonly string ExportPath = "SwitchTemp\\{0}.xml";
 
         private readonly SwitchMePlugin Plugin;
         private readonly CommandContext Context;
@@ -56,14 +56,8 @@ namespace SwitchMe {
                     return false;
                 }
 
-                Directory.CreateDirectory("ExportedGrids");
+                Directory.CreateDirectory("SwitchTemp");
                 var path = string.Format(ExportPath, Context.Player.SteamUserId + "-" + gridTarget);
-                if (File.Exists(path)) {
-                    Context.Respond("Export file already exists.");
-                    return false;
-                }
-
-                Log.Warn("Exproted");
 
                 if (!new GridImporter(Plugin, Context).SerializeGridsToPath(relevantGroup, gridTarget, path)) {
                     return false;
@@ -90,7 +84,7 @@ namespace SwitchMe {
 
         public async Task<Tuple<string, string, Vector3D>> DownloadGridAsync(string currentIp, ulong steamid, string POS) {
 
-            Directory.CreateDirectory("ExportedGrids");
+            Directory.CreateDirectory("SwitchTemp");
             using (WebClient client = new WebClient()) {
 
                 Vector3D newPos;
@@ -116,9 +110,9 @@ namespace SwitchMe {
 
                 var config = Plugin.Config;
 
-                if (config.LockedTransfer && config.EnabledMirror)
+                if (config.LockedTransfer && config.EnabledPositioning)
                     POS = "{X:" + config.XCord + " Y:" + config.YCord + " Z:" + config.ZCord + "}";
-                else if (config.EnabledMirror && !config.LockedTransfer)
+                else if (config.EnabledMirror && config.EnabledPositioning)
                     POS = POSsource.Substring(0, POSsource.IndexOf("^"));
 
                 Vector3D.TryParse(POS, out Vector3D gps);
@@ -212,6 +206,8 @@ namespace SwitchMe {
                         List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                         {
                             new KeyValuePair<string, string>("BindKey", Plugin.Config.LocalKey),
+                            new KeyValuePair<string, string>("CurrentIP", currentIp),
+                            new KeyValuePair<string, string>("TargetIP", serverTarget),
                             new KeyValuePair<string, string>("AddConnection", Context.Player.SteamUserId.ToString())
                         };
                         FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);

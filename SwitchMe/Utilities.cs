@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Torch.Commands;
@@ -18,7 +19,8 @@ namespace SwitchMe {
     public class Utilities {
 
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
-
+        private readonly SwitchMePlugin Plugin;
+        private readonly CommandContext Context;
         public static string CreateExternalIP(SwitchMeConfig Config) {
 
             if (MySandboxGame.ConfigDedicated.IP.Contains("0.0") || MySandboxGame.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))

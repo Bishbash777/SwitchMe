@@ -24,6 +24,8 @@ using System.IO;
 using System.Net.Http;
 using Sandbox.Game;
 using Sandbox.ModAPI.Ingame;
+using VRage.Game.ModAPI;
+using VRage.Groups;
 using VRage.Utils;
 using VRage.Network;
 using Sandbox.Engine.Multiplayer;
@@ -37,6 +39,7 @@ using Torch.Commands;
 using System.Linq;
 using VRage.Game;
 using Sandbox.Game.Entities.Cube;
+using Sandbox.Game.Entities.Character;
 
 namespace SwitchMe {
 
@@ -62,11 +65,12 @@ namespace SwitchMe {
         private TorchSessionManager _sessionManager;
         private IMultiplayerManagerBase _multibase;
         private readonly List<long> player_ids_to_spawn = new List<long>();
-        private ulong Steamid;
         private readonly List<IMyPlayer> all_players = new List<IMyPlayer>();
         private readonly Dictionary<long, IMyPlayer> current_player_ids = new Dictionary<long, IMyPlayer>();
+        private readonly Dictionary<ulong, string> target_file_list = new Dictionary<ulong, string>();
+        private readonly Dictionary<ulong, bool> connecting = new Dictionary<ulong, bool>();
         private readonly List<long> clear_ids = new List<long>();
-        public bool connecting = false;
+        //public bool connecting = false;
         private static Vector3D spawn_vector_location = Vector3D.One;
         private MatrixD spawn_matrix = MatrixD.Identity;
         private int _timerSpawn = 0;
@@ -79,6 +83,7 @@ namespace SwitchMe {
         /// <inheritdoc />
         public UserControl GetControl() => _control ?? (_control = new SwitchMeControl(this));
         public void Save() => _config?.Save();
+        MyPlayer player; 
 
         public override void Init(ITorchBase torch) {
             base.Init(torch);
@@ -96,25 +101,108 @@ namespace SwitchMe {
                 _config = new Persistent<SwitchMeConfig>(configFile, new SwitchMeConfig());
                 Save();
             }
-        }        
+        }
         private async void Multibase_PlayerJoined(IPlayer obj) {
-            Log.Info( obj.SteamId.ToString() + " connected - Starting SwitchMe handle");
-            if (!Config.Enabled) 
-                return;
-            bool SwitchConnection = await CheckConnection(obj);
-            if (!SwitchConnection) {
-                connecting = false;
+
+            if (Config.RecoverOnJoin && (!Config.EnabledMirror && !Config.LockedTransfer)) {
+                Log.Error("Invalid setup for onjoin spawning - please make sure a position option is selected");
                 return;
             }
-            Steamid = obj.SteamId;
-            connecting = true;
+
+
+            Log.Info( obj.SteamId.ToString() + " connected - Starting SwitchMe handle");
+            if (!Config.Enabled || !Config.RecoverOnJoin) 
+                return;
+            if (Config.XCord == null || Config.YCord == null || Config.ZCord == null) {
+                Log.Warn("Invalid GPS configuration - cancelling spawn operation");
+                return;
+            }
+            bool SwitchConnection = await CheckConnection(obj);
+            if (!SwitchConnection) {
+                return;
+            }
+
+
+            string source = "";
+            string filename = "";
+            string targetFile = "";
+            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+
+            using (HttpClient clients = new HttpClient()) {
+                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                {
+                        new KeyValuePair<string, string>("steamID",obj.SteamId.ToString()),
+                        new KeyValuePair<string, string>("currentIP", currentIp)
+                    };
+                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
+                HttpResponseMessage response = httpResponseMessage;
+                httpResponseMessage = null;
+                string text = await response.Content.ReadAsStringAsync();
+                source = text;
+            }
+
+
+            string existance = source.Substring(0, source.IndexOf(":"));
+            Directory.CreateDirectory(StoragePath + "SwitchTemp");
+            if (existance == "1") {
+                filename = source.Split(':').Last() + ".xml";
+                try {
+                    string remoteUri = "http://www.switchplugin.net/transportedGrids/" + filename;
+                    targetFile = "SwitchTemp\\" + filename;
+                    Log.Info("Downloading " + targetFile);
+                    WebClient myWebClient = new WebClient();
+                    myWebClient.DownloadFile(remoteUri, targetFile);
+                    target_file_list.Add(obj.SteamId, targetFile);
+                }
+                catch (Exception error) {
+                    Log.Fatal("Unable to download grid: " + error.ToString());
+                    return;
+                }
+            }
+            else {
+                Log.Info("Player has no grid in transit");
+                targetFile = null;
+                return;
+            }
+
+            string POS = "";
+            string POSsource = "";
+            using (HttpClient clients = new HttpClient()) {
+                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("steamID", obj.SteamId.ToString()),
+                    new KeyValuePair<string, string>("posCheck", "1"),
+                    new KeyValuePair<string, string>("currentIP", currentIp)
+                };
+                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
+                HttpResponseMessage response = httpResponseMessage;
+                httpResponseMessage = null;
+                string texts = await response.Content.ReadAsStringAsync();
+                POSsource = texts;
+                var config = Config;
+                if (config.LockedTransfer)
+                    POS = "{X:" + config.XCord + " Y:" + config.YCord + " Z:" + config.ZCord + "}";
+                else if (config.EnabledMirror)
+                    POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+                Vector3D.TryParse(POS, out Vector3D gps);
+                spawn_vector_location = gps;
+                Log.Info("Selected GPS: " + gps.ToString());
+            }
+
+
+            connecting.Add(obj.SteamId, true);
         }
         private void PlayerConnect(long playerId) {
-            if (!player_ids_to_spawn.Contains(playerId) && connecting)
+            ulong steamid = MySession.Static.Players.TryGetSteamId(playerId);
+            if (!player_ids_to_spawn.Contains(playerId) && connecting.ContainsKey(steamid)) {
                 Log.Info("Spawning player");
-            player_ids_to_spawn.Add(playerId);
+                player_ids_to_spawn.Add(playerId);
+            }
         }
-        public override void Update() {
+        public override async void Update() {
 
             _timerSpawn += 1;
             if (_timerSpawn % 60 == 0) {
@@ -125,6 +213,7 @@ namespace SwitchMe {
                 MyAPIGateway.Multiplayer.Players.GetPlayers(all_players);
                 foreach (var player in all_players)
                     current_player_ids.Add(player.IdentityId, player); //Refresh player list every second
+
 
                 clear_ids.Clear();
 
@@ -139,12 +228,14 @@ namespace SwitchMe {
 
                     }
                     else {
-                        if (connecting) {
-                            spawn_vector_location = (spawn_vector_location * MyUtils.GetRandomFloat(60000f, 100000f));
+                        string externalIP = Utilities.CreateExternalIP(Config);
+                        string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
+                        ulong steamid = MySession.Static.Players.TryGetSteamId(player_id);
+                        if (connecting[steamid] == true) {
                             spawn_matrix = MatrixD.CreateWorld(spawn_vector_location);
                             MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
-                            recovery(player_id, spawn_vector_location);
-                            var playerEndpoint = new Endpoint(Steamid, 0);
+                            await recovery(player_id, spawn_vector_location);
+                            var playerEndpoint = new Endpoint(steamid, 0);
                             var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
                             var clientDataDict = _clientStates.Invoke(replicationServer);
                             object clientData;
@@ -173,51 +264,18 @@ namespace SwitchMe {
             }
         }
 
-        private async void recovery(long playerid, Vector3D spawn_vector_location) {
-            string source = "";
-            string filename = "";
-            string targetFile = "";
-            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-            using (HttpClient clients = new HttpClient()) {
-                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                {
-                        new KeyValuePair<string, string>("steamID", Steamid.ToString()),
-                        new KeyValuePair<string, string>("currentIP", currentIp)
-                    };
-                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
-                HttpResponseMessage response = httpResponseMessage;
-                httpResponseMessage = null;
-                string text = await response.Content.ReadAsStringAsync();
-                source = text;
-            }
+        private async 
+        Task
+recovery(long playerid, Vector3D spawn_vector_location) {
+            ulong steamid = MySession.Static.Players.TryGetSteamId(playerid);
+            connecting.Remove(steamid);
 
 
-            string existance = source.Substring(0, source.IndexOf(":"));
-            if (existance == "1") {
-                filename = source.Split(':').Last() + ".xml";
-                try {
-                    string remoteUri = "http://www.switchplugin.net/transportedGrids/" + filename;
-                    targetFile = "ExportedGrids\\" + filename;
-
-                    WebClient myWebClient = new WebClient();
-                    myWebClient.DownloadFile(remoteUri, targetFile);
-
-                }
-                catch (Exception error) {
-                    Log.Fatal("Unable to download grid: " + error.ToString());
-                }
-            }
-            else {
-                Log.Info("Player has no grid in transit");
-                targetFile = null;
-            }
-            if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) {
+            if (MyObjectBuilderSerializer.DeserializeXML(target_file_list[steamid], out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) {
 
                 MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 
-                    Log.Info($"Importing grid from {targetFile}");
+                    Log.Info($"Importing grid from {target_file_list[steamid]}");
 
                     var prefabs = myObjectBuilder_Definitions.Prefabs;
 
@@ -242,21 +300,25 @@ namespace SwitchMe {
                     /* Remapping to prevent any key problems upon paste. */
                     MyEntities.RemapObjectBuilderCollection(grids);
                     foreach (var grid in grids) {
-
+                   
                         if (MyEntities.CreateFromObjectBuilderAndAdd(grid, true) is MyCubeGrid cubeGrid)
                             FixOwnerAndAuthorShip(cubeGrid, playerid);
-                    }
 
+                    }
                 });
                 Log.Info("Grid has been pulled from the void!");
+                await RemoveConnection(steamid);
 
                 return ;
             }
-
+            Log.Warn("Skipped");
             return;
         }
 
         private void FixOwnerAndAuthorShip(MyCubeGrid myCubeGrid, long playerId) {
+            ulong steamid = MySession.Static.Players.TryGetSteamId(playerId);
+            MyPlayer id = MySession.Static.Players.TryGetPlayerBySteamId(steamid);
+            MySession.Static.Players.TryGetPlayerById(id.Id, out player);
 
             HashSet<long> authors = new HashSet<long>();
             HashSet<MySlimBlock> blocks = new HashSet<MySlimBlock>(myCubeGrid.GetBlocks());
@@ -283,15 +345,20 @@ namespace SwitchMe {
                     block.AddAuthorship();
                 }
                 authors.Add(block.BuiltBy);
+
+                IMyCharacter character = player.Character;
+
+                if (cubeBlock is Sandbox.ModAPI.IMyCockpit cockpit && cockpit.CanControlShip)
+                    cockpit.AttachPilot(character);
             }
 
             foreach (long author in authors)
                 MyMultiplayer.RaiseEvent(myCubeGrid, x => new Action<long, long>(x.TransferBlocksBuiltByID), author, playerId, new EndpointId());
         }
         private Vector3D? FindPastePosition(MyObjectBuilder_CubeGrid[] grids, Vector3D position) {
-            Vector3D gps = position;
             Vector3? vector = null;
             float radius = 0F;
+            Vector3D gps;
 
             foreach (var grid in grids) {
 
@@ -330,17 +397,13 @@ namespace SwitchMe {
              * used to determine the perfect place to paste the grids to. 
              */
 
-            //if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror || Plugin.Config.EnabledMirror)
-            //{
-            //    Vector3D.TryParse("{X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord + "}", out Vector3D gps);
-            //    return MyEntities.FindFreePlace(gps, 100F);
-            //}
 
-            return MyEntities.FindFreePlace(gps, radius);
+            return MyEntities.FindFreePlace(position, radius);
+
+
         }
 
         public bool UpdateGridsPosition(MyObjectBuilder_CubeGrid[] grids, Vector3D newPosition) {
-
             bool firstGrid = true;
             double deltaX = 0;
             double deltaY = 0;
@@ -374,13 +437,31 @@ namespace SwitchMe {
             return true;
         }
 
+        public async Task RemoveConnection(ulong player) {
+            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+            Log.Warn("Removing conneciton flag for " + player);
+            using (HttpClient client = new HttpClient()) {
+                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("BindKey", Config.LocalKey),
+                    new KeyValuePair<string, string>("CurrentIP", currentIp ),
+                    new KeyValuePair<string, string>("RemoveConnection", player.ToString())
+                };
+                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                await client.PostAsync("http://switchplugin.net/api/index.php", content);
+            }
+        }
         public async Task<bool> CheckConnection(IPlayer player) {
+            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
             Log.Warn("Checking inbound conneciton for " + player.SteamId);
             string pagesource;
             using (HttpClient client = new HttpClient()) {
                 List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                 {
                     new KeyValuePair<string, string>("BindKey", Config.LocalKey),
+                    new KeyValuePair<string, string>("CurrentIP", currentIp ),
                     new KeyValuePair<string, string>("ConnectionCheck", player.SteamId.ToString())
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
@@ -393,11 +474,11 @@ namespace SwitchMe {
             }
 
             if (pagesource.Contains("connecting=false")) {
-                connecting = false;
                 return false;
             }
             return true ;
         }
+
         public void Delete(string entityName) {
 
             var name = entityName;

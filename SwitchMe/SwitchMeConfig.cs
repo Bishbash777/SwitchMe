@@ -13,12 +13,21 @@ namespace SwitchMe {
         private bool _inboundTransfersState = true;
         public bool InboundTransfersState { get => _inboundTransfersState; set => SetValue(ref _inboundTransfersState, value); }
 
+        private bool _recoverCommandBased = true;
+        public bool RecoverCommandBased { get => _recoverCommandBased; set => SetValue(ref _recoverCommandBased, value); }
+
+        private bool _recoverOnJoin = false;
+        public bool RecoverOnJoin { get => _recoverOnJoin; set => SetValue(ref _recoverOnJoin, value); }
+
+        private bool _enabledPositioning = false;
+        public bool EnabledPositioning { get => _enabledPositioning; set => SetValue(ref _enabledPositioning, value); }
+
         private bool _enabledMirror = false;
         public bool EnabledMirror { get => _enabledMirror; set => SetValue(ref _enabledMirror, value); }
 
         private bool _lockedTransfer = false;
         public bool LockedTransfer { get => _lockedTransfer; set => SetValue(ref _lockedTransfer, value); }
-
+        
         private string _Xcord = "";
         public string XCord { get => _Xcord; set => SetValue(ref _Xcord, value); }
 
