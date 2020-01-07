@@ -281,7 +281,6 @@ namespace SwitchMe {
                         Log.Info($"Grid has unsupported format!");
                         return;
                     }
-
                     var prefab = prefabs[0];
                     var grids = prefab.CubeGrids;
                     /* Where do we want to paste the grids? Lets find out. */

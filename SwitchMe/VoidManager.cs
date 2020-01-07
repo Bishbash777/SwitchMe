@@ -207,7 +207,7 @@ namespace SwitchMe {
                         {
                             new KeyValuePair<string, string>("BindKey", Plugin.Config.LocalKey),
                             new KeyValuePair<string, string>("CurrentIP", currentIp),
-                            new KeyValuePair<string, string>("TargetIP", serverTarget),
+                            new KeyValuePair<string, string>("TargetIP", ip),
                             new KeyValuePair<string, string>("AddConnection", Context.Player.SteamUserId.ToString())
                         };
                         FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
@@ -313,7 +313,7 @@ namespace SwitchMe {
                 int maxcheck = currentLocalPlayers + currentRemotePlayers;
                 Context.Respond("Slot Checking...");
                 Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-                if (maxcheck > maxi) {
+                if (maxcheck > maxi && !Context.Player.IsAdmin) {
                     return;
                 }
 

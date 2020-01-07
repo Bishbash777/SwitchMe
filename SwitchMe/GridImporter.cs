@@ -106,9 +106,7 @@ namespace SwitchMe {
                         throw new ArgumentException(grid + " has a ObjectBuilder thats not for a CubeGrid");
                     objectBuilders.Add(objectBuilder);
                 }
-
                 MyObjectBuilder_PrefabDefinition definition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_PrefabDefinition>();
-
                 definition.Id = new MyDefinitionId(new MyObjectBuilderType(typeof(MyObjectBuilder_PrefabDefinition)), gridTarget);
                 definition.CubeGrids = objectBuilders.Select(x => (MyObjectBuilder_CubeGrid)x.Clone()).ToArray();
                 long i = 0;
