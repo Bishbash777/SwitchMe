@@ -222,6 +222,7 @@ namespace SwitchMe {
 
                 } else {
                     Context.Respond("Unable to switch grid!");
+                    return false;
                 }
 
             } catch (Exception e) {
