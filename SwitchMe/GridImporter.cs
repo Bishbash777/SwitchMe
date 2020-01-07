@@ -7,6 +7,7 @@ using Sandbox.Game.World;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Torch;
 using Torch.Commands;
 using VRage.Game;
@@ -111,7 +112,7 @@ namespace SwitchMe {
                 definition.CubeGrids = objectBuilders.Select(x => (MyObjectBuilder_CubeGrid)x.Clone()).ToArray();
                 long i = 0;
                 bool BlockCheck = false;
-                string SubTypes = Plugin.Config.SubTypes;
+                string SubTypes = Regex.Replace(Plugin.Config.SubTypes, @"\s+", string.Empty);
                 string[] SubTypesArray = SubTypes.Split('-');
                 /* Reset ownership as it will be different on the new server anyway and chceck to see if any listed blocks are included*/
                 foreach (MyObjectBuilder_CubeGrid cubeGrid in definition.CubeGrids) {
