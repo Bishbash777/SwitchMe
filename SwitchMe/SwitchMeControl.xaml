@@ -3,18 +3,18 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d" Height="1186.35" Width="503">
-    <StackPanel Height="1176" VerticalAlignment="Top">
+             mc:Ignorable="d" Height="1235.683">
+    <StackPanel Margin="0,0,0,10">
         <Label x:Name="popupTarget" FontWeight="Bold" FontSize="16" Content="SwitchMe Configuration:" Height="31" Margin="1,0,0,0" />
-        <DockPanel Height="31" LastChildFill="False" Margin="0,0,20,0" HorizontalAlignment="Right" Width="481">
-            <Border DockPanel.Dock="Bottom" Height="27" Margin="-1,0,-10,0" HorizontalAlignment="Right" Width="492">
+        <DockPanel Height="31" LastChildFill="False" Margin="0,0,20,0">
+            <Border DockPanel.Dock="Bottom" Height="37" Margin="-1,0,-10,0">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="1,0" EndPoint="0,0">
                         <GradientStop Offset="1" Color="#55555555"/>
                         <GradientStop Offset="0" Color="Transparent"/>
                     </LinearGradientBrush>
                 </Border.Background>
-                <Button Width="100" Content="Save Config" Click="SaveConfig_OnClick" Margin="3,4,10,4" HorizontalAlignment="Left" />
+                <Button  Content="Save Config" Click="SaveConfig_OnClick" Margin="10,4,0,10" HorizontalAlignment="Left" Width="78" />
             </Border>
         </DockPanel>
         <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
@@ -58,7 +58,7 @@
             <LineBreak/>
         </Label>
         <RadioButton GroupName="econ" IsChecked="{Binding PerBlock}" Content="Per block cost" Margin="28,0,0,0"/>
-        <StackPanel Orientation="Horizontal" Margin="28,0,0,0">
+        <StackPanel Orientation="Horizontal" Margin="56,0,0,0">
             <Label Content="Cost:"/>
             <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" PreviewTextInput="NumberValidationTextBox" Height="20" Text="{Binding TransferCost}" />
         </StackPanel>
@@ -74,15 +74,13 @@
             <LineBreak/>
         </Label>
         <RadioButton GroupName="block" IsChecked="{Binding BlockDisallow}" Content="Disallow transfers with Certain Blocks" Margin="28,0,0,0"/>
-        <Label Content="Subtypes to whitelist/blacklist:"/>
-        <Label Content="Seperate by , (e.g: SmallBlockSmallThrust,LargeBlockSmallThrust)" FontSize="11" Margin="31,0,0,0" />
-        <StackPanel Orientation="Horizontal" Margin="31,0,0,0">
+        <Label Content="Subtypes to whitelist/blacklist:" Margin="28,0,0,0"/>
+        <Label Content="Seperate by , (e.g: SmallBlockSmallThrust, LargeBlockSmallThrust)" FontSize="11" Margin="56,-10,0,0" Height="28" />
+        <StackPanel Orientation="Horizontal" Margin="56,0,0,0">
             <TextBox TextWrapping="Wrap"
-                     AcceptsReturn="True"
                      HorizontalScrollBarVisibility="Disabled"
-                     VerticalScrollBarVisibility="Auto" Width="290" Margin="3,0,0,0" HorizontalAlignment="Right" Height="42" Text="{Binding SubTypes}" />
+                     VerticalScrollBarVisibility="Auto" Width="338" Margin="3,0,0,0" HorizontalAlignment="Right" Height="42" Text="{Binding SubTypes}" />
         </StackPanel>
-
         <Label Content="Add Servers to link here:" />
         <Label Content="*Please note that the Target server IP has to be the same your players connect to!" FontSize="9" />
         <Label Height="7">
@@ -142,7 +140,7 @@
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Height="199">
-            <DataGrid x:Name="dgServerList" Width="497" Margin="3,3,3,18" AutoGenerateColumns="False" SelectionChanged="DgServerList_SelectionChanged" IsReadOnly="True">
+            <DataGrid x:Name="dgServerList" Width="495" Margin="3,3,3,18" AutoGenerateColumns="False" SelectionChanged="DgServerList_SelectionChanged" IsReadOnly="True">
                 <DataGrid.Columns>
                     <DataGridTextColumn Binding="{Binding SERVER}" Header="Server Name" Width="165"/>
                     <DataGridTextColumn Binding="{Binding IP}" Header="Server IP" Width="165"/>
@@ -150,7 +148,5 @@
                 </DataGrid.Columns>
             </DataGrid>
         </StackPanel>
-        <DataGrid Height="100"/>
-
     </StackPanel>
 </UserControl>
