@@ -793,6 +793,14 @@ namespace SwitchMe {
         }
 
         private void _timer_Elapsed(object sender, ElapsedEventArgs e) {
+            string xml = "";
+            try {
+                xml = File.ReadAllText(@Path.Combine("instance/", "SwitchMe.cfg"));
+            }
+            catch {
+                xml = File.ReadAllText(@"SwitchMe.cfg");
+            }
+            
 
             string externalIP;
             string Inbound = "N";
@@ -831,10 +839,11 @@ namespace SwitchMe {
                         { "currentplayers", currentPlayers },
                         { "maxplayers", maxPlayers },
                         { "serverip", currentIp},
-                        { "verion", "1.3.1"},
+                        { "verion", "1.3.2"},
                         { "bindKey", Config.LocalKey},
                         { "inbound", Inbound },
-                        { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName }
+                        { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
+                        { "config", xml }
                     };
 
                     client.UploadValues("http://switchplugin.net/index.php", postData);
