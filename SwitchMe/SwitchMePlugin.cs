@@ -61,6 +61,7 @@ namespace SwitchMe {
         private UserControl _control;
         public static string ip;
         private Timer _timer;
+        private Vector3D JumpPos = Vector3D.One;
         private DateTime timerStart = new DateTime(0);
         private TorchSessionManager _sessionManager;
         private IMultiplayerManagerBase _multibase;
@@ -203,6 +204,22 @@ namespace SwitchMe {
             }
         }
         public override async void Update() {
+            
+            foreach (var playerOnline in MySession.Static.Players.GetOnlinePlayers()) {
+
+                if (Vector3D.Distance(playerOnline.GetPosition(), JumpPos) < 50 /* (Specified distance) */) {
+                    ///
+                    /// get grid name of grid currently in use and start jump process
+                    ///
+
+                    if (player?.Controller.ControlledEntity is MyCockpit controller) {
+                        string gridname = controller.Parent.DisplayName;
+                    }
+                    else {
+                    }
+
+                }
+            }
 
             _timerSpawn += 1;
             if (_timerSpawn % 60 == 0) {
