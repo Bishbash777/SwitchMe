@@ -291,8 +291,10 @@ namespace SwitchMe {
                     }
 
                     /* Update GridsPosition if that doesnt work get out of here. */
-                    if (!UpdateGridsPosition(grids, (Vector3D)pos))
-                        return ;
+                    if (!UpdateGridsPosition(grids, (Vector3D)pos)) {
+                        Log.Error("Failed to find update the grids position");
+                        return;
+                    }
 
                     /* Remapping to prevent any key problems upon paste. */
                     MyEntities.RemapObjectBuilderCollection(grids);
@@ -439,6 +441,12 @@ namespace SwitchMe {
 
         public async Task RemoveConnection(ulong player) {
             string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            if (!externalIP.Contains("0.0")
+                || !externalIP.Contains("127.0")
+                || !externalIP.Contains("192.168")) {
+                externalIP = Config.LocalIP;
+            }
+
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
             Log.Warn("Removing conneciton flag for " + player);
             using (HttpClient client = new HttpClient()) {
@@ -557,7 +565,7 @@ namespace SwitchMe {
             if (_timer != null)
                 StopTimer();
 
-            _timer = new Timer(3000);
+            _timer = new Timer(5000);
 
             Task.Run(() => _timer.Elapsed += _timer_Elapsed);
 
@@ -780,7 +788,6 @@ namespace SwitchMe {
 
             using (WebClient client = new WebClient()) {
 
-                string pagesource = "";
 
                 NameValueCollection postData = new NameValueCollection()
                 {
@@ -795,10 +802,10 @@ namespace SwitchMe {
         private void _timer_Elapsed(object sender, ElapsedEventArgs e) {
             string xml = "";
             try {
-                xml = File.ReadAllText(@Path.Combine("instance/", "SwitchMe.cfg"));
+                xml = File.ReadAllText(Path.Combine(StoragePath, "SwitchMe.cfg"));
             }
             catch {
-                xml = File.ReadAllText(@"SwitchMe.cfg");
+                xml = File.ReadAllText("SwitchMe.cfg");
             }
             
 
@@ -811,9 +818,11 @@ namespace SwitchMe {
 
                 externalIP = Config.LocalIP;
 
-                if (Config.LocalIP == "" || Config.LocalIP == null) {
+                if (externalIP.Contains("127.0")
+                || externalIP.Contains("192.168")
+                || externalIP.Contains("0.0")) {
                     i++;
-                    if (i == 600) { Log.Warn("Please have your public ip set in the SwitchMe Config."); i = 0; }
+                    if (i == 300) { Log.Warn("Please have your public ip set in the SwitchMe or Torch Config. Search 'Whats my ip?' on google if you are not sure how to find this."); i = 0; }
                 }
 
             } else {
@@ -830,23 +839,27 @@ namespace SwitchMe {
 
                 if (Config.InboundTransfersState) 
                     Inbound = "Y";
-                
-                using (WebClient client = new WebClient()) {
+                try {
+                    using (WebClient client = new WebClient()) {
 
-                    NameValueCollection postData = new NameValueCollection()
-                    {
+                        NameValueCollection postData = new NameValueCollection()
+                        {
                         //order: {"parameter name", "parameter value"}
                         { "currentplayers", currentPlayers },
                         { "maxplayers", maxPlayers },
                         { "serverip", currentIp},
-                        { "verion", "1.3.2"},
+                        { "verion", "1.3.26"},
                         { "bindKey", Config.LocalKey},
                         { "inbound", Inbound },
                         { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
                         { "config", xml }
                     };
 
-                    client.UploadValues("http://switchplugin.net/index.php", postData);
+                        client.UploadValues("http://switchplugin.net/index.php", postData);
+                    }
+                }
+                catch (Exception es) {
+                    Log.Warn("Data error: " + es.ToString());
                 }
             }
         }

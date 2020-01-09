@@ -72,8 +72,10 @@ namespace SwitchMe {
                 }
 
                 /* Update GridsPosition if that doesnt work get out of here. */
-                if (!UpdateGridsPosition(grids, newpos))
+                if (!UpdateGridsPosition(grids, newpos)) {
+                    Log.Error("Failed to update grid position");
                     return false;
+                }
 
                 /* Remapping to prevent any key problems upon paste. */
                 MyEntities.RemapObjectBuilderCollection(grids);

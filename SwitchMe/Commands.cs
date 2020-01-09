@@ -174,12 +174,21 @@ namespace SwitchMe {
             }
         }
 
-        public async Task RemoveConnection(ulong player) {
+        public async Task RemoveConnection(ulong player) {;
+            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            if (!externalIP.Contains("0.0")
+                || !externalIP.Contains("127.0")
+                || !externalIP.Contains("192.168")) {
+                externalIP = Plugin.Config.LocalIP;
+            }
+
+            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
             Log.Warn("Removing conneciton flag for " + player);
             using (HttpClient client = new HttpClient()) {
                 List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                 {
                     new KeyValuePair<string, string>("BindKey", Plugin.Config.LocalKey),
+                    new KeyValuePair<string, string>("CurrentIP", currentIp ),
                     new KeyValuePair<string, string>("RemoveConnection", player.ToString())
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);

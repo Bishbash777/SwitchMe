@@ -143,7 +143,7 @@ namespace SwitchMe {
                     try {
 
                         string remoteUri = "http://www.switchplugin.net/transportedGrids/" + filename;
-                        targetFile = "ExportedGrids\\" + filename;
+                        targetFile = "SwitchTemp\\" + filename;
 
                         WebClient myWebClient = new WebClient();
                         myWebClient.DownloadFile(remoteUri, targetFile);
@@ -169,6 +169,7 @@ namespace SwitchMe {
             Client.Headers.Add("Content-Type", "binary/octet-stream");
 
             try {
+                string playername = Context.Player.DisplayName;
 
                 byte[] result = Client.UploadFile("http://switchplugin.net/gridHandle.php", "POST", path);
                 Log.Fatal("Grid was uploaded to webserver!");
@@ -217,7 +218,7 @@ namespace SwitchMe {
                         string text = await response.Content.ReadAsStringAsync();
                         Log.Warn(text);
                     }
-                    Plugin.Delete(Context.Player.DisplayName);
+                    Plugin.Delete(playername);
                     return true;
 
                 } else {
