@@ -33,15 +33,15 @@ namespace SwitchMe {
             this.Context = Context;
         }
 
-        public bool DeserializeGridFromPath(string targetFile, long playerId, Vector3D newpos) {
-
+        public bool DeserializeGridFromPath(string targetFile, string playername, Vector3D newpos) {
+            var player = utils.GetPlayerByNameOrId(playername);
             if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) {
 
-                IMyEntity targetEntity = Context.Player?.Controller.ControlledEntity.Entity;
+                IMyEntity targetEntity = player?.Controller.ControlledEntity.Entity;
 
                 if (Plugin.Config.EnabledMirror) {
 
-                    var p = Context.Player;
+                    var p = player;
                     var parent = p.Character?.Parent;
 
                     if (parent == null) {
@@ -52,12 +52,12 @@ namespace SwitchMe {
                     }
                 }
 
-                Context.Respond($"Importing grid from {targetFile}");
+                utils.NotifyMessage($"Importing grid from {targetFile}", player.SteamUserId);
 
                 var prefabs = myObjectBuilder_Definitions.Prefabs;
 
                 if (prefabs == null || prefabs.Length != 1) {
-                    Context.Respond($"Grid has unsupported format!");
+                    utils.NotifyMessage($"Grid has unsupported format!", player.SteamUserId);
                     return false;
                 }
 
@@ -65,14 +65,14 @@ namespace SwitchMe {
                 var grids = prefab.CubeGrids;
 
                 /* Where do we want to paste the grids? Lets find out. */
-                var pos = FindPastePosition(grids, newpos);
+                var pos = FindPastePosition(grids, newpos, player.DisplayName);
                 if (pos == null) {
-                    Context.Respond("No free place.");
+                    utils.NotifyMessage("No free place.", player.SteamUserId);
                     return false;
                 }
 
                 /* Update GridsPosition if that doesnt work get out of here. */
-                if (!UpdateGridsPosition(grids, newpos)) {
+                if (!UpdateGridsPosition(grids, newpos, player.DisplayName)) {
                     Log.Error("Failed to update grid position");
                     return false;
                 }
@@ -82,17 +82,17 @@ namespace SwitchMe {
                 foreach (var grid in grids) {
 
                     if (MyEntities.CreateFromObjectBuilderAndAdd(grid, true) is MyCubeGrid cubeGrid)
-                        FixOwnerAndAuthorShip(cubeGrid, playerId);
+                        FixOwnerAndAuthorShip(cubeGrid, player.DisplayName);
                 }
-                Context.Respond("Grid has been pulled from the void!");
+               utils.NotifyMessage("Grid has been pulled from the void!", player.SteamUserId);
                 return true;
             }
 
             return false;
         }
 
-        public bool SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup, string gridTarget, string path) {
-
+        public bool SerializeGridsToPath(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup, string gridTarget, string path, string playername) {
+            var player = utils.GetPlayerByNameOrId(playername);
             try {
 
                 List<MyObjectBuilder_CubeGrid> objectBuilders = new List<MyObjectBuilder_CubeGrid>();
@@ -129,17 +129,17 @@ namespace SwitchMe {
                 }
                 //Block checking;
                 if (Plugin.Config.EnableBlockEnforcement && Plugin.Config.BlockAllow && !BlockCheck) {
-                    Context.Respond("You do not have the required block for Switching.");
+                   utils.NotifyMessage("You do not have the required block for Switching.", player.SteamUserId);
                     return false;
                 }
                 if (Plugin.Config.EnableBlockEnforcement && Plugin.Config.BlockDisallow && BlockCheck) {
-                    Context.Respond("You have disallowed blocks on your grid!");
+                    utils.NotifyMessage("You have disallowed blocks on your grid!", player.SteamUserId);
                     return false;
                 }
                 //Economy stuff
                 if (Plugin.Config.EnableEcon && Plugin.Config.PerTransfer && Plugin.Config.PerBlock) {
                     Log.Warn("Invalid econ setup");
-                    Context.Respond("Invalid econ setup - please notify an admin.");
+                    utils.NotifyMessage("Invalid econ setup - please notify an admin.", player.SteamUserId);
                     return false;
                 }
                 if (Plugin.Config.EnableEcon) {
@@ -149,18 +149,18 @@ namespace SwitchMe {
                     }
                     long balance;
                     long withdraw = i;
-                    Context.Player.TryGetBalanceInfo(out balance);
+                    player.TryGetBalanceInfo(out balance);
                     long mathResult = (balance - withdraw);
-                    Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
+                    Log.Info("Cost of transfer for" + player.DisplayName + ": " + i);
                     CurrentCooldown cooldown = new CurrentCooldown(Plugin, Context);
                     //verify that user wants to go ahead with transfer.
                     if (cooldown.Confirm(i)) {
                         if (mathResult < 0) {
-                            Log.Info("Cost of transfer for" + Context.Player.DisplayName + ": " + i);
-                            Context.Respond("Not enough funds for transfer");
+                            Log.Info("Cost of transfer for" + player.DisplayName + ": " + i);
+                            utils.NotifyMessage("Not enough funds for transfer", player.SteamUserId);
                             return false;
                         }
-                        Context.Player.RequestChangeBalance(-withdraw);
+                        player.RequestChangeBalance(-withdraw);
                     }
                     return false;
                 }
@@ -176,12 +176,13 @@ namespace SwitchMe {
             }
         }
 
-        private void FixOwnerAndAuthorShip(MyCubeGrid myCubeGrid, long playerId) {
+        private void FixOwnerAndAuthorShip(MyCubeGrid myCubeGrid, string playername) {
 
             HashSet<long> authors = new HashSet<long>();
             HashSet<MySlimBlock> blocks = new HashSet<MySlimBlock>(myCubeGrid.GetBlocks());
-            MyPlayer id = MySession.Static.Players.TryGetPlayerBySteamId(Context.Player.SteamUserId);
-            MySession.Static.Players.TryGetPlayerById(id.Id, out player);
+            var player = utils.GetPlayerByNameOrId(playername);
+            MyPlayer id = MySession.Static.Players.TryGetPlayerBySteamId(player.SteamUserId);
+
 
             foreach (MySlimBlock block in blocks) {
 
@@ -189,19 +190,19 @@ namespace SwitchMe {
                     continue;
 
                 MyCubeBlock cubeBlock = block.FatBlock;
-                if (cubeBlock != null && cubeBlock.OwnerId != playerId) {
+                if (cubeBlock != null && cubeBlock.OwnerId != player.Identity.IdentityId) {
 
                     myCubeGrid.ChangeOwnerRequest(myCubeGrid, cubeBlock, 0, MyOwnershipShareModeEnum.Faction);
 
-                    if (playerId != 0)
-                        myCubeGrid.ChangeOwnerRequest(myCubeGrid, cubeBlock, playerId, MyOwnershipShareModeEnum.Faction);
+                    if (player.IdentityId != 0)
+                        myCubeGrid.ChangeOwnerRequest(myCubeGrid, cubeBlock, player.IdentityId, MyOwnershipShareModeEnum.Faction);
                 }
                 if (block.BuiltBy == 0) {
                     /* 
                     * Hack: TransferBlocksBuiltByID only transfers authorship if it has an author. 
                     * Transfer Authorship Client just sets the author so we need to take care of limits ourselves. 
                     */
-                    block.TransferAuthorshipClient(playerId);
+                    block.TransferAuthorshipClient(player.IdentityId);
                     block.AddAuthorship();
                 }
                 authors.Add(block.BuiltBy);
@@ -213,11 +214,11 @@ namespace SwitchMe {
             }
 
             foreach (long author in authors)
-                MyMultiplayer.RaiseEvent(myCubeGrid, x => new Action<long, long>(x.TransferBlocksBuiltByID), author, playerId, new EndpointId());
+                MyMultiplayer.RaiseEvent(myCubeGrid, x => new Action<long, long>(x.TransferBlocksBuiltByID), author, player.IdentityId, new EndpointId());
         }
 
-        private Vector3D? FindPastePosition(MyObjectBuilder_CubeGrid[] grids, Vector3D pos) {
-
+        private Vector3D? FindPastePosition(MyObjectBuilder_CubeGrid[] grids, Vector3D pos, string playername) {
+            var player = utils.GetPlayerByNameOrId(playername);
             Vector3? vector = null;
             float radius = 0F;
 
@@ -263,11 +264,11 @@ namespace SwitchMe {
                 return MyEntities.FindFreePlace(pos, radius);
             }
 
-            return MyEntities.FindFreePlace(Context.Player.GetPosition(), radius);
+            return MyEntities.FindFreePlace(player.GetPosition(), radius);
         }
 
-        public bool UpdateGridsPosition(MyObjectBuilder_CubeGrid[] grids, Vector3D newPosition) {
-
+        public bool UpdateGridsPosition(MyObjectBuilder_CubeGrid[] grids, Vector3D newPosition, string playername) {
+            var player = utils.GetPlayerByNameOrId(playername);
             bool firstGrid = true;
             double deltaX = 0;
             double deltaY = 0;
@@ -278,7 +279,7 @@ namespace SwitchMe {
                 var position = grid.PositionAndOrientation;
 
                 if (position == null) {
-                    Context.Respond($"Grid is missing location Information!");
+                    utils.NotifyMessage($"Grid is missing location Information!", player.SteamUserId);
                     return false;
                 }
 

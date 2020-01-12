@@ -37,6 +37,10 @@ namespace SwitchMe {
             var servers = from f in Plugin.Config.Servers select new { SERVER = f.Split(':')[0], IP = f.Split(':')[1], PORT = f.Split(':')[2] };
 
             dgServerList.ItemsSource = servers;
+
+            var gates = from f in Plugin.Config.Gates select new { GateTarget = f.Split('/')[0], GPS = f.Split('/')[1]};
+
+            dgServerGates.ItemsSource = gates;
         }
 
         private void SaveConfig_OnClick(object sender, RoutedEventArgs e) {
@@ -93,6 +97,38 @@ namespace SwitchMe {
 
         private void CheckBox_Checked(object sender, RoutedEventArgs e) {
 
+        }
+
+        private void btnAddGate_Click(object sender, RoutedEventArgs e) {
+            string POS = "{X:" + XCordGate.Text + " Y:" + YCordGate.Text + " Z:" + ZCordGate.Text + "}";
+            if (POS.Length > 0) {
+
+                Plugin.Config.Gates.Add(txtGateTarget.Text + "/" + POS);
+
+                UpdateDataGrid();
+
+                dgServerGates.Items.MoveCurrentToLast();
+            }
+        }
+
+        private void btnDelGate_Click(object sender, RoutedEventArgs e) {
+            if (dgServerGates.SelectedIndex >= 0) {
+
+                dynamic dataRowGate = dgServerGates.SelectedItem;
+
+                Plugin.Config.Servers.Remove(dataRowGate.GateTarget + "/" + dataRowGate.GPS);
+
+                UpdateDataGrid();
+            }
+        }
+
+        private void dgServerGates_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+            if (dgServerGates.SelectedIndex >= 0) {
+
+                dynamic dataRowGate = dgServerGates.SelectedItem;
+
+                txtGateTarget.Text = dataRowGate.GateTarget;
+            }
         }
     }
 }

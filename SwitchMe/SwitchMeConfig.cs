@@ -10,6 +10,9 @@ namespace SwitchMe {
         private bool _enabledTransfers = false;
         public bool EnabledTransfers { get => _enabledTransfers; set => SetValue(ref _enabledTransfers, value); }
 
+        private bool _enabledJumpgate = false;
+        public bool EnabledJumpgate { get => _enabledJumpgate; set => SetValue(ref _enabledJumpgate, value); }
+
         private bool _inboundTransfersState = true;
         public bool InboundTransfersState { get => _inboundTransfersState; set => SetValue(ref _inboundTransfersState, value); }
 
@@ -36,6 +39,19 @@ namespace SwitchMe {
 
         private string _zcord = "";
         public string ZCord { get => _zcord; set => SetValue(ref _zcord, value); }
+
+
+
+        private string _XcordJump = "";
+        public string XCordJump { get => _Xcord; set => SetValue(ref _XcordJump, value); }
+
+        private string _ycordJump = "";
+        public string YCordJump { get => _ycordJump; set => SetValue(ref _ycordJump, value); }
+
+        private string _zcordJump = "";
+        public string ZCordJump { get => _zcordJump; set => SetValue(ref _zcordJump, value); }
+
+
 
         private string _localIP = "";
         public string LocalIP { get => _localIP; set => SetValue(ref _localIP, value); }
@@ -78,5 +94,9 @@ namespace SwitchMe {
 
         private ObservableCollection<string> _switchServers = new ObservableCollection<string>();
         public ObservableCollection<string> Servers { get => _switchServers; set => SetValue(ref _switchServers, value); }
+
+        private ObservableCollection<string> _switchGates = new ObservableCollection<string>();
+        public ObservableCollection<string> Gates { get => _switchGates; set => SetValue(ref _switchGates, value); }
+
     }
 }

@@ -27,14 +27,13 @@ namespace SwitchMe {
         private readonly SwitchMePlugin Plugin;
         private readonly CommandContext Context;
 
-        public VoidManager(SwitchMePlugin Plugin, CommandContext Context) {
+        public VoidManager(SwitchMePlugin Plugin) {
             this.Plugin = Plugin;
-            this.Context = Context;
         }
 
-        public async Task<bool> SendGrid(string gridTarget, string serverTarget, long playerId, string ip, bool debug = false) {
-
-            string externalIP = Utilities.CreateExternalIP(Plugin.Config);
+        public async Task<bool> SendGrid(string gridTarget, string serverTarget, string playername, long playerId, string ip, bool debug = false) {
+            var player = utils.GetPlayerByNameOrId(playername);
+            string externalIP = utils.CreateExternalIP(Plugin.Config);
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
             try {
@@ -42,7 +41,7 @@ namespace SwitchMe {
                 Log.Warn("Getting Group");
 
                 MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup = 
-                    Utilities.FindRelevantGroup(gridTarget, playerId, Context);
+                    utils.FindRelevantGroup(gridTarget, playerId);
 
                 string pos = "";
 
@@ -52,21 +51,18 @@ namespace SwitchMe {
                 }
 
                 if (relevantGroup == null) {
-                    Context.Respond("Cannot transfer somone elses grid!");
+                    utils.NotifyMessage("Cannot transfer somone elses grid!", player.SteamUserId);
                     return false;
                 }
 
                 Directory.CreateDirectory("SwitchTemp");
-                var path = string.Format(ExportPath, Context.Player.SteamUserId + "-" + gridTarget);
+                var path = string.Format(ExportPath, player.SteamUserId + "-" + gridTarget);
 
-                if (!new GridImporter(Plugin, Context).SerializeGridsToPath(relevantGroup, gridTarget, path)) {
+                if (!new GridImporter(Plugin, Context).SerializeGridsToPath(relevantGroup, gridTarget, path, player.DisplayName)) {
                     return false;
                 }
 
-                if (await UploadGridAsync(serverTarget, gridTarget, ip, currentIp, path, pos)) {
-
-                    Log.Warn("Uploaded");
-
+                if (await UploadGridAsync(serverTarget, gridTarget, player.DisplayName, ip, currentIp, path, pos)) {
                     /* Upload successful close the grids */
                     DeleteUploadedGrids(relevantGroup);
 
@@ -76,7 +72,7 @@ namespace SwitchMe {
                 }
 
             } catch (Exception e) {
-                Log.Fatal(e, "Target:" + gridTarget + "Server: " + serverTarget + "id: " + playerId);
+                Log.Fatal(e, " Target: " + gridTarget + " Server: " + serverTarget + " id: " + playerId);
                 return false;
             }
             return false;
@@ -154,7 +150,7 @@ namespace SwitchMe {
                     }
 
                 } else {
-                    Context.Respond("You have no grids in active transport!");
+                    utils.NotifyMessage("You have no grids in active transport!", steamid);
                     targetFile = null;
                 }
                 return null;
@@ -162,14 +158,13 @@ namespace SwitchMe {
             }
         }
 
-        private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string ip, string currentIp, string path, string pos) {
-
+        private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string playername, string ip, string currentIp, string path, string pos) {
+            var player = utils.GetPlayerByNameOrId(playername);
             /* DO we need a using here too? */
             WebClient Client = new WebClient();
             Client.Headers.Add("Content-Type", "binary/octet-stream");
 
             try {
-                string playername = Context.Player.DisplayName;
 
                 byte[] result = Client.UploadFile("http://switchplugin.net/gridHandle.php", "POST", path);
                 Log.Fatal("Grid was uploaded to webserver!");
@@ -178,18 +173,19 @@ namespace SwitchMe {
 
                 if (s == "1") {
 
-                    Context.Respond("Connecting clients to " + serverTarget + " @ " + ip);
-                    Context.Respond("Grid has been sent to the void! - Good luck!");
+                    utils.NotifyMessage("Grid has been sent to the void! - Good luck!", player.SteamUserId);
 
-                    ModCommunication.SendMessageTo(new JoinServerMessage(ip), Context.Player.SteamUserId);
+                    Log.Info($"Connecting clients to {serverTarget} @ {ip}");
+
+                    ModCommunication.SendMessageTo(new JoinServerMessage(ip), player.SteamUserId);
 
                     using (HttpClient clients = new HttpClient())
                     {
                         List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                         {
-                            new KeyValuePair<string, string>("steamID", Context.Player.SteamUserId.ToString()),
+                            new KeyValuePair<string, string>("steamID", player.SteamUserId.ToString()),
                             new KeyValuePair<string, string>("targetIP", ip ),
-                            new KeyValuePair<string, string>("fileName", Context.Player.SteamUserId + "-" + gridTarget ),
+                            new KeyValuePair<string, string>("fileName", player.SteamUserId.ToString() + "-" + gridTarget ),
                             new KeyValuePair<string, string>("bindKey", Plugin.Config.LocalKey ),
                             new KeyValuePair<string, string>("targetPOS", pos ),
                             new KeyValuePair<string, string>("gridName", gridTarget ),
@@ -209,7 +205,7 @@ namespace SwitchMe {
                             new KeyValuePair<string, string>("BindKey", Plugin.Config.LocalKey),
                             new KeyValuePair<string, string>("CurrentIP", currentIp),
                             new KeyValuePair<string, string>("TargetIP", ip),
-                            new KeyValuePair<string, string>("AddConnection", Context.Player.SteamUserId.ToString())
+                            new KeyValuePair<string, string>("AddConnection",player.SteamUserId.ToString())
                         };
                         FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
                         HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/api/index.php", content);
@@ -222,12 +218,12 @@ namespace SwitchMe {
                     return true;
 
                 } else {
-                    Context.Respond("Unable to switch grid!");
+                    utils.NotifyMessage("Unable to switch grid!", player.SteamUserId);
                     return false;
                 }
 
             } catch (Exception e) {
-                Log.Fatal("Cannot upload grid: " + e.ToString());
+                Log.Fatal(e.ToString());
             }
 
             return false;
@@ -247,21 +243,11 @@ namespace SwitchMe {
             }
         }
 
-        public async Task PlayerTransfer(string type) {
+        public async Task PlayerTransfer(string type, ulong steamid) {
             string ip = "";
             string name = "";
             string port = "";
             string existanceCheck = "";
-
-            if (type == "single" && Context.Player == null) {
-                Context.Respond("Console cannot run this command");
-                return;
-            }
-
-            if (!Plugin.Config.Enabled) {
-                Context.Respond("Switching is not enabled!");
-                return;
-            }
 
             int i = 0;
             IEnumerable<string> channelIds = Plugin.Config.Servers;
@@ -283,22 +269,22 @@ namespace SwitchMe {
                 bool paired = await Plugin.CheckKeyAsync(target);
 
                 if (ip == null || name == null || port == null) {
-                    Context.Respond("Invalid Configuration!");
+                    utils.Respond("Invalid Configuration!", "Server" , steamid);
                     return;
                 }
 
                 if (target.Length < 1) {
-                    Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
+                    utils.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!", "Server", steamid);
                     return;
                 }
 
                 if (existanceCheck != "1") {
-                    Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
+                    utils.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!", "Server", steamid);
                     return;
                 }
 
                 if (paired != true) {
-                    Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
+                    utils.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!", "Server", steamid);
                     return;
                 }
 
@@ -313,7 +299,7 @@ namespace SwitchMe {
                 }
                 int maxi = int.Parse(max);
                 int maxcheck = currentLocalPlayers + currentRemotePlayers;
-                Context.Respond("Slot Checking...");
+                utils.Respond("Slot Checking...", "Server", steamid);
                 Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
                 if (maxcheck > maxi && !Context.Player.IsAdmin) {
                     return;
@@ -322,10 +308,10 @@ namespace SwitchMe {
 
                 /// Connection phase
                 try {
-                    Context.Respond("Connecting client(s) to " + Context.RawArgs + " @ " + ip);
+                    utils.Respond("Connecting client(s) to " + Context.RawArgs + " @ " + ip, "Server", steamid);
                     Log.Warn("Connected clients to " + Context.RawArgs + " @ " + ip);
                     if (type == "single") {
-                        ModCommunication.SendMessageTo(new JoinServerMessage(ip), Context.Player.SteamUserId);
+                        ModCommunication.SendMessageTo(new JoinServerMessage(ip), steamid);
                         return;
                     }
                     if (type == "all") {

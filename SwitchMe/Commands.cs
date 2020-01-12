@@ -54,16 +54,26 @@ namespace SwitchMe {
         [Command("me", "Automatically connect to your server of choice within this network. USAGE: !switch me <Insert Server name here>")]
         [Permission(MyPromoteLevel.None)]
         public async Task SwitchLocalAsync() {
-            VoidManager voidManager = new VoidManager(Plugin, Context);
-            await voidManager.PlayerTransfer("single");
+            bool isserver = Sandbox.Game.Multiplayer.Sync.IsServer;
+            if (isserver) {
+                Context.Respond("Console cannot run this command");
+                return;
+            }
+
+            if (!Plugin.Config.Enabled) {
+                Context.Respond("Switching is not enabled!");
+                return;
+            }
+            VoidManager voidManager = new VoidManager(Plugin);
+            await voidManager.PlayerTransfer("single", Sandbox.Game.Multiplayer.Sync.MyId);
         }
 
         [Command("all", "Automatically connects all players to your server of choice within this network. USAGE: !switch all <Insert Server name here>")]
         [Permission(MyPromoteLevel.Admin)]
         public async Task SwitchAllAsync() {
-
-            VoidManager voidManager = new VoidManager(Plugin, Context);
-            await voidManager.PlayerTransfer("all");
+            ulong steamid = Sandbox.Game.Multiplayer.Sync.MyId;
+            VoidManager voidManager = new VoidManager(Plugin);
+            await voidManager.PlayerTransfer("all", steamid);
         }
 
         [Command("list", "Displays a list of Valid Server names for the '!switch me <servername>' command. ")]
@@ -126,10 +136,9 @@ namespace SwitchMe {
                 return;
             }
 
-            string externalIP = Utilities.CreateExternalIP(Plugin.Config);
+            string externalIP = utils.CreateExternalIP(Plugin.Config);
             string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
-
-            VoidManager voidManager = new VoidManager(Plugin, Context);
+            VoidManager voidManager = new VoidManager(Plugin);
 
             
             Tuple<string, string, Vector3D> data = await voidManager.DownloadGridAsync(currentIp, Context.Player.SteamUserId, Context.Player.GetPosition().ToString());
@@ -143,7 +152,7 @@ namespace SwitchMe {
             Vector3D newPos = data.Item3;
             MyAPIGateway.Utilities.InvokeOnGameThread(() => {
                 GridImporter gridManager = new GridImporter(Plugin, Context);
-                if (gridManager.DeserializeGridFromPath(targetFile, Context.Player.IdentityId, newPos))
+                if (gridManager.DeserializeGridFromPath(targetFile, Context.Player.DisplayName, newPos))
                 {
                     File.Delete(targetFile);
                     Plugin.DeleteFromWeb(currentIp);
@@ -296,7 +305,7 @@ namespace SwitchMe {
                 }
                 try {
 
-                    string externalIP = Utilities.CreateExternalIP(Plugin.Config);
+                    string externalIP = utils.CreateExternalIP(Plugin.Config);
                     string pagesource = "";
                     string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
 
@@ -312,7 +321,7 @@ namespace SwitchMe {
                     }
 
                     if (pagesource == "0") {
-                        if (!await new VoidManager(Plugin, Context).SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target)) {
+                        if (!await new VoidManager(Plugin).SendGrid(gridTarget, serverTarget, Context.Player.DisplayName, Context.Player.IdentityId, target)) {
                             return;
                         }
                         Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
@@ -335,6 +344,15 @@ namespace SwitchMe {
         public void Restore() {
             Recover();
         } 
+
+
+        /*[Command("link")]
+        [Permission(MyPromoteLevel.Admin)]
+        public void Link(string target) {
+            Vector3D Linkpos = Context.Player.GetPosition();
+            Plugin.Config.Gates.Add(txtServerName.Text + ":" + txtServerIP.Text + ":" + txtServerPort.Text);
+        }
+        */
     }
 }
 
