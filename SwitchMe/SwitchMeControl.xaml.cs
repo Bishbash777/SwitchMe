@@ -116,7 +116,7 @@ namespace SwitchMe {
 
                 dynamic dataRowGate = dgServerGates.SelectedItem;
 
-                Plugin.Config.Servers.Remove(dataRowGate.GateTarget + "/" + dataRowGate.GPS);
+                Plugin.Config.Gates.Remove(dataRowGate.GateTarget + "/" + dataRowGate.GPS);
 
                 UpdateDataGrid();
             }

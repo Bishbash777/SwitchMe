@@ -263,7 +263,7 @@ namespace SwitchMe {
                     string target = ip + ":" + port;
                     ip += ":" + port;
                     Log.Warn($"{player.DisplayName}'s closest gate is for {ClosestGate[player.SteamUserId]}"); 
-                    Log.Warn(playerOnline.DisplayName + "'s Distance from gps: " + distance.ToString());
+                    Log.Warn(player.DisplayName + "'s Distance from gps: " + distance.ToString());
 
                     if (distance > 22500) {
                         DisplayedMessage[player.SteamUserId] = false;
