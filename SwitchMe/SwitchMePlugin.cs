@@ -84,7 +84,7 @@ namespace SwitchMe {
         private bool firstrun = true;
         private Dictionary<ulong,double> distance = new Dictionary<ulong, double>();
         private Dictionary<ulong,double> closestDistance = new Dictionary<ulong, double>();
-
+        private Dictionary<ulong, bool> SafetyNet = new Dictionary<ulong, bool>();
         private Dictionary<ulong, bool> PlayerSending = new Dictionary<ulong, bool>();
 
 
@@ -232,6 +232,9 @@ namespace SwitchMe {
             if (PlayerSending.ContainsKey(obj.SteamId)) {
                 PlayerSending.Remove(obj.SteamId);
             }
+            if (SafetyNet.ContainsKey(obj.SteamId)) {
+                SafetyNet.Remove(obj.SteamId);
+            }
         }
 
 
@@ -290,7 +293,7 @@ namespace SwitchMe {
                         ip += ":" + port;
                         Log.Warn(player.DisplayName + "'s Distance from gps: " + distance[player.SteamUserId].ToString());
                         if (distance[player.SteamUserId] < 22500 /* 150m away from jumpCentre */) {
-                            if (distance[player.SteamUserId] <= 2500) {
+                            if (distance[player.SteamUserId] <= 2500 && SafetyNet[player.SteamUserId] == false) {
 
                                 /* If he is online we check if he is currently seated. If he is - get the grid name */
                                 if (player?.Controller.ControlledEntity is MyCockpit controller) {
@@ -315,6 +318,9 @@ namespace SwitchMe {
                                 }
                             }
 
+                        }
+                        if (SafetyNet.ContainsKey(player.SteamUserId)) {
+                            SafetyNet[player.SteamUserId] = false;
                         }
                         firstcheck = true;
                     }
@@ -397,6 +403,9 @@ namespace SwitchMe {
                 MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 
                     Log.Info($"Importing grid from {target_file_list[steamid]}");
+                    if (!SafetyNet.ContainsKey(steamid)) {
+                        SafetyNet.Add(steamid, true);
+                    }
 
                     var prefabs = myObjectBuilder_Definitions.Prefabs;
 
