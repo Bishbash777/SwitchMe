@@ -293,7 +293,7 @@ namespace SwitchMe {
                         ip += ":" + port;
                         Log.Warn(player.DisplayName + "'s Distance from gps: " + distance[player.SteamUserId].ToString());
                         if (distance[player.SteamUserId] < 22500 /* 150m away from jumpCentre */) {
-                            if (distance[player.SteamUserId] <= 2500 && SafetyNet[player.SteamUserId] == false) {
+                            if ((distance[player.SteamUserId] <= 2500 && !SafetyNet.ContainsKey(player.SteamUserId)) || SafetyNet[player.SteamUserId] == false) {
 
                                 /* If he is online we check if he is currently seated. If he is - get the grid name */
                                 if (player?.Controller.ControlledEntity is MyCockpit controller) {
