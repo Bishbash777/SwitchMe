@@ -800,67 +800,72 @@ namespace SwitchMe {
         }
 
         private void _timer_Elapsed(object sender, ElapsedEventArgs e) {
-            string xml = "";
             try {
-                xml = File.ReadAllText(Path.Combine(StoragePath, "SwitchMe.cfg"));
-            }
-            catch {
-                xml = File.ReadAllText("SwitchMe.cfg");
-            }
-            
-
-            string externalIP;
-            string Inbound = "N";
-
-            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") 
-                || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") 
-                || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168")) {
-
-                externalIP = Config.LocalIP;
-
-                if (externalIP.Contains("127.0")
-                || externalIP.Contains("192.168")
-                || externalIP.Contains("0.0")) {
-                    i++;
-                    if (i == 300) { Log.Warn("Please have your public ip set in the SwitchMe or Torch Config. Search 'Whats my ip?' on google if you are not sure how to find this."); i = 0; }
+                string xml = "";
+                try {
+                    xml = File.ReadAllText(Path.Combine(StoragePath, "SwitchMe.cfg"));
+                }
+                catch {
+                    xml = File.ReadAllText("SwitchMe.cfg");
                 }
 
-            } else {
-                externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-            }
 
-            if (timerStart.Ticks == 0) timerStart = e.SignalTime;
+                string externalIP;
+                string Inbound = "N";
 
-            string maxPlayers = MySession.Static.MaxPlayers.ToString();
-            string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
-            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+                if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0")
+                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0")
+                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168")) {
 
-            if (Torch.CurrentSession != null && currentIp.Length > 1) {
+                    externalIP = Config.LocalIP;
 
-                if (Config.InboundTransfersState) 
-                    Inbound = "Y";
-                try {
-                    using (WebClient client = new WebClient()) {
+                    if (externalIP.Contains("127.0")
+                    || externalIP.Contains("192.168")
+                    || externalIP.Contains("0.0")) {
+                        i++;
+                        if (i == 300) { Log.Warn("Please have your public ip set in the SwitchMe or Torch Config. Search 'Whats my ip?' on google if you are not sure how to find this."); i = 0; }
+                    }
 
-                        NameValueCollection postData = new NameValueCollection()
-                        {
+                }
+                else {
+                    externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+                }
+
+                if (timerStart.Ticks == 0) timerStart = e.SignalTime;
+
+                string maxPlayers = MySession.Static.MaxPlayers.ToString();
+                string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
+                string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+
+                if (Torch.CurrentSession != null && currentIp.Length > 1) {
+
+                    if (Config.InboundTransfersState)
+                        Inbound = "Y";
+                    try {
+                        using (WebClient client = new WebClient()) {
+
+                            NameValueCollection postData = new NameValueCollection()
+                            {
                         //order: {"parameter name", "parameter value"}
                         { "currentplayers", currentPlayers },
                         { "maxplayers", maxPlayers },
                         { "serverip", currentIp},
-                        { "verion", "1.3.26"},
+                        { "verion", "1.3.27"},
                         { "bindKey", Config.LocalKey},
                         { "inbound", Inbound },
                         { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
                         { "config", xml }
                     };
 
-                        client.UploadValues("http://switchplugin.net/index.php", postData);
+                            client.UploadValues("http://switchplugin.net/index.php", postData);
+                        }
+                    }
+                    catch (Exception es) {
+                        Log.Warn("Data error: " + es.ToString());
                     }
                 }
-                catch (Exception es) {
-                    Log.Warn("Data error: " + es.ToString());
-                }
+            } catch(Exception error) {
+                Log.Error(error.ToString);
             }
         }
     }
