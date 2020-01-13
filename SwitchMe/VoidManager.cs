@@ -224,6 +224,7 @@ namespace SwitchMe {
 
             } catch (Exception e) {
                 Log.Fatal(e.ToString());
+                return false;
             }
 
             return false;

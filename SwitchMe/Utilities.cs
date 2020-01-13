@@ -33,15 +33,15 @@ namespace SwitchMe {
             return MySandboxGame.ConfigDedicated.IP;
         }
 
+
+
+
         public static MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group FindRelevantGroup(
             string gridTarget, long playerId) {
-
-            ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = FindGridGroup(gridTarget);
-
-            Log.Warn("Target and ID:   " + gridTarget + " | " + playerId);
-
             try {
+                ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = FindGridGroup(gridTarget);
 
+                Log.Warn("Target and ID:   " + gridTarget + " | " + playerId);
                 /* Each Physical Grid group (physical included Connectors) */
                 foreach (var group in groups) {
 
