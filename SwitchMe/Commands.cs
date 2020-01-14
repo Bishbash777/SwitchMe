@@ -131,7 +131,7 @@ namespace SwitchMe {
         [Permission(MyPromoteLevel.None)]
         public async void Recover() {
 
-            if (Context.Player == null) {
+            if (Sandbox.Game.Multiplayer.Sync.IsServer) {
                 Context.Respond("Command cannot be ran from console");
                 return;
             }

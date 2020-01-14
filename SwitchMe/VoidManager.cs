@@ -133,7 +133,7 @@ namespace SwitchMe {
 
                 string existance = source.Substring(0, source.IndexOf(":"));
                 if (existance == "1") {
-
+                    Log.Info("Grid found in database... attempting download!");
                     filename = source.Split(':').Last() + ".xml";
 
                     try {
@@ -226,8 +226,6 @@ namespace SwitchMe {
                 Log.Fatal(e.ToString());
                 return false;
             }
-
-            return false;
         }
 
         private void DeleteUploadedGrids(MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group relevantGroup) {

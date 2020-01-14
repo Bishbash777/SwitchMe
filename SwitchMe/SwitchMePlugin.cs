@@ -170,7 +170,7 @@ namespace SwitchMe {
                     Log.Info("Downloading " + targetFile);
                     WebClient myWebClient = new WebClient();
                     myWebClient.DownloadFile(remoteUri, targetFile);
-                    if (target_file_list.ContainsKey(obj.SteamId)) {
+                    if (!target_file_list.ContainsKey(obj.SteamId)) {
                         target_file_list.Add(obj.SteamId, targetFile);
                     }
                     target_file_list[obj.SteamId] = targetFile;
@@ -301,10 +301,7 @@ namespace SwitchMe {
                             ip += ":" + port;
                             Log.Warn(player.DisplayName + "'s Distance from gps: " + distance[player.SteamUserId].ToString());
                             if (distance[player.SteamUserId] < 22500 /* 150m away from jumpCentre */) {
-                                if (!SafetyNet.ContainsKey(player.SteamUserId)) {
-                                    SafetyNet.Add(player.SteamUserId, false);
-                                }
-                                SafetyNet[player.SteamUserId] = false;
+                                Log.Info("Player outside zone!");
                                 if (distance[player.SteamUserId] <= 2500 ) {
                                     Log.Info("Player inside zone!");
                                     /* If he is online we check if he is currently seated. If he is - get the grid name */
@@ -325,8 +322,6 @@ namespace SwitchMe {
                                     else {
                                     }
                                 }
-                                Log.Info("Player outside zone!");
-
                             }
                             if (SafetyNet.ContainsKey(player.SteamUserId)) {
                                 SafetyNet[player.SteamUserId] = false;
@@ -340,7 +335,7 @@ namespace SwitchMe {
 
 
                 _timerSpawn += 1;
-                if (_timerSpawn % 120 == 0) {
+                if (_timerSpawn % 60 == 0) {
 
                     all_players.Clear();
                     current_player_ids.Clear();
