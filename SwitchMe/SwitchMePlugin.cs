@@ -210,9 +210,10 @@ namespace SwitchMe {
                 spawn_vector_location = gps;
                 Log.Info("Selected GPS: " + gps.ToString());
             }
-
-
-            connecting.Add(obj.SteamId, true);
+            if (!connecting.ContainsKey(obj.SteamId)) {
+                connecting.Add(obj.SteamId, true);
+            }
+            connecting[obj.SteamId] = true;
         }
         private void PlayerConnect(long playerId) {
             ulong steamid = MySession.Static.Players.TryGetSteamId(playerId);
@@ -240,6 +241,9 @@ namespace SwitchMe {
             }
             if (target_file_list.ContainsKey(obj.SteamId)) {
                 target_file_list.Remove(obj.SteamId);
+            }
+            if (connecting.ContainsKey(obj.SteamId)) {
+                connecting.Remove(obj.SteamId);
             }
         }
 
@@ -361,7 +365,18 @@ namespace SwitchMe {
                             string externalIP = utils.CreateExternalIP(Config);
                             string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
                             ulong steamid = MySession.Static.Players.TryGetSteamId(player_id);
+                            var player = utils.GetPlayerByNameOrId(player_id.ToString());
                             if (connecting[steamid] == true) {
+
+                                MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                                    foreach (var entity in MyEntities.GetEntities()) {
+                                        if (entity?.DisplayName?.Contains(player.DisplayName, StringComparison.CurrentCultureIgnoreCase) ?? false) {
+                                            //This can be null??? :keen:
+                                            entity.Close();
+                                        }
+                                    }
+                                });
+
                                 spawn_matrix = MatrixD.CreateWorld(spawn_vector_location);
                                 MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
                                 await recovery(player_id, spawn_vector_location);
@@ -626,21 +641,22 @@ namespace SwitchMe {
 
         public void Delete(string entityName) {
             try {
+                MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                    var name = entityName;
 
-                var name = entityName;
+                    if (string.IsNullOrEmpty(name))
+                        return;
 
-                if (string.IsNullOrEmpty(name))
-                    return;
+                    if (!TryGetEntityByNameOrId(name, out IMyEntity entity))
+                        return;
 
-                if (!TryGetEntityByNameOrId(name, out IMyEntity entity))
-                    return;
+                    if (entity is IMyCharacter)
+                        return;
 
-                if (entity is IMyCharacter)
-                    return;
+                    entity.Close();
 
-                entity.Close();
-
-                Log.Warn("Entitiy deleted.");
+                    Log.Warn("Entitiy deleted.");
+                });
             }
             catch (Exception e) {
                 Log.Error(e.ToString());
