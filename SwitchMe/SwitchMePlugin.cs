@@ -1011,35 +1011,37 @@ namespace SwitchMe {
 
                 if (timerStart.Ticks == 0) timerStart = e.SignalTime;
 
-                string maxPlayers = MySession.Static.MaxPlayers.ToString();
-                string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
-                string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+                if (Torch.CurrentSession?.State == TorchSessionState.Loaded) {
+                    string maxPlayers = MySession.Static.MaxPlayers.ToString();
+                    string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
+                    string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
-                if (Torch.CurrentSession != null && currentIp.Length > 1) {
+                    if (Torch.CurrentSession != null && currentIp.Length > 1) {
 
-                    if (Config.InboundTransfersState)
-                        Inbound = "Y";
-                    try {
-                        using (WebClient client = new WebClient()) {
+                        if (Config.InboundTransfersState)
+                            Inbound = "Y";
+                        try {
+                            using (WebClient client = new WebClient()) {
 
-                            NameValueCollection postData = new NameValueCollection()
-                            {
-                        //order: {"parameter name", "parameter value"}
-                        { "currentplayers", currentPlayers },
-                        { "maxplayers", maxPlayers },
-                        { "serverip", currentIp},
-                        { "verion", "1.3.27"},
-                        { "bindKey", Config.LocalKey},
-                        { "inbound", Inbound },
-                        { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
-                        { "config", xml }
-                    };
+                                NameValueCollection postData = new NameValueCollection()
+                                {
+                                    //order: {"parameter name", "parameter value"}
+                                    { "currentplayers", currentPlayers },
+                                    { "maxplayers", maxPlayers },
+                                    { "serverip", currentIp},
+                                    { "verion", "1.3.28"},
+                                    { "bindKey", Config.LocalKey},
+                                    { "inbound", Inbound },
+                                    { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
+                                    { "config", xml }
+                                };
 
-                            client.UploadValues("http://switchplugin.net/index.php", postData);
+                                client.UploadValues("http://switchplugin.net/index.php", postData);
+                            }
                         }
-                    }
-                    catch (Exception es) {
-                        Log.Warn("Data error: " + es.ToString());
+                        catch (Exception es) {
+                            Log.Warn("Data error: " + es.ToString());
+                        }
                     }
                 }
             } catch(Exception error) {
