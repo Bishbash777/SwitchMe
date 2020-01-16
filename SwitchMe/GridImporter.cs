@@ -11,6 +11,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Torch;
 using Torch.Commands;
+using Sandbox.Common.ObjectBuilders;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Groups;
@@ -123,7 +124,6 @@ namespace SwitchMe {
                         cubeBlock.Owner = 0L;
                         cubeBlock.BuiltBy = 0L;
                         i++;
-
                         /* Remove Pilot and Components (like Characters) from cockpits */
                         if (cubeBlock is MyObjectBuilder_Cockpit cockpit) {
 
