@@ -3,6 +3,7 @@ using Sandbox;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Cube;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.World;
 using System;
 using System.Collections.Generic;
@@ -122,6 +123,30 @@ namespace SwitchMe {
                         cubeBlock.Owner = 0L;
                         cubeBlock.BuiltBy = 0L;
                         i++;
+
+                        /* Remove Pilot and Components (like Characters) from cockpits */
+                        if (cubeBlock is MyObjectBuilder_Cockpit cockpit) {
+
+                            cockpit.Pilot = null;
+
+                            if (cockpit.ComponentContainer != null) {
+
+                                var components = cockpit.ComponentContainer.Components;
+
+                                if (components != null) {
+
+                                    for (int j = components.Count - 1; j >= 0; j--) {
+
+                                        var component = components[j];
+
+                                        if (component.TypeId == "MyHierarchyComponentBase") {
+                                            components.RemoveAt(j);
+                                            continue;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         if (SubTypesArray.Contains(cubeBlock.SubtypeId.ToString())) {
                             BlockCheck = true;
                         }

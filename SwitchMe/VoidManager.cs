@@ -214,7 +214,6 @@ namespace SwitchMe {
                         string text = await response.Content.ReadAsStringAsync();
                         Log.Warn(text);
                     }
-                    Plugin.Delete(playername);
                     return true;
 
                 } else {

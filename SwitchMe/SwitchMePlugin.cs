@@ -86,6 +86,7 @@ namespace SwitchMe {
         private Dictionary<ulong,double> closestDistance = new Dictionary<ulong, double>();
         private Dictionary<ulong, bool> SafetyNet = new Dictionary<ulong, bool>();
         private Dictionary<ulong, bool> PlayerSending = new Dictionary<ulong, bool>();
+        private Dictionary<ulong, bool> inZone = new Dictionary<ulong, bool>();
 
 
         private int test = 0;
@@ -245,6 +246,9 @@ namespace SwitchMe {
             if (connecting.ContainsKey(obj.SteamId)) {
                 connecting.Remove(obj.SteamId);
             }
+            if (inZone.ContainsKey(obj.SteamId)) {
+                inZone.Remove(obj.SteamId);
+            }
         }
 
 
@@ -313,17 +317,22 @@ namespace SwitchMe {
                                         string gridname = controller.Parent.DisplayName;
                                         //Log.Error("Player seated in: " + gridname);
                                         try {
-                                            VoidManager voidm = new VoidManager(this);
+                                            if (!inZone.ContainsKey(player.SteamUserId)) {
+                                                inZone.Add(player.SteamUserId, false);
+                                            }
+                                            if (inZone[player.SteamUserId] == false) {
+                                                inZone[player.SteamUserId] = true;
+                                                VoidManager voidm = new VoidManager(this);
                                                 await voidm.SendGrid(gridname, ClosestGate[player.SteamUserId], player.DisplayName, player.IdentityId, ip);
                                                 Log.Error("Success");
+                                                inZone[player.SteamUserId] = false;
+                                            }
                                         }
                                         catch (Exception e) {
                                             PlayerSending[player.SteamUserId] = true;
                                             Log.Warn(e.ToString());
                                             Log.Error("Fail");
                                         }
-                                    }
-                                    else {
                                     }
                                 }
                             }
@@ -347,12 +356,8 @@ namespace SwitchMe {
                     MyAPIGateway.Multiplayer.Players.GetPlayers(all_players);
                     foreach (var player in all_players)
                         current_player_ids.Add(player.IdentityId, player); //Refresh player list every second
-
-
                     clear_ids.Clear();
-
                     foreach (var player_id in player_ids_to_spawn) {
-
                         if (!current_player_ids.ContainsKey(player_id))
                             continue;
 
@@ -369,16 +374,9 @@ namespace SwitchMe {
                             if (connecting[steamid] == true) {
 
                                 MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-                                    foreach (var entity in MyEntities.GetEntities()) {
-                                        if (entity?.DisplayName?.Contains(player.DisplayName, StringComparison.CurrentCultureIgnoreCase) ?? false) {
-                                            //This can be null??? :keen:
-                                            entity.Close();
-                                        }
-                                    }
+                                    spawn_matrix = MatrixD.CreateWorld(spawn_vector_location);
+                                    MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
                                 });
-
-                                spawn_matrix = MatrixD.CreateWorld(spawn_vector_location);
-                                MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
                                 await recovery(player_id, spawn_vector_location);
                                 var playerEndpoint = new Endpoint(steamid, 0);
                                 var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;

@@ -54,6 +54,9 @@
       <HintPath>..\GameBinaries\Sandbox.Graphics.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="SpaceEngineers.ObjectBuilders">
+      <HintPath>..\..\TEST SERVER\DedicatedServer64\SpaceEngineers.ObjectBuilders.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Windows" />
