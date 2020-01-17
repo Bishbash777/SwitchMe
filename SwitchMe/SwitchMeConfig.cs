@@ -40,19 +40,6 @@ namespace SwitchMe {
         private string _zcord = "";
         public string ZCord { get => _zcord; set => SetValue(ref _zcord, value); }
 
-
-
-        private string _XcordJump = "";
-        public string XCordJump { get => _Xcord; set => SetValue(ref _XcordJump, value); }
-
-        private string _ycordJump = "";
-        public string YCordJump { get => _ycordJump; set => SetValue(ref _ycordJump, value); }
-
-        private string _zcordJump = "";
-        public string ZCordJump { get => _zcordJump; set => SetValue(ref _zcordJump, value); }
-
-
-
         private string _localIP = "";
         public string LocalIP { get => _localIP; set => SetValue(ref _localIP, value); }
 

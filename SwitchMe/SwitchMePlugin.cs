@@ -41,6 +41,8 @@ using VRage.Game;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Entities.Character;
 using System.Collections.Concurrent;
+using Sandbox.Common.ObjectBuilders;
+using VRage;
 
 namespace SwitchMe {
 
@@ -68,6 +70,7 @@ namespace SwitchMe {
         private IMultiplayerManagerBase _multibase;
         private readonly List<long> player_ids_to_spawn = new List<long>();
         private readonly List<IMyPlayer> all_players = new List<IMyPlayer>();
+        private List<string> zones = new List<string>();
         private readonly Dictionary<long, IMyPlayer> current_player_ids = new Dictionary<long, IMyPlayer>();
         private readonly Dictionary<ulong, string> target_file_list = new Dictionary<ulong, string>();
         private readonly Dictionary<ulong, bool> connecting = new Dictionary<ulong, bool>();
@@ -262,7 +265,6 @@ namespace SwitchMe {
                 if (Config.EnabledJumpgate) {
                     distance.Clear();
                     closestDistance.Clear();
-                    bool firstcheck = true;
                     if (test % 16 == 0) {
                         foreach (var playerOnline in MySession.Static.Players.GetOnlinePlayers()) {
                             var player = utils.GetPlayerByNameOrId(playerOnline.DisplayName);
@@ -270,14 +272,27 @@ namespace SwitchMe {
                                 PlayerSending.Add(player.SteamUserId, true);
                             }
                             IEnumerable<string> channelIds = Config.Gates;
-
+                            bool firstcheck = true;
                             foreach (string chId in channelIds) {
 
                                 name = chId.Split('/')[0];
                                 location = chId.Split('/')[1];
                                 Vector3D.TryParse(location, out Vector3D gps);
+                                
+                                if (firstcheck) {
+                                    distance.Add(player.SteamUserId, Vector3D.DistanceSquared(player.GetPosition(), gps));
+                                    closestDistance.Add(player.SteamUserId, Vector3D.DistanceSquared(player.GetPosition(), gps));
+                                    ClosestGate.Add(player.SteamUserId, name);
+                                    firstcheck = false;
+                                }
+                                if (!firstcheck) {
+                                    if (distance[player.SteamUserId] < closestDistance[player.SteamUserId]) {
+                                        closestDistance[player.SteamUserId] = Vector3D.DistanceSquared(player.GetPosition(), gps);
+                                        ClosestGate[player.SteamUserId] = name;
+                                    }
+                                }
 
-                                if (!distance.ContainsKey(player.SteamUserId)) {
+                                /*if (!distance.ContainsKey(player.SteamUserId)) {
                                     distance.Add(player.SteamUserId, Vector3D.DistanceSquared(playerOnline.GetPosition(), gps));
                                 }
                                 if (!closestDistance.ContainsKey(player.SteamUserId)) {
@@ -296,6 +311,7 @@ namespace SwitchMe {
                                         closestDistance[player.SteamUserId] = distance[player.SteamUserId];
                                     }
                                 }
+                                */
                             }
                             channelIds = Config.Servers.Where(c => c.Split(':')[0].Equals(ClosestGate[player.SteamUserId]));
 
@@ -336,6 +352,11 @@ namespace SwitchMe {
                                     }
                                 }
                             }
+                            else {
+                                if (DisplayedMessage.ContainsKey(player.SteamUserId)) {
+                                    DisplayedMessage[player.SteamUserId] = false;
+                                }
+                            }
                             if (SafetyNet.ContainsKey(player.SteamUserId)) {
                                 SafetyNet[player.SteamUserId] = false;
                             }
@@ -362,7 +383,6 @@ namespace SwitchMe {
                             continue;
 
                         if (current_player_ids[player_id].Character != null && current_player_ids[player_id].Controller?.ControlledEntity?.Entity != null) {
-
                             clear_ids.Add(player_id); //Avoids spawning people who are in grids / Character already exists
 
                         }
@@ -372,31 +392,32 @@ namespace SwitchMe {
                             ulong steamid = MySession.Static.Players.TryGetSteamId(player_id);
                             var player = utils.GetPlayerByNameOrId(player_id.ToString());
                             if (connecting[steamid] == true) {
-
                                 MyAPIGateway.Utilities.InvokeOnGameThread(() => {
                                     spawn_matrix = MatrixD.CreateWorld(spawn_vector_location);
                                     MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
                                 });
                                 await recovery(player_id, spawn_vector_location);
-                                var playerEndpoint = new Endpoint(steamid, 0);
-                                var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
-                                var clientDataDict = _clientStates.Invoke(replicationServer);
-                                object clientData;
-                                try {
-                                    clientData = clientDataDict[playerEndpoint];
-                                }
-                                catch {
-                                    return;
-                                }
-                                var clientReplicables = _replicables.Invoke(clientData);
+                                MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                                    var playerEndpoint = new Endpoint(steamid, 0);
+                                    var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
+                                    var clientDataDict = _clientStates.Invoke(replicationServer);
+                                    object clientData;
+                                    try {
+                                        clientData = clientDataDict[playerEndpoint];
+                                    }
+                                    catch {
+                                        return;
+                                    }
+                                    var clientReplicables = _replicables.Invoke(clientData);
+                                    var replicableList = new List<IMyReplicable>(clientReplicables.Count);
+                                    foreach (var pair in clientReplicables)
+                                        replicableList.Add(pair.Key);
+                                    foreach (var replicable in replicableList) {
+                                        _removeForClient.Invoke(replicationServer, replicable, clientData, true);
+                                        _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
 
-                                var replicableList = new List<IMyReplicable>(clientReplicables.Count);
-                                foreach (var pair in clientReplicables)
-                                    replicableList.Add(pair.Key);
-                                foreach (var replicable in replicableList) {
-                                    _removeForClient.Invoke(replicationServer, replicable, clientData, true);
-                                    _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
-                                }
+                                    }
+                                });
                             }
                             clear_ids.Add(player_id);
                         }
@@ -418,53 +439,56 @@ namespace SwitchMe {
 
             if (MyObjectBuilderSerializer.DeserializeXML(target_file_list[steamid], out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) {
 
-                MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                try {
+                    MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 
-                    Log.Info($"Importing grid from {target_file_list[steamid]}");
-                    if (!SafetyNet.ContainsKey(steamid)) {
-                        SafetyNet.Add(steamid, true);
-                    }
+                        Log.Info($"Importing grid from {target_file_list[steamid]}");
+                        if (!SafetyNet.ContainsKey(steamid)) {
+                            SafetyNet.Add(steamid, true);
+                        }
 
-                    var prefabs = myObjectBuilder_Definitions.Prefabs;
+                        var prefabs = myObjectBuilder_Definitions.Prefabs;
 
-                    if (prefabs == null || prefabs.Length != 1) {
-                        Log.Info($"Grid has unsupported format!");
-                        return;
-                    }
-                    var prefab = prefabs[0];
-                    var grids = prefab.CubeGrids;
-                    /* Where do we want to paste the grids? Lets find out. */
-                    var pos = FindPastePosition(grids, spawn_vector_location);
-                    if (pos == null) {
-                        Log.Info("No free place.");
-                        return;
-                    }
+                        if (prefabs == null || prefabs.Length != 1) {
+                            Log.Info($"Grid has unsupported format!");
+                            return;
+                        }
+                        var prefab = prefabs[0];
+                        var grids = prefab.CubeGrids;
+                        /* Where do we want to paste the grids? Lets find out. */
+                        var pos = FindPastePosition(grids, spawn_vector_location);
+                        if (pos == null) {
+                            Log.Info("No free place.");
+                            return;
+                        }
 
-                    /* Update GridsPosition if that doesnt work get out of here. */
-                    if (!UpdateGridsPosition(grids, (Vector3D)pos)) {
-                        Log.Error("Failed to find update the grids position");
-                        return;
-                    }
+                        /* Update GridsPosition if that doesnt work get out of here. */
+                        if (!UpdateGridsPosition(grids, (Vector3D)pos)) {
+                            Log.Error("Failed to find update the grids position");
+                            return;
+                        }
 
-                    /* Remapping to prevent any key problems upon paste. */
-                    MyEntities.RemapObjectBuilderCollection(grids);
-                    foreach (var grid in grids) {
-                   
-                        if (MyEntities.CreateFromObjectBuilderAndAdd(grid, true) is MyCubeGrid cubeGrid)
-                            FixOwnerAndAuthorShip(cubeGrid, playerid);
+                        /* Remapping to prevent any key problems upon paste. */
+                        MyEntities.RemapObjectBuilderCollection(grids);
+                        foreach (var grid in grids) {
 
-                    }
-                });
-                Log.Info("Grid has been pulled from the void!");
-                string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-                string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-                DeleteFromWeb(currentIp);
-                await RemoveConnection(steamid);
+                            if (MyEntities.CreateFromObjectBuilderAndAdd(grid, true) is MyCubeGrid cubeGrid)
+                                FixOwnerAndAuthorShip(cubeGrid, playerid);
 
-                return ;
+                        }
+                    });
+                    Log.Info("Grid has been pulled from the void!");
+                    string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+                    string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+                    DeleteFromWeb(currentIp);
+                    await RemoveConnection(steamid);
+
+                    return;
+                }
+                catch (Exception error) {
+                    Log.Error(error.ToString());
+                }
             }
-            Log.Warn("Skipped");
-            return;
         }
 
         private void FixOwnerAndAuthorShip(MyCubeGrid myCubeGrid, long playerId) {
@@ -719,15 +743,47 @@ namespace SwitchMe {
 
                 case TorchSessionState.Loaded:
                     //load
+                    int gates = 0;
                     MyVisualScriptLogicProvider.PlayerConnected += PlayerConnect;
                     LoadSEDB();
-                    break;
+                    IEnumerable<string> channelIds = Config.Gates;
+                    string name = "";
+                    string location = "";
+                    foreach (string chId in channelIds) {
+
+                        name = chId.Split('/')[0];
+                        location = chId.Split('/')[1];
+                        Vector3D.TryParse(location, out Vector3D gps);
+                        var ob = new MyObjectBuilder_SafeZone();
+                        ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
+                        ob.PersistentFlags = MyPersistentEntityFlags2.InScene;
+                        ob.Shape = MySafeZoneShape.Sphere;
+                        ob.Radius = (float)50;
+                        ob.Enabled = true;
+                        ob.DisplayName = $"SM-{gps}";
+                        var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
+                        gates++;
+                        if (!zones.Contains(ob.DisplayName)) {
+                            zones.Add(ob.DisplayName);
+                        }
+
+                    }
+                    Log.Info($"{gates} Jumpgates created!");
+                        break;
 
                 case TorchSessionState.Unloaded:
                     //unload
                     MyVisualScriptLogicProvider.PlayerConnected -= PlayerConnect;
                     timerStart = new DateTime(0);
                     UnloadSEDB();
+                    foreach (var zoneid in zones) {
+                        foreach (var entity in MyEntities.GetEntities()) {
+                            if (entity?.DisplayName?.Contains(zoneid, StringComparison.CurrentCultureIgnoreCase) ?? false) {
+                                entity.Close();
+                            }
+                                //This can be null??? :keen:
+                        }
+                    }
                     break;
 
                 default:
