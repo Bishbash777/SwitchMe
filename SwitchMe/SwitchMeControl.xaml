@@ -50,11 +50,11 @@
         <StackPanel Orientation="Horizontal">
             <Label Content="Gate GPS:"/>
             <Label Content="X:" Width="23"/>
-            <TextBox Width="90" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" x:Name="XCordGate" />
+            <TextBox Width="90" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" x:Name="XCordGate" Text="{Binding XCordJump}"/>
             <Label Content="Y:" Width="20"/>
-            <TextBox Width="86" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" x:Name="YCordGate"/>
+            <TextBox Width="86" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" x:Name="YCordGate" Text="{Binding YCordJump}"/>
             <Label Content="Z:" Width="20"/>
-            <TextBox Width="88" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" x:Name="ZCordGate" />
+            <TextBox Width="88" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" x:Name="ZCordGate" Text="{Binding ZCordJump}" />
         </StackPanel>
         <StackPanel Orientation="Horizontal">
             <Button x:Name="btnAddGate" Width="100" Content="Add Server" Margin="3"  Height="22" Click="btnAddGate_Click" />

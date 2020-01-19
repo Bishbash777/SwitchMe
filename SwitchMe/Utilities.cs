@@ -33,8 +33,9 @@ namespace SwitchMe {
             return MySandboxGame.ConfigDedicated.IP;
         }
 
-
-
+        public static string GetSubstringByString(string from, string until, string wholestring) {
+            return wholestring.Substring((wholestring.IndexOf(from) + from.Length), (wholestring.IndexOf(until) - wholestring.IndexOf(from) - from.Length));
+        }
 
         public static MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group FindRelevantGroup(
             string gridTarget, long playerId) {
