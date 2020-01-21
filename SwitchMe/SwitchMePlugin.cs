@@ -266,6 +266,46 @@ namespace SwitchMe {
         }
 
 
+
+        public async Task<bool> CheckServer(IMyPlayer player, string servername, string target ) {
+                string slotinfo = await CheckSlotsAsync(target);
+                string existanceCheck = slotinfo.Split(';').Last();
+                bool paired = await CheckKeyAsync(target);
+
+
+                if (target.Length < 1) {
+                    utils.NotifyMessage("Unknown Server. Please use '!switch list' to see a list of valid servers!", player.SteamUserId);
+                    return false;
+                }
+
+                if (existanceCheck != "1") {
+                    utils.NotifyMessage("Cannot communicate with target, please make sure SwitchMe is installed there!", player.SteamUserId);
+                    return false;
+                }
+
+                if (paired != true) {
+                    utils.NotifyMessage("Unauthorised Switch! Please make sure the servers have the same Bind Key!", player.SteamUserId);
+                    return false;
+                }
+
+                ///   Slot checking
+                Log.Warn("Checking " + target);
+                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+                Log.Warn("MAX: " + max);
+                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+                currentLocalPlayers = 1;
+                int maxi = int.Parse(max);
+                int maxcheck = currentLocalPlayers + currentRemotePlayers;
+                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
+                if (maxcheck > maxi && !player.IsAdmin) {
+                    utils.NotifyMessage("Not enough slots free to use gate!", player.SteamUserId);
+                    return false;
+                }
+                return true;
+        }
+
+
         public override async void Update() {
             try {
                 test++;
@@ -312,11 +352,26 @@ namespace SwitchMe {
                             }
                             string target = ip + ":" + port;
                             ip += ":" + port;
+                            if (DisplayedMessage.ContainsKey(player.SteamUserId)) {
+                                DisplayedMessage[player.SteamUserId] = false;
+                            }
+                            DisplayedMessage[player.SteamUserId] = false;
                             if (closestDistance[player.SteamUserId] < 22500 /* 150m away from jumpCentre */) {
                                 if (closestDistance[player.SteamUserId] > 3025) {
                                     if (JumpProtect.ContainsKey(player.SteamUserId)) {
                                         JumpProtect[player.SteamUserId] = false;
                                     }
+                                }
+                                if (!DisplayedMessage.ContainsKey(player.SteamUserId)) {
+                                    DisplayedMessage.Add(player.SteamUserId, false);
+                                }
+
+                                if (!DisplayedMessage[player.SteamUserId]) {
+                                    if (!await CheckServer(player, name, target)) {
+                                        return;
+                                    }
+                                    utils.NotifyMessage($"You are approaching the Jumpgate for {ClosestGate[player.SteamUserId]}... Proceed with Caution", player.SteamUserId);
+                                    DisplayedMessage[player.SteamUserId] = true;
                                 }
                                 if (closestDistance[player.SteamUserId] <= 2500 ) {
                                     /* If he is online we check if he is currently seated. If he is - get the grid name */
@@ -331,14 +386,12 @@ namespace SwitchMe {
                                                 inZone[player.SteamUserId] = true;
                                                 VoidManager voidm = new VoidManager(this);
                                                 await voidm.SendGrid(gridname, ClosestGate[player.SteamUserId], player.DisplayName, player.IdentityId, ip);
-                                                Log.Error("Success");
                                                 inZone[player.SteamUserId] = false;
                                             }
                                         }
                                         catch (Exception e) {
                                             PlayerSending[player.SteamUserId] = true;
                                             Log.Warn(e.ToString());
-                                            Log.Error("Fail");
                                         }
                                     }
                                 }
@@ -954,6 +1007,7 @@ namespace SwitchMe {
                     }
                     else {
                         _multibase.PlayerJoined += Multibase_PlayerJoined;
+                        _multibase.PlayerLeft += Multibase_PlayerLeft;
                     }
                 }
                 InitPost();

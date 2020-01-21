@@ -101,7 +101,7 @@ namespace SwitchMe {
                 if (paired == true) 
                     sb.Append("'" + name + "' ");
             }
-
+            Log.Info($"Servers available to switch to: {sb}");
             Context.Respond("--------------------------");
             Context.Respond("List of Servers available to switch to:");
             Context.Respond(sb.ToString());
@@ -117,6 +117,13 @@ namespace SwitchMe {
             Context.Respond("`!switch grid '<targetgrid>' '<targetserver>'` Transfers the target grid to the target server.");
             Context.Respond("`!switch recover` Completes the transfer of a grid");
         }
+
+
+        [Command("gates","Get the gps locations of jump gates in this server")]
+        [Permission(MyPromoteLevel.None)]
+        public void GetGates() { 
+        }
+
 
         [Command("debug", "")]
         [Permission(MyPromoteLevel.None)]
