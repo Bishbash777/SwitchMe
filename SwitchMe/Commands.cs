@@ -121,17 +121,16 @@ namespace SwitchMe {
 
         [Command("gates","Get the gps locations of jump gates in this server")]
         [Permission(MyPromoteLevel.None)]
-        public void GetGates() { 
-        }
-
-
-        [Command("debug", "")]
-        [Permission(MyPromoteLevel.None)]
-        public void SwitchDebug() {
-
-            string output = Plugin.Debug();
-            Context.Respond(output);
-            Log.Warn(output);
+        public void GetGates() {
+            Context.Respond("Getting GPS locations for active jumpgates...");
+            IEnumerable<string> channelIds = Plugin.Config.Gates;
+            string name = "";
+            string location = "";
+            foreach (string chId in channelIds) {
+                name = chId.Split('/')[0];
+                location = chId.Split('/')[1];
+                Context.Respond($"GPS:{name}:{utils.GetSubstringByString("X:","Y", location)}:{utils.GetSubstringByString("Y:", "Z", location)}:{ utils.GetSubstringByString("Z:", "}", location)}");
+            }
         }
 
         [Command("recover", "Completes the transfer of one grid from one server to another")]

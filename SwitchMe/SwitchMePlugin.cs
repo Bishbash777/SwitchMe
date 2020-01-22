@@ -274,16 +274,19 @@ namespace SwitchMe {
 
 
                 if (target.Length < 1) {
+                Log.Warn("Unknown Server. Please use '!switch list' to see a list of valid servers!");
                     utils.NotifyMessage("Unknown Server. Please use '!switch list' to see a list of valid servers!", player.SteamUserId);
                     return false;
                 }
 
                 if (existanceCheck != "1") {
+                Log.Warn("Cannot communicate with target, please make sure SwitchMe is installed there!");
                     utils.NotifyMessage("Cannot communicate with target, please make sure SwitchMe is installed there!", player.SteamUserId);
                     return false;
                 }
 
                 if (paired != true) {
+                Log.Warn("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
                     utils.NotifyMessage("Unauthorised Switch! Please make sure the servers have the same Bind Key!", player.SteamUserId);
                     return false;
                 }
@@ -370,7 +373,7 @@ namespace SwitchMe {
                                     if (!await CheckServer(player, name, target)) {
                                         return;
                                     }
-                                    utils.NotifyMessage($"You are approaching the Jumpgate for {ClosestGate[player.SteamUserId]}... Proceed with Caution", player.SteamUserId);
+                                    utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
                                     DisplayedMessage[player.SteamUserId] = true;
                                 }
                                 if (closestDistance[player.SteamUserId] <= 2500 ) {
@@ -804,6 +807,8 @@ namespace SwitchMe {
                         ob.Radius = (float)50;
                         ob.Enabled = true;
                         ob.DisplayName = $"SM-{gps}";
+                        ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
+                        ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
                         var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
                         gates++;
                         if (!zones.Contains(ob.DisplayName)) {
@@ -1131,7 +1136,7 @@ namespace SwitchMe {
                                     { "currentplayers", currentPlayers },
                                     { "maxplayers", maxPlayers },
                                     { "serverip", currentIp},
-                                    { "verion", "1.3.29"},
+                                    { "verion", "1.3.29-jumpgate-alpha"},
                                     { "bindKey", Config.LocalKey},
                                     { "inbound", Inbound },
                                     { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
