@@ -54,12 +54,11 @@ namespace SwitchMe {
         [Command("me", "Automatically connect to your server of choice within this network. USAGE: !switch me <Insert Server name here>")]
         [Permission(MyPromoteLevel.None)]
         public async Task SwitchLocalAsync() {
-            bool isserver = Sandbox.Game.Multiplayer.Sync.IsServer;
-            if (isserver) {
-                Context.Respond("Console cannot run this command");
+            IMyPlayer player = Context.Player;
+            if (player == null) {
+                Context.Respond("Command cannot be ran from console");
                 return;
             }
-
             if (!Plugin.Config.Enabled) {
                 Context.Respond("Switching is not enabled!");
                 return;
@@ -136,8 +135,8 @@ namespace SwitchMe {
         [Command("recover", "Completes the transfer of one grid from one server to another")]
         [Permission(MyPromoteLevel.None)]
         public async void Recover() {
-
-            if (Sandbox.Game.Multiplayer.Sync.IsServer) {
+            IMyPlayer player = Context.Player;
+            if (player == null) {
                 Context.Respond("Command cannot be ran from console");
                 return;
             }

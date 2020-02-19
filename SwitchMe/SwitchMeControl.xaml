@@ -18,6 +18,10 @@
             </Border>
         </DockPanel>
         <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
+        <StackPanel Orientation="Horizontal">
+            <CheckBox Content="Enable jumpgates" Margin="3" IsChecked="{Binding EnabledJumpgate}" ToolTip="Enable or disable SwitchMe Jumpgates"/>
+            <Label Content="(Beta feature - grids *may* be stuck in the void)" FontSize="8"/>
+        </StackPanel>
         <CheckBox Content="Enable outbound grid transfers" Margin="3" IsChecked="{Binding EnabledTransfers}" ToolTip="Enable or disable grid transfers on SwitchMe" Height="18"/>
         <CheckBox Content="Enable inbound grid transfers" Margin="3" IsChecked="{Binding InboundTransfersState}" ToolTip="Enable or disable inbound grid transfers on SwitchMe" Height="18"/>
         <Label Height="3">

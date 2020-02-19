@@ -295,12 +295,10 @@ namespace SwitchMe {
                 Log.Warn("Checking " + target);
                 int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
                 string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                Log.Warn("MAX: " + max);
                 int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
                 currentLocalPlayers = 1;
                 int maxi = int.Parse(max);
                 int maxcheck = currentLocalPlayers + currentRemotePlayers;
-                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
                 if (maxcheck > maxi && !player.IsAdmin) {
                     utils.NotifyMessage("Not enough slots free to use gate!", player.SteamUserId);
                     return false;
@@ -355,10 +353,9 @@ namespace SwitchMe {
                             }
                             string target = ip + ":" + port;
                             ip += ":" + port;
-                            if (DisplayedMessage.ContainsKey(player.SteamUserId)) {
-                                DisplayedMessage[player.SteamUserId] = false;
+                            if (DisplayedMessage.ContainsKey(player.SteamUserId) && closestDistance[player.SteamUserId] > 22505) {
+                                DisplayedMessage[player.SteamUserId] = true;
                             }
-                            DisplayedMessage[player.SteamUserId] = false;
                             if (closestDistance[player.SteamUserId] < 22500 /* 150m away from jumpCentre */) {
                                 if (closestDistance[player.SteamUserId] > 3025) {
                                     if (JumpProtect.ContainsKey(player.SteamUserId)) {
@@ -682,7 +679,26 @@ namespace SwitchMe {
             }
         }
         public async Task<bool> CheckConnection(IPlayer player) {
-            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            string externalIP;
+            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0")
+                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0")
+                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168")
+                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("10.0")) {
+
+                externalIP = Config.LocalIP;
+
+                if (externalIP.Contains("127.0")
+                || externalIP.Contains("192.168")
+                || externalIP.Contains("0.0")
+                || externalIP.Contains("10.0")) {
+                    Log.Error("Incorrect IP setup... SwitchMe will NOT work");
+                    return false;
+                }
+
+            }
+            else {
+                externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            }
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
             Log.Warn("Checking inbound conneciton for " + player.SteamId);
             string pagesource;
@@ -808,6 +824,8 @@ namespace SwitchMe {
                         ob.Enabled = true;
                         ob.DisplayName = $"SM-{gps}";
                         ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
+                        ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
+                        ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;
                         ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
                         var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
                         gates++;
@@ -1100,13 +1118,15 @@ namespace SwitchMe {
 
                 if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0")
                     || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0")
-                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168")) {
+                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168")
+                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("10.0")) {
 
                     externalIP = Config.LocalIP;
 
                     if (externalIP.Contains("127.0")
                     || externalIP.Contains("192.168")
-                    || externalIP.Contains("0.0")) {
+                    || externalIP.Contains("0.0")
+                    || externalIP.Contains("10.0")) {
                         i++;
                         if (i == 300) { Log.Warn("Please have your public ip set in the SwitchMe or Torch Config. Search 'Whats my ip?' on google if you are not sure how to find this."); i = 0; }
                     }
@@ -1136,7 +1156,7 @@ namespace SwitchMe {
                                     { "currentplayers", currentPlayers },
                                     { "maxplayers", maxPlayers },
                                     { "serverip", currentIp},
-                                    { "verion", "1.3.29-jumpgate-alpha"},
+                                    { "verion", "1.4.02"},
                                     { "bindKey", Config.LocalKey},
                                     { "inbound", Inbound },
                                     { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
