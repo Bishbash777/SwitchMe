@@ -92,8 +92,10 @@ namespace SwitchMe {
         private Dictionary<ulong, bool> PlayerSending = new Dictionary<ulong, bool>();
         private Dictionary<ulong, bool> inZone = new Dictionary<ulong, bool>();
         private Dictionary<ulong, bool> JumpProtect = new Dictionary<ulong, bool>();
+        private Dictionary<long, string> Factions = new Dictionary<long, string>();
+        private Dictionary<long, Dictionary<long, bool>> FMembers = new Dictionary<long, Dictionary<long, bool>>();
 
-        private int test = 0;
+        private int tick = 0;
 
 
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
@@ -309,12 +311,14 @@ namespace SwitchMe {
 
         public override async void Update() {
             try {
-                test++;
+                tick++;
                 string name = "";
                 string location = "";
                 string port = "";
+
+                //Enter jumpgate logic.
                 if (Config.EnabledJumpgate) {
-                    if (test % 16 == 0) {
+                    if (tick % 16 == 0) {
                         foreach (var playerOnline in MySession.Static.Players.GetOnlinePlayers()) {
                             var player = utils.GetPlayerByNameOrId(playerOnline.DisplayName);
                             if (!PlayerSending.ContainsKey(player.SteamUserId)) {
