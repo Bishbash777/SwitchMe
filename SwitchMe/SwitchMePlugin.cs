@@ -71,7 +71,7 @@ namespace SwitchMe {
         private IMultiplayerManagerBase _multibase;
         private readonly List<long> player_ids_to_spawn = new List<long>();
         private readonly List<IMyPlayer> all_players = new List<IMyPlayer>();
-        private List<string> zones = new List<string>();
+        public List<string> zones = new List<string>();
         private readonly Dictionary<long, IMyPlayer> current_player_ids = new Dictionary<long, IMyPlayer>();
         private readonly Dictionary<ulong, string> target_file_list = new Dictionary<ulong, string>();
         private readonly Dictionary<ulong, bool> connecting = new Dictionary<ulong, bool>();
@@ -360,6 +360,7 @@ namespace SwitchMe {
                             if (DisplayedMessage.ContainsKey(player.SteamUserId) && closestDistance[player.SteamUserId] > 22505) {
                                 DisplayedMessage[player.SteamUserId] = true;
                             }
+
                             if (closestDistance[player.SteamUserId] < 22500 /* 150m away from jumpCentre */) {
                                 if (closestDistance[player.SteamUserId] > 3025) {
                                     if (JumpProtect.ContainsKey(player.SteamUserId)) {

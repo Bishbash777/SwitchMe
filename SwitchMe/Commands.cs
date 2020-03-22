@@ -26,6 +26,10 @@ using System.Collections;
 using System.Threading.Tasks;
 using Sandbox.ModAPI;
 using System.Net.Http;
+using Sandbox.Game;
+using Sandbox.Common.ObjectBuilders;
+using VRage;
+using VRage.ObjectBuilders;
 
 namespace SwitchMe {
 
@@ -349,6 +353,51 @@ namespace SwitchMe {
         public void Restore() {
             Recover();
         } 
+
+        [Command("reload", "Reload and refresh jumpgates with debug options")]
+        [Permission(MyPromoteLevel.Admin)]
+        public void reload() {
+            //Delete all registered gates
+            int i = 0;
+            foreach (var zone in Plugin.zones) {
+                foreach (var entity in MyEntities.GetEntities()) {
+                    if (entity?.DisplayName?.Contains(zone, StringComparison.CurrentCultureIgnoreCase) ?? false) {
+                        i++;
+                        entity.Close();
+                    }
+                }
+            }
+            utils.NotifyMessage($"{i} Jumpgates closed!", Context.Player.SteamUserId);
+
+            //Rebuild all gates
+            //load
+            int gates = 0;
+            IEnumerable<string> channelIds = Plugin.Config.Gates;
+            string name = "";
+            string location = "";
+            foreach (string chId in channelIds) {
+                name = chId.Split('/')[0];
+                location = chId.Split('/')[1];
+                Vector3D.TryParse(location, out Vector3D gps);
+                var ob = new MyObjectBuilder_SafeZone();
+                ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
+                ob.PersistentFlags = MyPersistentEntityFlags2.InScene;
+                ob.Shape = MySafeZoneShape.Sphere;
+                ob.Radius = (float)50;
+                ob.Enabled = true;
+                ob.DisplayName = $"SM-{gps}";
+                ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
+                ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
+                ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;
+                ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
+                var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
+                gates++;
+                if (!Plugin.zones.Contains(ob.DisplayName)) {
+                    Plugin.zones.Add(ob.DisplayName);
+                }
+            }
+            utils.NotifyMessage($"{gates} Jumpgates created!", Context.Player.SteamUserId);
+        }
 
 
         /*[Command("link")]
