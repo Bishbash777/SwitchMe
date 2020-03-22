@@ -148,7 +148,7 @@ namespace SwitchMe {
                         }
                         Context.Player.RequestChangeBalance(-withdraw);
                     }
-                    return false;
+                    return true;
                 }
                 MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
                 builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
@@ -157,7 +157,7 @@ namespace SwitchMe {
                 return true;
 
             } catch (Exception e) {
-                Log.Fatal(e, "ERROR AT SERIALIZATION: " + e.Message);
+                Log.Fatal(e.Message);
                 return false;
             }
         }
@@ -166,7 +166,6 @@ namespace SwitchMe {
 
             HashSet<long> authors = new HashSet<long>();
             HashSet<MySlimBlock> blocks = new HashSet<MySlimBlock>(myCubeGrid.GetBlocks());
-
             foreach (MySlimBlock block in blocks) {
 
                 if (block == null || block.CubeGrid == null || block.IsDestroyed)
