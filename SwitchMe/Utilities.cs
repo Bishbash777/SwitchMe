@@ -1,22 +1,30 @@
 ﻿using NLog;
 using Sandbox;
 using Sandbox.Game.Entities;
+using Sandbox.Game.World;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Torch.API.Managers;
 using Torch.Commands;
+using Torch.Mod;
+using Torch.Mod.Messages;
+using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Groups;
+using VRageMath;
+using Torch;
+using Torch.API;
 
 namespace SwitchMe {
 
-    public class Utilities {
-
+    public class utils {
+        public static ITorchBase Torch { get; }
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
-
         public static string CreateExternalIP(SwitchMeConfig Config) {
 
             if (MySandboxGame.ConfigDedicated.IP.Contains("0.0") || MySandboxGame.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
@@ -25,15 +33,16 @@ namespace SwitchMe {
             return MySandboxGame.ConfigDedicated.IP;
         }
 
+        public static string GetSubstringByString(string from, string until, string wholestring) {
+            return wholestring.Substring((wholestring.IndexOf(from) + from.Length), (wholestring.IndexOf(until) - wholestring.IndexOf(from) - from.Length));
+        }
+
         public static MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group FindRelevantGroup(
-            string gridTarget, long playerId, CommandContext context) {
-
-            ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = FindGridGroup(gridTarget, context);
-
-            Log.Warn("Target and ID:   " + gridTarget + " | " + playerId);
-
+            string gridTarget, long playerId) {
             try {
+                ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> groups = FindGridGroup(gridTarget);
 
+                Log.Warn("Target and ID:   " + gridTarget + " | " + playerId);
                 /* Each Physical Grid group (physical included Connectors) */
                 foreach (var group in groups) {
 
@@ -72,8 +81,6 @@ namespace SwitchMe {
                         int ownerCount = bigOnwerIds.Count;
                         var gridOwner = 0L;
 
-                        string pos = grid.PositionComp.GetPosition().ToString();
-
                         /* If nobody isnt the big owner then everythings fine. otherwise take the second biggest owner */
                         if (ownerCount > 0 && bigOnwerIds[0] != 0)
                             gridOwner = bigOnwerIds[0];
@@ -93,7 +100,7 @@ namespace SwitchMe {
 
                         } else {
 
-                            context.Respond("You are not the grid Owner");
+                            //context.Respond("You are not the grid Owner");
                             Log.Warn("Conditionals... GridOwner: " + gridOwner + "Player: " + playerId);
                         }
                     }
@@ -110,7 +117,23 @@ namespace SwitchMe {
             }
         }
 
-        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> FindGridGroup(string gridName, CommandContext context) {
+        public static void NotifyMessage(string message, ulong steamid) {
+            ModCommunication.SendMessageTo(new NotificationMessage(message, 15000, "Blue"), steamid);
+        }
+
+        public static void Respond(string message, string sender = null, ulong steamid = 0, string font = null) {
+            if (sender == "Server") {
+                sender = null;
+                font = null;
+            }
+            IChatManagerServer manager = Torch.CurrentSession.Managers.GetManager<IChatManagerServer>();
+            if (manager == null) {
+                return;
+            }
+            manager.SendMessageAsOther(sender, message, font, steamid);
+        }
+
+        public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> FindGridGroup(string gridName) {
 
             int i = 0;
             bool foundIdentifier = false;
@@ -138,9 +161,27 @@ namespace SwitchMe {
             });
 
             if (i >= 1 && !foundIdentifier)
-                context.Respond("No grid found...");
+                Log.Info("No grid found...");
 
             return groups;
+        }
+
+        public static IMyPlayer GetPlayerByNameOrId(string nameOrPlayerId) {
+            if (!long.TryParse(nameOrPlayerId, out long id)) {
+                foreach (var identity in MySession.Static.Players.GetAllIdentities()) {
+                    if (identity.DisplayName == nameOrPlayerId) {
+                        id = identity.IdentityId;
+                    }
+                }
+            }
+
+            if (MySession.Static.Players.TryGetPlayerId(id, out MyPlayer.PlayerId playerId)) {
+                if (MySession.Static.Players.TryGetPlayerById(playerId, out MyPlayer player)) {
+                    return player;
+                }
+            }
+
+            return null;
         }
     }
 }

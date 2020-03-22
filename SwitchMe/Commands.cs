@@ -25,6 +25,7 @@ using Torch.Utils;
 using System.Collections;
 using System.Threading.Tasks;
 using Sandbox.ModAPI;
+using System.Net.Http;
 
 namespace SwitchMe {
 
@@ -53,16 +54,25 @@ namespace SwitchMe {
         [Command("me", "Automatically connect to your server of choice within this network. USAGE: !switch me <Insert Server name here>")]
         [Permission(MyPromoteLevel.None)]
         public async Task SwitchLocalAsync() {
-            VoidManager voidManager = new VoidManager(Plugin, Context);
-            await voidManager.PlayerTransfer("single");
+            IMyPlayer player = Context.Player;
+            if (player == null) {
+                Context.Respond("Command cannot be ran from console");
+                return;
+            }
+            if (!Plugin.Config.Enabled) {
+                Context.Respond("Switching is not enabled!");
+                return;
+            }
+            VoidManager voidManager = new VoidManager(Plugin);
+            await voidManager.PlayerTransfer("single", Sandbox.Game.Multiplayer.Sync.MyId);
         }
 
         [Command("all", "Automatically connects all players to your server of choice within this network. USAGE: !switch all <Insert Server name here>")]
         [Permission(MyPromoteLevel.Admin)]
         public async Task SwitchAllAsync() {
-
-            VoidManager voidManager = new VoidManager(Plugin, Context);
-            await voidManager.PlayerTransfer("all");
+            ulong steamid = Sandbox.Game.Multiplayer.Sync.MyId;
+            VoidManager voidManager = new VoidManager(Plugin);
+            await voidManager.PlayerTransfer("all", steamid);
         }
 
         [Command("list", "Displays a list of Valid Server names for the '!switch me <servername>' command. ")]
@@ -90,7 +100,7 @@ namespace SwitchMe {
                 if (paired == true) 
                     sb.Append("'" + name + "' ");
             }
-
+            Log.Info($"Servers available to switch to: {sb}");
             Context.Respond("--------------------------");
             Context.Respond("List of Servers available to switch to:");
             Context.Respond(sb.ToString());
@@ -107,31 +117,36 @@ namespace SwitchMe {
             Context.Respond("`!switch recover` Completes the transfer of a grid");
         }
 
-        [Command("debug", "")]
-        [Permission(MyPromoteLevel.None)]
-        public void SwitchDebug() {
 
-            string output = Plugin.Debug();
-            Context.Respond(output);
-            Log.Warn(output);
+        [Command("gates","Get the gps locations of jump gates in this server")]
+        [Permission(MyPromoteLevel.None)]
+        public void GetGates() {
+            Context.Respond("Getting GPS locations for active jumpgates...");
+            IEnumerable<string> channelIds = Plugin.Config.Gates;
+            string name = "";
+            string location = "";
+            foreach (string chId in channelIds) {
+                name = chId.Split('/')[0];
+                location = chId.Split('/')[1];
+                Context.Respond($"GPS:{name}:{utils.GetSubstringByString("X:","Y", location)}:{utils.GetSubstringByString("Y:", "Z", location)}:{ utils.GetSubstringByString("Z:", "}", location)}");
+            }
         }
 
         [Command("recover", "Completes the transfer of one grid from one server to another")]
         [Permission(MyPromoteLevel.None)]
         public async void Recover() {
-
-            if (Context.Player == null) {
+            IMyPlayer player = Context.Player;
+            if (player == null) {
                 Context.Respond("Command cannot be ran from console");
                 return;
             }
 
-            string externalIP = Utilities.CreateExternalIP(Plugin.Config);
+            string externalIP = utils.CreateExternalIP(Plugin.Config);
             string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
-
-            VoidManager voidManager = new VoidManager(Plugin, Context);
+            VoidManager voidManager = new VoidManager(Plugin);
 
             
-            Tuple<string, string, Vector3D> data = await voidManager.DownloadGridAsync(currentIp);
+            Tuple<string, string, Vector3D> data = await voidManager.DownloadGridAsync(currentIp, Context.Player.SteamUserId, Context.Player.GetPosition().ToString());
 
             if (data == null)
             {
@@ -142,12 +157,13 @@ namespace SwitchMe {
             Vector3D newPos = data.Item3;
             MyAPIGateway.Utilities.InvokeOnGameThread(() => {
                 GridImporter gridManager = new GridImporter(Plugin, Context);
-                if (gridManager.DeserializeGridFromPath(targetFile, Context.Player.IdentityId, newPos))
+                if (gridManager.DeserializeGridFromPath(targetFile, Context.Player.DisplayName, newPos))
                 {
                     File.Delete(targetFile);
                     Plugin.DeleteFromWeb(currentIp);
                 }
             });
+            await RemoveConnection(Context.Player.SteamUserId);
             var playerEndpoint = new Endpoint(Context.Player.SteamUserId, 0);
             var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
             var clientDataDict = _clientStates.Invoke(replicationServer);
@@ -169,6 +185,28 @@ namespace SwitchMe {
 
                 _removeForClient.Invoke(replicationServer, replicable, clientData, true);
                 _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
+            }
+        }
+
+        public async Task RemoveConnection(ulong player) {;
+            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            if (!externalIP.Contains("0.0")
+                || !externalIP.Contains("127.0")
+                || !externalIP.Contains("192.168")) {
+                externalIP = Plugin.Config.LocalIP;
+            }
+
+            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+            Log.Warn("Removing conneciton flag for " + player);
+            using (HttpClient client = new HttpClient()) {
+                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("BindKey", Plugin.Config.LocalKey),
+                    new KeyValuePair<string, string>("CurrentIP", currentIp ),
+                    new KeyValuePair<string, string>("RemoveConnection", player.ToString())
+                };
+                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                await client.PostAsync("http://switchplugin.net/api/index.php", content);
             }
         }
 
@@ -215,6 +253,7 @@ namespace SwitchMe {
             ip += ":" + port;
             if (ip == null || name == null || port == null) {
                 Context.Respond("Invalid Configuration!");
+                return;
             }
 
 
@@ -223,27 +262,28 @@ namespace SwitchMe {
             bool paired = await Plugin.CheckKeyAsync(target);
 
             if (target.Length < 1) {
-                Context.Respond("Unknown Server. Please use '!switch list' to see a list of valid servers!");
+                Context.Respond("Unknown Server. Please use '!switch list' to see a list of validated servers!");
                 return;
             }
 
             if (existanceCheck != "1") {
                 Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
+                return;
+            }
+
+            if (!paired) {
+                Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
+                return;
             }
 
             if (!Plugin.CheckStatus(target)) {
-                Context.Respond("Target server is offline, preventing switch");
+                Context.Respond("Target server is offline... preventing switch");
                 return;
             }
 
             bool InboundCheck = await Plugin.CheckInboundAsync(target);
             if (!InboundCheck) {
                 Context.Respond("The target server does not allow inbound transfers");
-                return;
-            }
-
-            if (!paired) {
-                Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
                 return;
             }
 
@@ -255,57 +295,52 @@ namespace SwitchMe {
             int maxcheck = 1 + currentRemotePlayers;
             Context.Respond("Slot Checking...");
             Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-            if (maxcheck > maxi) {
-
-                Context.Respond("Cannot switch, not enough slots available");
+            if (maxcheck > maxi && !Context.Player.IsAdmin) {
+                Log.Warn("Not enough slots available.");
+                Context.Respond("No slots available.");
                 return;
             }
-            Context.Respond("Slot checking passed!");
+            var player = MySession.Static.Players.GetPlayerByName(Context.Player.DisplayName);
+            if (player != null) {
+                /* If he is online we check if he is currently seated. If he is eject him. */
+                if (player?.Controller.ControlledEntity is MyCockpit controller) {
+                    MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                        controller.Use();
+                    });
+                }
+                try {
 
-            var p = Context.Player;
-            var parent = p.Character?.Parent;
-            if (parent == null) {
-            }
-            if (parent is MyShipController sc) {
-                sc.RemoveUsers(false);
-            }
+                    string externalIP = utils.CreateExternalIP(Plugin.Config);
+                    string pagesource = "";
+                    string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
 
-
-            try {
-
-                string externalIP = Utilities.CreateExternalIP(Plugin.Config);
-                string pagesource = "";
-                string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
-
-                /* Not sure what this does but it does not belong here */
-                using (WebClient client = new WebClient()) {
-                    NameValueCollection postData = new NameValueCollection()
-                    {
-                        //order: {"parameter name", "parameter value"}
+                    /* Not sure what this does but it does not belong here */
+                    using (WebClient client = new WebClient()) {
+                        NameValueCollection postData = new NameValueCollection()
+                        {
                         {"steamID", Context.Player.SteamUserId + ""},
                         {"currentIP", currentIp },
                         {"gridCheck", ""}
                     };
-                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
-                }
+                        pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
+                    }
 
-                if (pagesource == "0") {
-
-                    if (!await new VoidManager(Plugin, Context).SendGrid(gridTarget, serverTarget, Context.Player.IdentityId, target))
-                    {
+                    if (pagesource == "0") {
+                        if (!await new VoidManager(Plugin).SendGrid(gridTarget, serverTarget, Context.Player.DisplayName, Context.Player.IdentityId, target)) {
+                            return;
+                        }
+                        Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
+                    }
+                    else {
+                        Log.Fatal(pagesource);
+                        Context.Respond("Cannot transfer! You have a transfer ready to be recieved!");
                         return;
                     }
-                    Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
-                } else {
-
-                    Log.Fatal(pagesource);
-                    Context.Respond("Cannot transfer! You have a transfer ready to be recieved!");
-                    return;
                 }
-
-            } catch (Exception e) {
-                Log.Fatal(e, e.Message);
-                Context.Respond("Failure");
+                catch (Exception e) {
+                    Log.Fatal(e, e.Message);
+                    Context.Respond("Failure");
+                }
             }
         }
 
@@ -314,6 +349,15 @@ namespace SwitchMe {
         public void Restore() {
             Recover();
         } 
+
+
+        /*[Command("link")]
+        [Permission(MyPromoteLevel.Admin)]
+        public void Link(string target) {
+            Vector3D Linkpos = Context.Player.GetPosition();
+            Plugin.Config.Gates.Add(txtServerName.Text + ":" + txtServerIP.Text + ":" + txtServerPort.Text);
+        }
+        */
     }
 }
 
