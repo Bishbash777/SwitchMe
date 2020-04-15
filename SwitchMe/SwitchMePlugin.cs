@@ -360,7 +360,9 @@ namespace SwitchMe {
                                 DisplayedMessage[player.SteamUserId] = true;
                             }
 
-                            Log.Warn($"{player.DisplayName} is {closestDistance[player.SteamUserId]} away (meters squared)");
+                            if (Config.Debug && tick % 64 == 0) {
+                                Log.Warn($"{player.DisplayName} is {closestDistance[player.SteamUserId]} away (meters squared)");
+                            }
 
                             if (closestDistance[player.SteamUserId] < 22500 /* 150m away from jumpCentre */) {
                                 if (closestDistance[player.SteamUserId] > 3025) {
