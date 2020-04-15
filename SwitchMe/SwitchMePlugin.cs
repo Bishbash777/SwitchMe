@@ -24,7 +24,6 @@ using System.IO;
 using System.Net.Http;
 using Sandbox.Game;
 using Sandbox.ModAPI.Ingame;
-using VRage.Game.ModAPI;
 using VRage.Groups;
 using VRage.Utils;
 using VRage.Network;
@@ -360,6 +359,8 @@ namespace SwitchMe {
                             if (DisplayedMessage.ContainsKey(player.SteamUserId) && closestDistance[player.SteamUserId] > 22505) {
                                 DisplayedMessage[player.SteamUserId] = true;
                             }
+
+                            Log.Warn($"{player.DisplayName} is {closestDistance[player.SteamUserId]} away (meters squared)");
 
                             if (closestDistance[player.SteamUserId] < 22500 /* 150m away from jumpCentre */) {
                                 if (closestDistance[player.SteamUserId] > 3025) {
@@ -828,6 +829,7 @@ namespace SwitchMe {
                         ob.Radius = (float)50;
                         ob.Enabled = true;
                         ob.DisplayName = $"SM-{gps}";
+                        ob.Texture = "RAIN";
                         ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
                         ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
                         ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;

@@ -18,6 +18,7 @@
             </Border>
         </DockPanel>
         <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
+        <CheckBox Content="Debug" Margin="3" IsChecked="{Binding Debug}" ToolTip="Enable or disable debug mode"/>
         <StackPanel Orientation="Horizontal">
             <CheckBox Content="Enable jumpgates" Margin="3" IsChecked="{Binding EnabledJumpgate}" ToolTip="Enable or disable SwitchMe Jumpgates"/>
             <Label Content="(Beta feature - grids *may* be stuck in the void)" FontSize="8"/>

@@ -370,7 +370,6 @@ namespace SwitchMe {
             utils.NotifyMessage($"{i} Jumpgates closed!", Context.Player.SteamUserId);
 
             //Rebuild all gates
-            //load
             int gates = 0;
             IEnumerable<string> channelIds = Plugin.Config.Gates;
             string name = "";
