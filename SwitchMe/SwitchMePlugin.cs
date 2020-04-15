@@ -84,7 +84,6 @@ namespace SwitchMe {
         public MyPlayer closestPlayer = null;
         private int _timerSpawn = 0;
         Dictionary<double, MyPlayer> distanceData = new Dictionary<double, MyPlayer>();
-        private bool firstrun = true;
         private Dictionary<ulong,double> distance = new Dictionary<ulong, double>();
         private Dictionary<ulong,double> closestDistance = new Dictionary<ulong, double>();
         private Dictionary<ulong, bool> SafetyNet = new Dictionary<ulong, bool>();
@@ -98,11 +97,13 @@ namespace SwitchMe {
 
 
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
-        public Dictionary<long, CurrentCooldown> CurrentCooldownMap { get; } = new Dictionary<long, CurrentCooldown>();
-        public Dictionary<long, CurrentCooldown> ConfirmationsMap { get; } = new Dictionary<long, CurrentCooldown>();
+        public Dictionary<ulong, CurrentCooldown> CurrentCooldownMapCommand { get; } = new Dictionary<ulong, CurrentCooldown>();
+        public Dictionary<ulong, CurrentCooldown> ConfirmationsMapCommand { get; } = new Dictionary<ulong, CurrentCooldown>();
+        public Dictionary<ulong, CurrentCooldown> ProtectionCooldownMap { get; } = new Dictionary<ulong, CurrentCooldown>();
         public long Cooldown { get { return Config.CooldownInSeconds * 1000; } }
         public long CooldownConfirmationSeconds { get { return Config.ConfirmationInSeconds; } }
         public long CooldownConfirmation { get { return Config.ConfirmationInSeconds * 1000; } }
+        public long JoinProtect { get { return Config.JoinProtectTimer; } }
         /// <inheritdoc />
         public UserControl GetControl() => _control ?? (_control = new SwitchMeControl(this));
         public void Save() => _config?.Save();
@@ -133,6 +134,7 @@ namespace SwitchMe {
             }
 
             Log.Info( obj.SteamId.ToString() + " connected - Starting SwitchMe handle");
+            CurrentCooldown cooldown = new CurrentCooldown(this);
             if (!Config.Enabled || !Config.RecoverOnJoin) 
                 return;
             if (Config.XCord == null || Config.YCord == null || Config.ZCord == null) {
@@ -364,7 +366,7 @@ namespace SwitchMe {
                                 Log.Warn($"{player.DisplayName} is {closestDistance[player.SteamUserId]} away (meters squared)");
                             }
 
-                            if (closestDistance[player.SteamUserId] < 22500 /* 150m away from jumpCentre */) {
+                            if (closestDistance[player.SteamUserId] < 1000000 /* 1KM away from jumpCentre */) {
                                 if (closestDistance[player.SteamUserId] > 3025) {
                                     if (JumpProtect.ContainsKey(player.SteamUserId)) {
                                         JumpProtect[player.SteamUserId] = false;
@@ -961,36 +963,6 @@ namespace SwitchMe {
             }
         }
 
-        public string Debug() {
-            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-            if (Config.LocalKey == "10551Debug") {
-
-                string pagesource;
-
-                try {
-
-                    using (WebClient client = new WebClient()) {
-
-                        NameValueCollection postData = new NameValueCollection()
-                        {
-                            //order: {"parameter name", "parameter value"}
-                            {"key", Config.ActivationKey},
-                            {"currentIP", currentIp}
-                        };
-
-                        pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/test.php", postData));
-
-                        return pagesource;
-                    }
-
-                } catch {
-                    Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
-                }
-            }
-            return null;
-        }
-
         public bool CheckStatus(string target) {
 
             string pagesource;
@@ -1090,7 +1062,6 @@ namespace SwitchMe {
         }
 
         int i = 0;
-        private object myObjectBuilder_Definitions;
 
         private void InitPost() {
             StartTimer();

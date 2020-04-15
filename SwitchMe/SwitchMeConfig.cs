@@ -82,6 +82,9 @@ namespace SwitchMe {
         private int _confirmationInSeconds = 30; //30 Seconds
         public int CooldownInSeconds { get => _cooldownInSeconds; set => SetValue(ref _cooldownInSeconds, value); }
 
+        private int _joinProtectTimer = 60; //30 Seconds
+        public int JoinProtectTimer { get => _joinProtectTimer; set => SetValue(ref _joinProtectTimer, value); }
+
         private ObservableCollection<string> _switchServers = new ObservableCollection<string>();
         public ObservableCollection<string> Servers { get => _switchServers; set => SetValue(ref _switchServers, value); }
 

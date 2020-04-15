@@ -28,7 +28,6 @@ namespace SwitchMe {
 
         private readonly SwitchMePlugin Plugin;
         private readonly CommandContext Context;
-        private MyPlayer player;
 
         public GridImporter(SwitchMePlugin Plugin, CommandContext Context) {
             this.Plugin = Plugin;
@@ -177,9 +176,9 @@ namespace SwitchMe {
                     player.TryGetBalanceInfo(out balance);
                     long mathResult = (balance - withdraw);
                     Log.Info("Cost of transfer for" + player.DisplayName + ": " + i);
-                    CurrentCooldown cooldown = new CurrentCooldown(Plugin, Context);
+                    CurrentCooldown cooldown = new CurrentCooldown(Plugin);
                     //verify that user wants to go ahead with transfer.
-                    if (cooldown.Confirm(i)) {
+                    if (cooldown.Confirm(i, player.SteamUserId)) {
                         if (mathResult < 0) {
                             Log.Info("Cost of transfer for" + player.DisplayName + ": " + i);
                             utils.NotifyMessage("Not enough funds for transfer", player.SteamUserId);
