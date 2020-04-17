@@ -15,6 +15,7 @@ using VRage.Groups;
 using VRageMath;
 using System.Threading.Tasks;
 using Sandbox.Game.World;
+using VRage.Game.ModAPI;
 
 namespace SwitchMe {
 
@@ -299,7 +300,7 @@ namespace SwitchMe {
                 int maxcheck = currentLocalPlayers + currentRemotePlayers;
                 utils.Respond("Slot Checking...", "Server", steamid);
                 Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-                if (maxcheck > maxi && !Context.Player.IsAdmin) {
+                if (maxcheck > maxi && Context.Player.PromoteLevel != MyPromoteLevel.Admin) {
                     return;
                 }
 

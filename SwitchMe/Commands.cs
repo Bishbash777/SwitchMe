@@ -299,7 +299,7 @@ namespace SwitchMe {
             int maxcheck = 1 + currentRemotePlayers;
             Context.Respond("Slot Checking...");
             Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-            if (maxcheck > maxi && !Context.Player.IsAdmin) {
+            if (maxcheck > maxi && Context.Player.PromoteLevel != MyPromoteLevel.Admin) {
                 Log.Warn("Not enough slots available.");
                 Context.Respond("No slots available.");
                 return;

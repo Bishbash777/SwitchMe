@@ -76,7 +76,6 @@ namespace SwitchMe {
         private readonly Dictionary<ulong, bool> connecting = new Dictionary<ulong, bool>();
         public Dictionary<Vector3D, string> JumpInfo = new Dictionary<Vector3D, string>();
         private readonly List<long> clear_ids = new List<long>();
-        //public bool connecting = false;
         private static Vector3D spawn_vector_location = Vector3D.One;
         private MatrixD spawn_matrix = MatrixD.Identity;
         private Dictionary<ulong, string> ClosestGate = new Dictionary<ulong, string>();
@@ -92,10 +91,7 @@ namespace SwitchMe {
         private Dictionary<ulong, bool> JumpProtect = new Dictionary<ulong, bool>();
         private Dictionary<long, string> Factions = new Dictionary<long, string>();
         private Dictionary<long, Dictionary<long, bool>> FMembers = new Dictionary<long, Dictionary<long, bool>>();
-
         private int tick = 0;
-
-
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
         public Dictionary<ulong, CurrentCooldown> CurrentCooldownMapCommand { get; } = new Dictionary<ulong, CurrentCooldown>();
         public Dictionary<ulong, CurrentCooldown> ConfirmationsMapCommand { get; } = new Dictionary<ulong, CurrentCooldown>();
@@ -104,7 +100,6 @@ namespace SwitchMe {
         public long CooldownConfirmationSeconds { get { return Config.ConfirmationInSeconds; } }
         public long CooldownConfirmation { get { return Config.ConfirmationInSeconds * 1000; } }
         public long JoinProtect { get { return Config.JoinProtectTimer; } }
-        /// <inheritdoc />
         public UserControl GetControl() => _control ?? (_control = new SwitchMeControl(this));
         public void Save() => _config?.Save();
         MyPlayer player; 
@@ -302,7 +297,7 @@ namespace SwitchMe {
                 currentLocalPlayers = 1;
                 int maxi = int.Parse(max);
                 int maxcheck = currentLocalPlayers + currentRemotePlayers;
-                if (maxcheck > maxi && !player.IsAdmin) {
+                if (maxcheck > maxi && player.PromoteLevel != MyPromoteLevel.Admin) {
                     utils.NotifyMessage("Not enough slots free to use gate!", player.SteamUserId);
                     return false;
                 }
@@ -588,7 +583,6 @@ namespace SwitchMe {
         private Vector3D? FindPastePosition(MyObjectBuilder_CubeGrid[] grids, Vector3D position) {
             Vector3? vector = null;
             float radius = 0F;
-            Vector3D gps;
 
             foreach (var grid in grids) {
 
@@ -838,8 +832,10 @@ namespace SwitchMe {
                         ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
                         ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;
                         ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
-                        var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
-                        gates++;
+                        MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                            var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
+                            gates++;
+                        });
                         if (!zones.Contains(ob.DisplayName)) {
                             zones.Add(ob.DisplayName);
                         }
