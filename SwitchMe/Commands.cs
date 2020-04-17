@@ -119,6 +119,7 @@ namespace SwitchMe {
             Context.Respond("`!switch list` Displays a list of valid Server names to connect to.");
             Context.Respond("`!switch grid '<targetgrid>' '<targetserver>'` Transfers the target grid to the target server.");
             Context.Respond("`!switch recover` Completes the transfer of a grid");
+            Context.Respond("`!switch gates` Displayes the GPS locations of valid jump gates.");
         }
 
 
