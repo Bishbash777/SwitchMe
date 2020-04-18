@@ -112,6 +112,7 @@ namespace SwitchMe {
                 else if (config.EnabledMirror && config.EnabledPositioning)
                     POS = POSsource.Substring(0, POSsource.IndexOf("^"));
 
+                POS = POS.TrimStart('{').TrimEnd('}');
                 Vector3D.TryParse(POS, out Vector3D gps);
                 newPos = gps;
                 string source = "";

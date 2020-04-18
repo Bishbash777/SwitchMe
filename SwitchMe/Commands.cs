@@ -378,6 +378,7 @@ namespace SwitchMe {
             foreach (string chId in channelIds) {
                 name = chId.Split('/')[0];
                 location = chId.Split('/')[1];
+                location = location.TrimStart('{').TrimEnd('}');
                 Vector3D.TryParse(location, out Vector3D gps);
                 var ob = new MyObjectBuilder_SafeZone();
                 ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
