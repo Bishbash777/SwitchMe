@@ -102,7 +102,10 @@ namespace SwitchMe {
         public long JoinProtect { get { return Config.JoinProtectTimer; } }
         public UserControl GetControl() => _control ?? (_control = new SwitchMeControl(this));
         public void Save() => _config?.Save();
-        MyPlayer player; 
+        MyPlayer player;
+
+
+
 
         public override void Init(ITorchBase torch) {
             base.Init(torch);
@@ -266,48 +269,49 @@ namespace SwitchMe {
 
 
 
-        public async Task<bool> CheckServer(IMyPlayer player, string servername, string target ) {
-                string slotinfo = await CheckSlotsAsync(target);
-                string existanceCheck = slotinfo.Split(';').Last();
-                bool paired = await CheckKeyAsync(target);
+        public async Task<bool> CheckServer(IMyPlayer player, string servername, string target) {
+            string slotinfo = await CheckSlotsAsync(target);
+            string existanceCheck = slotinfo.Split(';').Last();
+            bool paired = await CheckKeyAsync(target);
 
+                
+            if (target.Length < 1) {
+            Log.Warn("Unknown Server. Please use '!switch list' to see a list of valid servers!");
+                utils.NotifyMessage("Unknown Server. Please use '!switch list' to see a list of valid servers!", player.SteamUserId);
+                return false;
+            }
 
-                if (target.Length < 1) {
-                Log.Warn("Unknown Server. Please use '!switch list' to see a list of valid servers!");
-                    utils.NotifyMessage("Unknown Server. Please use '!switch list' to see a list of valid servers!", player.SteamUserId);
-                    return false;
-                }
+            if (existanceCheck != "1") {
+            Log.Warn("Cannot communicate with target, please make sure SwitchMe is installed there!");
+                utils.NotifyMessage("Cannot communicate with target, please make sure SwitchMe is installed there!", player.SteamUserId);
+                return false;
+            }
 
-                if (existanceCheck != "1") {
-                Log.Warn("Cannot communicate with target, please make sure SwitchMe is installed there!");
-                    utils.NotifyMessage("Cannot communicate with target, please make sure SwitchMe is installed there!", player.SteamUserId);
-                    return false;
-                }
+            if (paired != true) {
+            Log.Warn("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
+                utils.NotifyMessage("Unauthorised Switch! Please make sure the servers have the same Bind Key!", player.SteamUserId);
+                return false;
+            }
 
-                if (paired != true) {
-                Log.Warn("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
-                    utils.NotifyMessage("Unauthorised Switch! Please make sure the servers have the same Bind Key!", player.SteamUserId);
-                    return false;
-                }
-
-                ///   Slot checking
-                Log.Warn("Checking " + target);
-                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                currentLocalPlayers = 1;
-                int maxi = int.Parse(max);
-                int maxcheck = currentLocalPlayers + currentRemotePlayers;
-                if (maxcheck > maxi && player.PromoteLevel != MyPromoteLevel.Admin) {
-                    utils.NotifyMessage("Not enough slots free to use gate!", player.SteamUserId);
-                    return false;
-                }
-                return true;
+            ///   Slot checking
+            Log.Warn("Checking " + target);
+            int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+            string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+            int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+            currentLocalPlayers = 1;
+            int maxi = int.Parse(max);
+            int maxcheck = currentLocalPlayers + currentRemotePlayers;
+            if (maxcheck > maxi && player.PromoteLevel != MyPromoteLevel.Admin) {
+                utils.NotifyMessage("Not enough slots free to use gate!", player.SteamUserId);
+                return false;
+            }
+            return true;
         }
 
 
         public override async void Update() {
             try {
+                int test = 0;
                 tick++;
                 string name = "";
                 string location = "";
@@ -375,7 +379,7 @@ namespace SwitchMe {
                                     }
 
                                     if (!DisplayedMessage[player.SteamUserId]) {
-                                        if (!await CheckServer(player, name, target)) {
+                                        if (!await CheckServer(player, name, target,test)) {
                                             return;
                                         }
                                         utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
