@@ -379,7 +379,7 @@ namespace SwitchMe {
                                     }
 
                                     if (!DisplayedMessage[player.SteamUserId]) {
-                                        if (!await CheckServer(player, name, target,test)) {
+                                        if (!await CheckServer(player, name, target)) {
                                             return;
                                         }
                                         utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
