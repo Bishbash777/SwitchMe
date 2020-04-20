@@ -126,7 +126,7 @@ namespace SwitchMe {
         }
         private async void Multibase_PlayerJoined(IPlayer obj) {
 
-            if (Config.RecoverOnJoin && (!Config.EnabledMirror && !Config.LockedTransfer)) {
+            if (!Config.EnabledMirror && !Config.LockedTransfer) {
                 Log.Error("Invalid setup for onjoin spawning - please make sure a position option is selected");
                 return;
             }
