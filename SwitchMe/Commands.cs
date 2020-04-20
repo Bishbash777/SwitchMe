@@ -384,7 +384,7 @@ namespace SwitchMe {
                 ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
                 ob.PersistentFlags = MyPersistentEntityFlags2.InScene;
                 ob.Shape = MySafeZoneShape.Sphere;
-                ob.Radius = (float)50;
+                ob.Radius = Plugin.Config.GateSize;
                 ob.Enabled = true;
                 ob.DisplayName = $"SM-{gps}";
                 ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;

@@ -99,7 +99,6 @@ namespace SwitchMe {
         public long Cooldown { get { return Config.CooldownInSeconds * 1000; } }
         public long CooldownConfirmationSeconds { get { return Config.ConfirmationInSeconds; } }
         public long CooldownConfirmation { get { return Config.ConfirmationInSeconds * 1000; } }
-        public long JoinProtect { get { return Config.JoinProtectTimer; } }
         public UserControl GetControl() => _control ?? (_control = new SwitchMeControl(this));
         public void Save() => _config?.Save();
         MyPlayer player;
@@ -367,8 +366,8 @@ namespace SwitchMe {
                                     Log.Warn($"{player.DisplayName} is {closestDistance[player.SteamUserId]} away (meters squared)");
                                 }
 
-                                if (closestDistance[player.SteamUserId] < 22500 /* 150m away from jumpCentre */) {
-                                    if (closestDistance[player.SteamUserId] > 3025) {
+                                if (closestDistance[player.SteamUserId] < (Math.Pow(Config.GateSize,2) * 4) /* 4x gate size away from jumpCentre */) {
+                                    if (closestDistance[player.SteamUserId] > (Math.Pow(Config.GateSize,2) + 1000)) {
                                         if (JumpProtect.ContainsKey(player.SteamUserId)) {
                                             JumpProtect[player.SteamUserId] = false;
                                         }
@@ -384,7 +383,7 @@ namespace SwitchMe {
                                         utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
                                         DisplayedMessage[player.SteamUserId] = true;
                                     }
-                                    if (closestDistance[player.SteamUserId] <= 2500) {
+                                    if (closestDistance[player.SteamUserId] <= Math.Pow(Config.GateSize, 2)) {
                                         /* If he is online we check if he is currently seated. If he is - get the grid name */
                                         if (player?.Controller.ControlledEntity is MyCockpit controller) {
                                             string gridname = controller.Parent.DisplayName;
@@ -832,7 +831,7 @@ namespace SwitchMe {
                         ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
                         ob.PersistentFlags = MyPersistentEntityFlags2.InScene;
                         ob.Shape = MySafeZoneShape.Sphere;
-                        ob.Radius = (float)50;
+                        ob.Radius = Config.GateSize;
                         ob.Enabled = true;
                         ob.DisplayName = $"SM-{gps}";
                         ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
@@ -1137,7 +1136,7 @@ namespace SwitchMe {
                                     { "currentplayers", currentPlayers },
                                     { "maxplayers", maxPlayers },
                                     { "serverip", currentIp},
-                                    { "verion", "1.4.02"},
+                                    { "verion", "1.5.1"},
                                     { "bindKey", Config.LocalKey},
                                     { "inbound", Inbound },
                                     { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },

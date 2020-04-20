@@ -16,6 +16,9 @@ namespace SwitchMe {
         private bool _enabledJumpgate = false;
         public bool EnabledJumpgate { get => _enabledJumpgate; set => SetValue(ref _enabledJumpgate, value); }
 
+        private int _gateSize = 50;
+        public int GateSize { get => _gateSize; set => SetValue(ref _gateSize, value); }
+
         private bool _inboundTransfersState = true;
         public bool InboundTransfersState { get => _inboundTransfersState; set => SetValue(ref _inboundTransfersState, value); }
 
@@ -46,6 +49,7 @@ namespace SwitchMe {
         private string _localKey = "";
         public string LocalKey { get => _localKey; set => SetValue(ref _localKey, value); }
 
+        /*
         private bool _econEnabled = false;
         public bool EnableEcon { get => _econEnabled; set => SetValue(ref _econEnabled, value); }
 
@@ -57,6 +61,7 @@ namespace SwitchMe {
 
         private long _transferCost = 30;
         public long TransferCost { get => _transferCost; set => SetValue(ref _transferCost, value); }
+        */
 
         private bool _enableBlockEnforcement = false;
         public bool EnableBlockEnforcement { get => _enableBlockEnforcement; set => SetValue(ref _enableBlockEnforcement, value); }
@@ -75,9 +80,6 @@ namespace SwitchMe {
 
         private int _confirmationInSeconds = 30; //30 Seconds
         public int CooldownInSeconds { get => _cooldownInSeconds; set => SetValue(ref _cooldownInSeconds, value); }
-
-        private int _joinProtectTimer = 60; //30 Seconds
-        public int JoinProtectTimer { get => _joinProtectTimer; set => SetValue(ref _joinProtectTimer, value); }
 
         private ObservableCollection<string> _switchServers = new ObservableCollection<string>();
         public ObservableCollection<string> Servers { get => _switchServers; set => SetValue(ref _switchServers, value); }

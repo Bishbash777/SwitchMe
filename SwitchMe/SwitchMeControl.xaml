@@ -25,6 +25,10 @@
         </StackPanel>
         <CheckBox Content="Enable outbound grid transfers" Margin="3" IsChecked="{Binding EnabledTransfers}" ToolTip="Enable or disable grid transfers on SwitchMe" Height="18"/>
         <CheckBox Content="Enable inbound grid transfers" Margin="3" IsChecked="{Binding InboundTransfersState}" ToolTip="Enable or disable inbound grid transfers on SwitchMe" Height="18"/>
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Radius of jumpgate (Meters):"/>
+            <TextBox x:Name="txtSafeRange" Width="29" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding GateSize}" />
+        </StackPanel>
         <Label Height="3">
             <LineBreak/>
         </Label>
@@ -129,11 +133,6 @@
         <Label Width="Auto">
             <Hyperlink NavigateUri="https://www.paypal.com/paypalme2/startgatesurvival" RequestNavigate="Hyperlink_RequestNavigate">
                 <Run Text="Like the plugin? You can donate here!"/>
-            </Hyperlink>
-        </Label>
-        <Label Width="Auto">
-            <Hyperlink NavigateUri="http://switchplugin.net" RequestNavigate="Hyperlink_RequestNavigate">
-                <Run Text="Click here to find out what features you unlock when you donate monthly"/>
             </Hyperlink>
         </Label>
         <Label Height="7">
