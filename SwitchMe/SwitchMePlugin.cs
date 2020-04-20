@@ -358,7 +358,7 @@ namespace SwitchMe {
                                 }
                                 string target = ip + ":" + port;
                                 ip += ":" + port;
-                                if (DisplayedMessage.ContainsKey(player.SteamUserId) && closestDistance[player.SteamUserId] > 22505) {
+                                if (DisplayedMessage.ContainsKey(player.SteamUserId) && closestDistance[player.SteamUserId] > (Math.Pow(Config.GateSize, 2) + 500)) {
                                     DisplayedMessage[player.SteamUserId] = true;
                                 }
 
@@ -1136,7 +1136,7 @@ namespace SwitchMe {
                                     { "currentplayers", currentPlayers },
                                     { "maxplayers", maxPlayers },
                                     { "serverip", currentIp},
-                                    { "verion", "1.5.1"},
+                                    { "verion", "1.5.12"},
                                     { "bindKey", Config.LocalKey},
                                     { "inbound", Inbound },
                                     { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
