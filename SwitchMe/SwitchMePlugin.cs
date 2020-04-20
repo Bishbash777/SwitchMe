@@ -311,7 +311,6 @@ namespace SwitchMe {
 
         public override async void Update() {
             try {
-                int test = 0;
                 tick++;
                 string name = "";
                 string location = "";
