@@ -353,7 +353,7 @@ namespace SwitchMe {
         [Permission(MyPromoteLevel.None)]
         public void Restore() {
             Recover();
-        } 
+        }
 
         [Command("reload", "Reload and refresh jumpgates with debug options")]
         [Permission(MyPromoteLevel.Admin)]
@@ -368,7 +368,13 @@ namespace SwitchMe {
                     }
                 }
             }
-            utils.NotifyMessage($"{i} Jumpgates closed!", Context.Player.SteamUserId);
+            IMyPlayer player = Context.Player;
+            if (player == null) {
+                Context.Respond($"{i} Jumpgates closed!");
+            }
+            else {
+                utils.NotifyMessage($"{i} Jumpgates closed!", Context.Player.SteamUserId);
+            }
 
             //Rebuild all gates
             int gates = 0;
@@ -397,7 +403,12 @@ namespace SwitchMe {
                     Plugin.zones.Add(ob.DisplayName);
                 }
             }
-            utils.NotifyMessage($"{gates} Jumpgates created!", Context.Player.SteamUserId);
+            if (player == null) {
+                Context.Respond($"{gates} Jumpgates created!");
+            }
+            else {
+                utils.NotifyMessage($"{gates} Jumpgates created!", Context.Player.SteamUserId);
+            }
         }
 
 
