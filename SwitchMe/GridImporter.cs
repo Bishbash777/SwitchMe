@@ -160,7 +160,7 @@ namespace SwitchMe {
                     return false;
                 }
                 //Economy stuff
-                if (Plugin.Config.EnableEcon && Plugin.Config.PerTransfer && Plugin.Config.PerBlock) {
+                /*if (Plugin.Config.EnableEcon && Plugin.Config.PerTransfer && Plugin.Config.PerBlock) {
                     Log.Warn("Invalid econ setup");
                     utils.NotifyMessage("Invalid econ setup - please notify an admin.", player.SteamUserId);
                     return false;
@@ -186,6 +186,7 @@ namespace SwitchMe {
                         player.RequestChangeBalance(-withdraw);
                     }
                 }
+                */
                 MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
                 builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
                 bool worked = MyObjectBuilderSerializer.SerializeXML(path, false, builderDefinition);

@@ -133,7 +133,7 @@ namespace SwitchMe {
 
             Log.Info( obj.SteamId.ToString() + " connected - Starting SwitchMe handle");
             CurrentCooldown cooldown = new CurrentCooldown(this);
-            if (!Config.Enabled || !Config.RecoverOnJoin) 
+            if (!Config.Enabled) 
                 return;
             if (Config.XCord == null || Config.YCord == null || Config.ZCord == null) {
                 Log.Warn("Invalid GPS configuration - cancelling spawn operation");
@@ -174,7 +174,7 @@ namespace SwitchMe {
                 source = text;
             }
             string existance = source.Substring(0, source.IndexOf(":"));
-            Directory.CreateDirectory(StoragePath + "SwitchTemp");
+            Directory.CreateDirectory("SwitchTemp");
             if (existance == "1") {
                 filename = source.Split(':').Last() + ".xml";
                 try {

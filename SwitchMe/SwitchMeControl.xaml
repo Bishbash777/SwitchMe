@@ -75,7 +75,7 @@
         <Label Height="3">
             <LineBreak/>
         </Label>
-
+        <!--
         <Label FontWeight="Bold" FontSize="13" Content="Economy settings:" Height="31" Margin="1,0,0,0" />
         <CheckBox Content="Enable" Margin="6,3,3,3" IsChecked="{Binding EnableEcon}" ToolTip="Enable or economy integration"/>
         <RadioButton GroupName="econ" IsChecked="{Binding PerTransfer}" Content="Per transfer cost" Margin="28,0,0,0"/>
@@ -87,6 +87,7 @@
             <Label Content="Cost:"/>
             <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" PreviewTextInput="NumberValidationTextBox" Height="20" Text="{Binding TransferCost}" />
         </StackPanel>
+        -->
 
         <Label Height="3">
             <LineBreak/>

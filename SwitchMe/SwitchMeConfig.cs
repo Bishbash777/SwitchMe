@@ -22,7 +22,7 @@ namespace SwitchMe {
         private bool _enabledPositioning = false;
         public bool EnabledPositioning { get => _enabledPositioning; set => SetValue(ref _enabledPositioning, value); }
 
-        private bool _enabledMirror = false;
+        private bool _enabledMirror = true;
         public bool EnabledMirror { get => _enabledMirror; set => SetValue(ref _enabledMirror, value); }
 
         private bool _lockedTransfer = false;
