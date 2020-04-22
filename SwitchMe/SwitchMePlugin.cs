@@ -207,21 +207,28 @@ namespace SwitchMe {
             using (HttpClient clients = new HttpClient()) {
                 List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                 {
-                    new KeyValuePair<string, string>("steamID", obj.SteamId.ToString()),
-                    new KeyValuePair<string, string>("posCheck", "1"),
-                    new KeyValuePair<string, string>("currentIP", currentIp)
+                    new KeyValuePair<string, string>("recover", obj.SteamId.ToString()),
+                    new KeyValuePair<string, string>("currentIP", currentIp),
+                    new KeyValuePair<string, string>("bindKey", Config.LocalKey)
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
+                HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/api/index.php", content);
                 HttpResponseMessage response = httpResponseMessage;
                 httpResponseMessage = null;
                 string texts = await response.Content.ReadAsStringAsync();
                 POSsource = texts;
-                var config = Config;
+
+                IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(POSsource));
+                foreach (string chId in channelIds) {
+                    POS = chId.Split('/')[1];
+                }
+
+                /*var config = Config;
                 if (config.LockedTransfer)
                     POS = "{X:" + config.XCord + " Y:" + config.YCord + " Z:" + config.ZCord + "}";
                 else if (config.EnabledMirror)
                     POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+                */
                 POS = POS.TrimStart('{').TrimEnd('}');
                 Vector3D.TryParse(POS, out Vector3D gps);
                 spawn_vector_location = gps;
