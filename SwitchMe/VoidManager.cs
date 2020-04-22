@@ -32,7 +32,7 @@ namespace SwitchMe {
             this.Plugin = Plugin;
         }
 
-        public async Task<bool> SendGrid(string gridTarget, string serverTarget, string playername, long playerId, string ip, bool debug = false) {
+        public async Task<bool> SendGrid(string gridTarget, string serverTarget, string playername, long playerId, string ip, string targetAlias, bool debug = false) {
             var player = utils.GetPlayerByNameOrId(playername);
             string externalIP = utils.CreateExternalIP(Plugin.Config);
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
@@ -63,7 +63,7 @@ namespace SwitchMe {
                     return false;
                 }
 
-                if (await UploadGridAsync(serverTarget, gridTarget, player.DisplayName, ip, currentIp, path, pos)) {
+                if (await UploadGridAsync(serverTarget, gridTarget, player.DisplayName, ip, currentIp, path, pos, targetAlias)) {
                     /* Upload successful close the grids */
                     DeleteUploadedGrids(relevantGroup);
 
@@ -160,7 +160,7 @@ namespace SwitchMe {
             }
         }
 
-        private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string playername, string ip, string currentIp, string path, string pos) {
+        private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string playername, string ip, string currentIp, string path, string pos, string targetAlias) {
             var player = utils.GetPlayerByNameOrId(playername);
             /* DO we need a using here too? */
             WebClient Client = new WebClient();
@@ -206,6 +206,7 @@ namespace SwitchMe {
                             new KeyValuePair<string, string>("BindKey", Plugin.Config.LocalKey),
                             new KeyValuePair<string, string>("CurrentIP", currentIp),
                             new KeyValuePair<string, string>("TargetIP", ip),
+                            new KeyValuePair<string, string>("TargetAlias", targetAlias),
                             new KeyValuePair<string, string>("AddConnection",player.SteamUserId.ToString())
                         };
                         FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);

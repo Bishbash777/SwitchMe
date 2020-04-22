@@ -215,6 +215,7 @@ namespace SwitchMe {
             }
         }
 
+        /*
         [Command("grid", "Transfers the target grid to the target server")]
         [Permission(MyPromoteLevel.None)]
         public async Task GridAsync(string gridTarget, string serverTarget) {
@@ -307,7 +308,7 @@ namespace SwitchMe {
             }
             var player = MySession.Static.Players.GetPlayerByName(Context.Player.DisplayName);
             if (player != null) {
-                /* If he is online we check if he is currently seated. If he is eject him. */
+                // If he is online we check if he is currently seated. If he is eject him.
                 if (player?.Controller.ControlledEntity is MyCockpit controller) {
                     MyAPIGateway.Utilities.InvokeOnGameThread(() => {
                         controller.Use();
@@ -319,7 +320,7 @@ namespace SwitchMe {
                     string pagesource = "";
                     string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
 
-                    /* Not sure what this does but it does not belong here */
+                    //Not sure what this does but it does not belong here 
                     using (WebClient client = new WebClient()) {
                         NameValueCollection postData = new NameValueCollection()
                         {
@@ -348,6 +349,7 @@ namespace SwitchMe {
                 }
             }
         }
+        */
 
         [Command("restore", "Completes the transfer of one grid from one server to another")]
         [Permission(MyPromoteLevel.None)]

@@ -330,6 +330,8 @@ namespace SwitchMe {
                                 }
                                 IEnumerable<string> channelIds = Config.Gates;
                                 bool firstcheck = true;
+                                string Alias = "";
+                                string TargetAlias = "";
                                 distance.Clear();
                                 closestDistance.Clear();
                                 ClosestGate.Clear();
@@ -337,6 +339,8 @@ namespace SwitchMe {
 
                                     name = chId.Split('/')[0];
                                     location = chId.Split('/')[1];
+                                    Alias = chId.Split('/')[2];
+                                    TargetAlias = chId.Split('/')[3];
                                     location = location.TrimStart('{').TrimEnd('}');
                                     Vector3D.TryParse(location, out Vector3D gps);
                                     if (firstcheck) {
@@ -349,6 +353,7 @@ namespace SwitchMe {
                                         if (Vector3D.DistanceSquared(player.GetPosition(), gps) < closestDistance[player.SteamUserId]) {
                                             closestDistance[player.SteamUserId] = Vector3D.DistanceSquared(player.GetPosition(), gps);
                                             ClosestGate[player.SteamUserId] = name;
+                                            TargetAlias = TargetAlias;
                                         }
                                     }
                                     firstcheck = false;
@@ -399,7 +404,7 @@ namespace SwitchMe {
                                                 if (inZone[player.SteamUserId] == false) {
                                                     inZone[player.SteamUserId] = true;
                                                     VoidManager voidm = new VoidManager(this);
-                                                    await voidm.SendGrid(gridname, ClosestGate[player.SteamUserId], player.DisplayName, player.IdentityId, ip);
+                                                    await voidm.SendGrid(gridname, ClosestGate[player.SteamUserId], player.DisplayName, player.IdentityId, ip, TargetAlias);
                                                     inZone[player.SteamUserId] = false;
                                                 }
                                             }
@@ -1148,12 +1153,14 @@ namespace SwitchMe {
                         location = chId.Split('/')[1];
                         alias = chId.Split('/')[2];
                         targetAlias = chId.Split('/')[3];
-                        gateData.Add(name, location);
-                        gate.Add(targetAlias,gateData);
-                        gates.Add($"{alias}-{currentIp}", gate);
-                        gate.Clear();
-                        gateData.Clear();
+                        //gateData.Add(name, location);
+                        //gate.Add(targetAlias,gateData);
+                        //gates.Add($"{alias}-{currentIp}", gate);
+                        //gate.Clear();
+                        //gateData.Clear();
+                        
                     }
+                    string json = JsonSerializer.Serialize(channelIds);
 
                     if (Torch.CurrentSession != null && currentIp.Length > 1) {
 
@@ -1173,7 +1180,7 @@ namespace SwitchMe {
                                     { "inbound", Inbound },
                                     { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
                                     { "config", xml },
-                                    { "gates", gates.ToArray().ToString() }
+                                    { "gates", json }
                                 };
 
                                 client.UploadValues("http://switchplugin.net/index.php", postData);
