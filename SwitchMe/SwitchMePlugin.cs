@@ -13,6 +13,8 @@ using System.Runtime;
 using System.Windows.Controls;
 using Torch.API.Managers;
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Timers;
 using System.Collections.Specialized;
 using System.Net;
