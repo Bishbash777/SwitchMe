@@ -19,7 +19,7 @@ namespace SwitchMe {
         private int _gateSize = 50;
         public int GateSize { get => _gateSize; set => SetValue(ref _gateSize, value); }
 
-        private bool _inboundTransfersState = true;
+        private bool _inboundTransfersState = false;
         public bool InboundTransfersState { get => _inboundTransfersState; set => SetValue(ref _inboundTransfersState, value); }
 
         private bool _enabledPositioning = false;
@@ -43,8 +43,10 @@ namespace SwitchMe {
         private string _localIP = "";
         public string LocalIP { get => _localIP; set => SetValue(ref _localIP, value); }
 
+        /*
         private string _ActivationKey = "";
         public string ActivationKey { get => _ActivationKey; set => SetValue(ref _ActivationKey, value); }
+        */
 
         private string _localKey = "";
         public string LocalKey { get => _localKey; set => SetValue(ref _localKey, value); }

@@ -103,6 +103,8 @@ namespace SwitchMe {
         public void Save() => _config?.Save();
         MyPlayer player;
 
+        public bool loadFailure = false;
+
 
 
 
@@ -845,7 +847,15 @@ namespace SwitchMe {
                         }
                     }
                     Log.Info($"{gates} Jumpgates created!");
-                        break;
+                    if (Config.Debug) {
+                        Log.Warn($"Load Failure flag is {loadFailure}");
+                    }
+                    if (loadFailure) {
+                        System.IO.File.Copy(Path.Combine(StoragePath, "SwitchMe.cfg"), Path.Combine(StoragePath, "OLD-SwitchMe.cfg"));
+                        File.Delete(Path.Combine(StoragePath, "SwitchMe.cfg"));
+                        Torch.Restart(false);
+                    }
+                    break;
 
                 case TorchSessionState.Unloaded:
                     //unload
@@ -1085,8 +1095,16 @@ namespace SwitchMe {
         private void _timer_Elapsed(object sender, ElapsedEventArgs e) {
             try {
                 string xml = "";
+                string name = "";
+                string location = "";
+                string alias = "";
+                Dictionary<string, string> gateData = new Dictionary<string,string>();string targetAlias = "";
+                Dictionary<string, Dictionary<string, string>> gate = new Dictionary<string, Dictionary<string, string>>();
+                Dictionary<string, Dictionary<string, Dictionary<string, string>>> gates = new Dictionary<string, Dictionary<string, Dictionary<string, string>>>();
+
+                IEnumerable<string> channelIds = Config.Gates;
                 try {
-                    xml = File.ReadAllText(Path.Combine(StoragePath, "SwitchMe.cfg"));
+                xml = File.ReadAllText(Path.Combine(StoragePath, "SwitchMe.cfg"));
                 }
                 catch {
                     xml = File.ReadAllText("SwitchMe.cfg");
@@ -1123,6 +1141,18 @@ namespace SwitchMe {
                     string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
                     string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
+                    foreach (string chId in channelIds) {
+                        name = chId.Split('/')[0];
+                        location = chId.Split('/')[1];
+                        alias = chId.Split('/')[2];
+                        targetAlias = chId.Split('/')[3];
+                        gateData.Add(name, location);
+                        gate.Add(targetAlias,gateData);
+                        gates.Add($"{alias}-{currentIp}", gate);
+                        gate.Clear();
+                        gateData.Clear();
+                    }
+
                     if (Torch.CurrentSession != null && currentIp.Length > 1) {
 
                         if (Config.InboundTransfersState)
@@ -1140,7 +1170,8 @@ namespace SwitchMe {
                                     { "bindKey", Config.LocalKey},
                                     { "inbound", Inbound },
                                     { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
-                                    { "config", xml }
+                                    { "config", xml },
+                                    { "gates", gates.ToArray().ToString() }
                                 };
 
                                 client.UploadValues("http://switchplugin.net/index.php", postData);

@@ -107,9 +107,9 @@ namespace SwitchMe {
 
                 var config = Plugin.Config;
 
-                if (config.LockedTransfer && config.EnabledPositioning)
+                if (config.LockedTransfer)
                     POS = "{X:" + config.XCord + " Y:" + config.YCord + " Z:" + config.ZCord + "}";
-                else if (config.EnabledMirror && config.EnabledPositioning)
+                else if (config.EnabledMirror)
                     POS = POSsource.Substring(0, POSsource.IndexOf("^"));
 
                 POS = POS.TrimStart('{').TrimEnd('}');
@@ -191,7 +191,6 @@ namespace SwitchMe {
                             new KeyValuePair<string, string>("bindKey", Plugin.Config.LocalKey ),
                             new KeyValuePair<string, string>("targetPOS", pos ),
                             new KeyValuePair<string, string>("gridName", gridTarget ),
-                            new KeyValuePair<string, string>("key", Plugin.Config.ActivationKey ),
                             new KeyValuePair<string, string>("currentIP", currentIp)
                         };
                         FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);

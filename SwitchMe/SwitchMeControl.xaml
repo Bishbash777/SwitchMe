@@ -57,6 +57,14 @@
             <TextBox Width="88" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" x:Name="ZCordGate" Text="{Binding ZCordJump}" />
         </StackPanel>
         <StackPanel Orientation="Horizontal">
+            <Label Content="Alias:"/>
+            <TextBox x:Name="txtGateAlias" Width="169" Margin="99,3,0,3" HorizontalAlignment="Right" Height="20" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Target Gate Alias:"/>
+            <TextBox x:Name="txtTargetAlias" Width="169" Margin="35,3,0,3" HorizontalAlignment="Right" Height="20" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
             <Button x:Name="btnAddGate" Width="100" Content="Add Server" Margin="3"  Height="22" Click="btnAddGate_Click" />
             <Button x:Name="btnDelGate" Width="100" Content="Delete Server" Margin="3" Click="btnDelGate_Click" />
         </StackPanel>
@@ -66,16 +74,18 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Binding="{Binding GateTarget}" Header="Target Server"/>
                     <DataGridTextColumn Binding="{Binding GPS}" Header="GPS"/>
+                    <DataGridTextColumn Binding="{Binding Alias}" Header="Gate Alias"/>
+                    <DataGridTextColumn Binding="{Binding TargetAlias}" Header="Target Gate Alias"/>
                 </DataGrid.Columns>
             </DataGrid>
         </StackPanel>
 
         <Label FontWeight="Bold" FontSize="13" Content="Position settings: (Required for recover on connect)" Height="27" Margin="1,0,0,0" />
-        <Label Content="DO NOT ENABLE IF YOU HAVE A WORLD LIMIT!" FontSize="9" Margin="28,0,0,0" />
+        <!--<Label Content="DO NOT ENABLE IF YOU HAVE A WORLD LIMIT!" FontSize="9" Margin="28,0,0,0" />-->
         <RadioButton GroupName="positioning" Content="Enable mirrored positioning" Margin="31,3,3,3" IsChecked="{Binding EnabledMirror}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
         <RadioButton GroupName="positioning" Content="Lock recoveries to a certain GPS position" Margin="31,3,3,3" IsChecked="{Binding LockedTransfer}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
-        <CheckBox Content="Enable specified positioning settings for recover command" Margin="3,3,3,3" IsChecked="{Binding EnabledPositioning}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
-
+        <!--<CheckBox Content="Enable specified positioning settings for recover command" Margin="3,3,3,3" IsChecked="{Binding EnabledPositioning}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
+        -->
         <Label Height="3">
             <LineBreak/>
         </Label>

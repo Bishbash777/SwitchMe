@@ -10,3 +10,5 @@
 /SwitchMe/bin/Debug
 /SwitchMe/obj/Release
 /.vs
+/packages/Newtonsoft.Json.12.0.3
+*.config
