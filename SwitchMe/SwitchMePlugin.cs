@@ -217,15 +217,18 @@ namespace SwitchMe {
                 httpResponseMessage = null;
                 string texts = await response.Content.ReadAsStringAsync();
                 POSsource = texts;
-
+                bool foundGate = false;
                 IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(POSsource));
                 foreach (string chId in channelIds) {
                     POS = chId.Split('/')[1];
+                    foundGate = true;
                 }
 
-                /*var config = Config;
-                if (config.LockedTransfer)
-                    POS = "{X:" + config.XCord + " Y:" + config.YCord + " Z:" + config.ZCord + "}";
+                if (!foundGate) {
+                    POS = "{X:" + Config.XCord + " Y:" + Config.YCord + " Z:" + Config.ZCord + "}";
+                    Log.Error("Target gate does not exist... Using default");
+                }
+                /*
                 else if (config.EnabledMirror)
                     POS = POSsource.Substring(0, POSsource.IndexOf("^"));
                 */
@@ -1182,7 +1185,7 @@ namespace SwitchMe {
                                     { "currentplayers", currentPlayers },
                                     { "maxplayers", maxPlayers },
                                     { "serverip", currentIp},
-                                    { "verion", "1.5.13"},
+                                    { "verion", "1.6.0-DEV"},
                                     { "bindKey", Config.LocalKey},
                                     { "inbound", Inbound },
                                     { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
