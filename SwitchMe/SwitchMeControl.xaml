@@ -80,7 +80,7 @@
             </DataGrid>
         </StackPanel>
 
-        <Label FontWeight="Bold" FontSize="13" Content="Position settings: (Required for recover on connect)" Height="27" Margin="1,0,0,0" />
+        <Label FontWeight="Bold" FontSize="13" Content="Position settings:" Height="27" Margin="1,0,0,0" />
         <!--<Label Content="DO NOT ENABLE IF YOU HAVE A WORLD LIMIT!" FontSize="9" Margin="28,0,0,0" />-->
         <RadioButton GroupName="positioning" Content="Enable mirrored positioning" Margin="31,3,3,3" IsChecked="{Binding EnabledMirror}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
         <RadioButton GroupName="positioning" Content="Lock recoveries to a certain GPS position" Margin="31,3,3,3" IsChecked="{Binding LockedTransfer}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
