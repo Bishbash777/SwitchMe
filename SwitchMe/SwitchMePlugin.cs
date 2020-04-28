@@ -223,6 +223,7 @@ namespace SwitchMe {
                     POS = chId.Split('/')[1];
                     foundGate = true;
                 }
+                Log.Warn($"API: Gate elected = {POSsource}");
 
                 if (!foundGate) {
                     POS = "{X:" + Config.XCord + " Y:" + Config.YCord + " Z:" + Config.ZCord + "}";

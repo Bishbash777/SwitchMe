@@ -122,6 +122,11 @@ namespace SwitchMe {
             Context.Respond("`!switch gates` Displayes the GPS locations of valid jump gates.");
         }
 
+        [Command("verify", "Verify gate configuration")]
+        [Permission(MyPromoteLevel.Admin)]
+        public async void verify() {
+
+        }
 
         [Command("gates","Get the gps locations of jump gates in this server")]
         [Permission(MyPromoteLevel.None)]

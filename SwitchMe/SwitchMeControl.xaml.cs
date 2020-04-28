@@ -107,7 +107,7 @@ namespace SwitchMe {
             string POS = "{X:" + XCordGate.Text + " Y:" + YCordGate.Text + " Z:" + ZCordGate.Text + "}";
             if (POS.Length > 0) {
 
-                Plugin.Config.Gates.Add($"{txtGateTarget.Text}/{POS}/{txtGateAlias.Text}/{txtGateTarget.Text}");
+                Plugin.Config.Gates.Add($"{txtGateTarget.Text}/{POS}/{txtGateAlias.Text}/{txtTargetAlias.Text}");
 
                 UpdateDataGrid();
 
