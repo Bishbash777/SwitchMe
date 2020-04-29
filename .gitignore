@@ -10,3 +10,5 @@
 /SwitchMe/bin/Debug
 /SwitchMe/obj/Release
 /.vs
+/packages
+/SwitchMe
