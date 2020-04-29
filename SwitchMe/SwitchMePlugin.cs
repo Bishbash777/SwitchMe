@@ -157,7 +157,7 @@ namespace SwitchMe {
                 }
             }
 
-            string source = "";
+            HttpResponseMessage response;
             string filename = "";
             string targetFile = "";
             string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
@@ -166,20 +166,16 @@ namespace SwitchMe {
             using (HttpClient clients = new HttpClient()) {
                 List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                 {
-                        new KeyValuePair<string, string>("steamID",obj.SteamId.ToString()),
+                        new KeyValuePair<string, string>("existanceCheck",obj.SteamId.ToString()),
                         new KeyValuePair<string, string>("currentIP", currentIp)
                     };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
-                HttpResponseMessage response = httpResponseMessage;
-                httpResponseMessage = null;
-                string text = await response.Content.ReadAsStringAsync();
-                source = text;
+                response = await clients.PostAsync("http://switchplugin.net/api/index.php", content);
             }
-            string existance = source.Substring(0, source.IndexOf(":"));
+            Dictionary<string,string> gridData = utils.ParseQueryString(await response.Content.ReadAsStringAsync());
             Directory.CreateDirectory("SwitchTemp");
-            if (existance == "1") {
-                filename = source.Split(':').Last() + ".xml";
+            if (gridData["filename"] != "NULL") {
+                filename = gridData["filename"] + ".xml";
                 try {
                     string remoteUri = "http://www.switchplugin.net/transportedGrids/" + filename;
                     targetFile = "SwitchTemp\\" + filename;
@@ -213,10 +209,13 @@ namespace SwitchMe {
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
                 HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/api/index.php", content);
-                HttpResponseMessage response = httpResponseMessage;
+                response = httpResponseMessage;
                 httpResponseMessage = null;
                 string texts = await response.Content.ReadAsStringAsync();
                 POSsource = texts;
+                //
+                // DO THE RANDOM SHIT BISH
+                //
                 bool foundGate = false;
                 IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(POSsource));
                 foreach (string chId in channelIds) {

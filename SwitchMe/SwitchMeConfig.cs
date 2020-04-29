@@ -16,6 +16,9 @@ namespace SwitchMe {
         private bool _enabledJumpgate = false;
         public bool EnabledJumpgate { get => _enabledJumpgate; set => SetValue(ref _enabledJumpgate, value); }
 
+        private bool _randomisedExit = false;
+        public bool RandomisedExit { get => _randomisedExit; set => SetValue(ref _randomisedExit, value); }
+
         private int _gateSize = 50;
         public int GateSize { get => _gateSize; set => SetValue(ref _gateSize, value); }
 

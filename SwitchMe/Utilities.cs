@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Torch.API.Managers;
 using Torch.Commands;
 using Torch.Mod;
+using System.Web;
 using Torch.Mod.Messages;
 using VRage.Game;
 using VRage.Game.ModAPI;
@@ -35,6 +36,11 @@ namespace SwitchMe {
 
         public static string GetSubstringByString(string from, string until, string wholestring) {
             return wholestring.Substring((wholestring.IndexOf(from) + from.Length), (wholestring.IndexOf(until) - wholestring.IndexOf(from) - from.Length));
+        }
+
+        public static Dictionary<string, string> ParseQueryString(string queryString) {
+            var nvc = HttpUtility.ParseQueryString(queryString);
+            return nvc.AllKeys.ToDictionary(k => k, k => nvc[k]);
         }
 
         public static MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group FindRelevantGroup(
