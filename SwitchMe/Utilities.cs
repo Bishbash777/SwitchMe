@@ -43,6 +43,12 @@ namespace SwitchMe {
             return nvc.AllKeys.ToDictionary(k => k, k => nvc[k]);
         }
 
+        public static string SelectRandomGate(Dictionary<string, string> dictionary) {
+            Random rand = new Random();
+            var k = dictionary.Keys.ToList()[rand.Next(dictionary.Count)];
+            return dictionary[k];
+        }
+
         public static MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group FindRelevantGroup(
             string gridTarget, long playerId) {
             try {
@@ -122,6 +128,7 @@ namespace SwitchMe {
                 return null;
             }
         }
+
 
         public static void NotifyMessage(string message, ulong steamid) {
             ModCommunication.SendMessageTo(new NotificationMessage(message, 15000, "Blue"), steamid);

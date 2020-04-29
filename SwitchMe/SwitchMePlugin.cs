@@ -222,11 +222,28 @@ namespace SwitchMe {
                     POS = chId.Split('/')[1];
                     foundGate = true;
                 }
-                Log.Warn($"API: Gate elected = {POSsource}");
+                if (Config.RandomisedExit) {
+                    Dictionary<string, string> gateSelection = new Dictionary<string, string>();
+                    channelIds = Config.Gates;
+                    int i = 0;
+                    foreach (string gate in channelIds) {
+                        i++;
+                        gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
+                    }
+                    if (i != 0) {
+                        POS = utils.SelectRandomGate(gateSelection);
+                    }
+                }
+                if (!Config.RandomisedExit) {
+                    Log.Warn($"API: Gate elected = {POSsource}");
+                }
+                else {
+                    Log.Warn("Using randomly selected gate as exit");
+                }
 
                 if (!foundGate) {
                     POS = "{X:" + Config.XCord + " Y:" + Config.YCord + " Z:" + Config.ZCord + "}";
-                    Log.Error("Target gate does not exist... Using default");
+                    Log.Error($"Target gate ({POSsource}) does not exist... Using default");
                 }
                 /*
                 else if (config.EnabledMirror)
@@ -363,9 +380,9 @@ namespace SwitchMe {
                                         if (Vector3D.DistanceSquared(player.GetPosition(), gps) < closestDistance[player.SteamUserId]) {
                                             closestDistance[player.SteamUserId] = Vector3D.DistanceSquared(player.GetPosition(), gps);
                                             ClosestGate[player.SteamUserId] = name;
-#pragma warning disable CS1717 // Assignment made to same variable
+                                            #pragma warning disable CS1717
                                             TargetAlias = TargetAlias;
-#pragma warning restore CS1717 // Assignment made to same variable
+                                            #pragma warning restore CS1717
                                         }
                                     }
                                     firstcheck = false;
@@ -415,6 +432,7 @@ namespace SwitchMe {
                                                 }
                                                 if (inZone[player.SteamUserId] == false) {
                                                     inZone[player.SteamUserId] = true;
+
                                                     VoidManager voidm = new VoidManager(this);
                                                     await voidm.SendGrid(gridname, ClosestGate[player.SteamUserId], player.DisplayName, player.IdentityId, ip, TargetAlias);
                                                     inZone[player.SteamUserId] = false;

@@ -25,7 +25,7 @@
         </StackPanel>
         <CheckBox Content="Enable outbound grid transfers" Margin="3" IsChecked="{Binding EnabledTransfers}" ToolTip="Enable or disable grid transfers on SwitchMe" Height="18"/>
         <CheckBox Content="Enable inbound grid transfers" Margin="3" IsChecked="{Binding InboundTransfersState}" ToolTip="Enable or disable inbound grid transfers on SwitchMe" Height="18"/>
-        <CheckBox Content="Randomise exit gate" Margin="3" IsChecked="{Binding RandomisedExit}" ToolTip="Randomise exit gate on target server..." Height="18"/>
+        <CheckBox Content="Randomise exit gate at target server" Margin="3" IsChecked="{Binding RandomisedExit}" ToolTip="Randomise exit gate on target server..." Height="18"/>
         <StackPanel Orientation="Horizontal">
             <Label Content="Radius of jumpgate (Meters):"/>
             <TextBox x:Name="txtSafeRange" Width="29" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding GateSize}" />
