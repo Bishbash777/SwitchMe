@@ -79,7 +79,87 @@ namespace SwitchMe {
             return false;
         }
 
-      
+        public async Task<Tuple<string, string, Vector3D>> DownloadGridAsync(string currentIp, ulong steamid, string POS) {
+
+            Directory.CreateDirectory("SwitchTemp");
+            using (WebClient client = new WebClient()) {
+
+                Vector3D newPos;
+                string POSsource = "";
+                string filename;
+                string targetFile;
+                using (HttpClient clients = new HttpClient())
+                {
+                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                    {
+                        new KeyValuePair<string, string>("steamID", steamid.ToString()),
+                        new KeyValuePair<string, string>("posCheck", "1"),
+                        new KeyValuePair<string, string>("currentIP", currentIp)
+                    };
+                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                    HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
+                    HttpResponseMessage response = httpResponseMessage;
+                    httpResponseMessage = null;
+                    string text = await response.Content.ReadAsStringAsync();
+                    POSsource = text;
+                }
+
+
+                var config = Plugin.Config;
+
+                if (config.LockedTransfer)
+                    POS = "{X:" + config.XCord + " Y:" + config.YCord + " Z:" + config.ZCord + "}";
+                else if (config.EnabledMirror)
+                    POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+
+                POS = POS.TrimStart('{').TrimEnd('}');
+                Vector3D.TryParse(POS, out Vector3D gps);
+                newPos = gps;
+                string source = "";
+
+                using (HttpClient clients = new HttpClient())
+                {
+                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
+                    {
+                        new KeyValuePair<string, string>("steamID", steamid.ToString()),
+                        new KeyValuePair<string, string>("currentIP", currentIp)
+                    };
+                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                    HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
+                    HttpResponseMessage response = httpResponseMessage;
+                    httpResponseMessage = null;
+                    string text = await response.Content.ReadAsStringAsync();
+                    source = text;
+                }
+       
+
+                string existance = source.Substring(0, source.IndexOf(":"));
+                if (existance == "1") {
+                    Log.Info("Grid found in database... attempting download!");
+                    filename = source.Split(':').Last() + ".xml";
+
+                    try {
+
+                        string remoteUri = "http://www.switchplugin.net/transportedGrids/" + filename;
+                        targetFile = "SwitchTemp\\" + filename;
+
+                        WebClient myWebClient = new WebClient();
+                        myWebClient.DownloadFile(remoteUri, targetFile);
+                        return new Tuple<string, string, Vector3D>(targetFile, filename, newPos);
+
+                    } catch (Exception error) {
+                        Log.Fatal("Unable to download grid: " + error.ToString());
+                    }
+
+                } else {
+                    utils.NotifyMessage("You have no grids in active transport!", steamid);
+                    targetFile = null;
+                }
+                return null;
+                
+            }
+        }
+
         private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string playername, string ip, string currentIp, string path, string pos, string targetAlias) {
             var player = utils.GetPlayerByNameOrId(playername);
             /* DO we need a using here too? */

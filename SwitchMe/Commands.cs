@@ -170,7 +170,7 @@ namespace SwitchMe {
                 if (gridManager.DeserializeGridFromPath(targetFile, Context.Player.DisplayName, newPos))
                 {
                     File.Delete(targetFile);
-                    Plugin.DeleteFromWeb(currentIp);
+                    Plugin.DeleteFromWeb(Context.Player.SteamUserId);
                 }
             });
             await RemoveConnection(Context.Player.SteamUserId);
