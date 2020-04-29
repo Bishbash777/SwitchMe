@@ -214,7 +214,7 @@ namespace SwitchMe {
                 string texts = await response.Content.ReadAsStringAsync();
                 POSsource = texts;
                 //
-                // DO THE RANDOM SHIT BISH
+                // DO THE RANDOMISER SHIT BISH
                 //
                 bool foundGate = false;
                 IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(POSsource));
@@ -363,7 +363,9 @@ namespace SwitchMe {
                                         if (Vector3D.DistanceSquared(player.GetPosition(), gps) < closestDistance[player.SteamUserId]) {
                                             closestDistance[player.SteamUserId] = Vector3D.DistanceSquared(player.GetPosition(), gps);
                                             ClosestGate[player.SteamUserId] = name;
+#pragma warning disable CS1717 // Assignment made to same variable
                                             TargetAlias = TargetAlias;
+#pragma warning restore CS1717 // Assignment made to same variable
                                         }
                                     }
                                     firstcheck = false;
