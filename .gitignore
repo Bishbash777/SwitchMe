@@ -12,3 +12,6 @@
 /.vs
 /packages
 /SwitchMe
+/packages/Newtonsoft.Json.12.0.3
+*.config
+/packages

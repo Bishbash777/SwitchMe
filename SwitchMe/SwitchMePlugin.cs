@@ -13,6 +13,8 @@ using System.Runtime;
 using System.Windows.Controls;
 using Torch.API.Managers;
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Timers;
 using System.Collections.Specialized;
 using System.Net;
@@ -103,6 +105,8 @@ namespace SwitchMe {
         public void Save() => _config?.Save();
         MyPlayer player;
 
+        public bool loadFailure = false;
+
 
 
 
@@ -153,7 +157,7 @@ namespace SwitchMe {
                 }
             }
 
-            string source = "";
+            HttpResponseMessage response;
             string filename = "";
             string targetFile = "";
             string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
@@ -162,20 +166,16 @@ namespace SwitchMe {
             using (HttpClient clients = new HttpClient()) {
                 List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                 {
-                        new KeyValuePair<string, string>("steamID",obj.SteamId.ToString()),
+                        new KeyValuePair<string, string>("existanceCheck",obj.SteamId.ToString()),
                         new KeyValuePair<string, string>("currentIP", currentIp)
                     };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
-                HttpResponseMessage response = httpResponseMessage;
-                httpResponseMessage = null;
-                string text = await response.Content.ReadAsStringAsync();
-                source = text;
+                response = await clients.PostAsync("http://switchplugin.net/api/index.php", content);
             }
-            string existance = source.Substring(0, source.IndexOf(":"));
+            Dictionary<string,string> gridData = utils.ParseQueryString(await response.Content.ReadAsStringAsync());
             Directory.CreateDirectory("SwitchTemp");
-            if (existance == "1") {
-                filename = source.Split(':').Last() + ".xml";
+            if (gridData["filename"] != "NULL") {
+                filename = gridData["filename"] + ".xml";
                 try {
                     string remoteUri = "http://www.switchplugin.net/transportedGrids/" + filename;
                     targetFile = "SwitchTemp\\" + filename;
@@ -203,21 +203,52 @@ namespace SwitchMe {
             using (HttpClient clients = new HttpClient()) {
                 List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                 {
-                    new KeyValuePair<string, string>("steamID", obj.SteamId.ToString()),
-                    new KeyValuePair<string, string>("posCheck", "1"),
-                    new KeyValuePair<string, string>("currentIP", currentIp)
+                    new KeyValuePair<string, string>("recover", obj.SteamId.ToString()),
+                    new KeyValuePair<string, string>("currentIP", currentIp),
+                    new KeyValuePair<string, string>("bindKey", Config.LocalKey)
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
-                HttpResponseMessage response = httpResponseMessage;
+                HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/api/index.php", content);
+                response = httpResponseMessage;
                 httpResponseMessage = null;
                 string texts = await response.Content.ReadAsStringAsync();
                 POSsource = texts;
-                var config = Config;
-                if (config.LockedTransfer)
-                    POS = "{X:" + config.XCord + " Y:" + config.YCord + " Z:" + config.ZCord + "}";
+                //
+                // DO THE RANDOMISER SHIT BISH
+                //
+                bool foundGate = false;
+                IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(POSsource));
+                foreach (string chId in channelIds) {
+                    POS = chId.Split('/')[1];
+                    foundGate = true;
+                }
+                if (Config.RandomisedExit) {
+                    Dictionary<string, string> gateSelection = new Dictionary<string, string>();
+                    channelIds = Config.Gates;
+                    int i = 0;
+                    foreach (string gate in channelIds) {
+                        i++;
+                        gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
+                    }
+                    if (i != 0) {
+                        POS = utils.SelectRandomGate(gateSelection);
+                    }
+                }
+                if (!Config.RandomisedExit) {
+                    Log.Warn($"API: Gate elected = {POSsource}");
+                }
+                else {
+                    Log.Warn("Using randomly selected gate as exit");
+                }
+
+                if (!foundGate) {
+                    POS = "{X:" + Config.XCord + " Y:" + Config.YCord + " Z:" + Config.ZCord + "}";
+                    Log.Error($"Target gate ({POSsource}) does not exist... Using default");
+                }
+                /*
                 else if (config.EnabledMirror)
                     POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+                */
                 POS = POS.TrimStart('{').TrimEnd('}');
                 Vector3D.TryParse(POS, out Vector3D gps);
                 spawn_vector_location = gps;
@@ -326,6 +357,8 @@ namespace SwitchMe {
                                 }
                                 IEnumerable<string> channelIds = Config.Gates;
                                 bool firstcheck = true;
+                                string Alias = "";
+                                string TargetAlias = "";
                                 distance.Clear();
                                 closestDistance.Clear();
                                 ClosestGate.Clear();
@@ -333,6 +366,8 @@ namespace SwitchMe {
 
                                     name = chId.Split('/')[0];
                                     location = chId.Split('/')[1];
+                                    Alias = chId.Split('/')[2];
+                                    TargetAlias = chId.Split('/')[3];
                                     location = location.TrimStart('{').TrimEnd('}');
                                     Vector3D.TryParse(location, out Vector3D gps);
                                     if (firstcheck) {
@@ -345,6 +380,9 @@ namespace SwitchMe {
                                         if (Vector3D.DistanceSquared(player.GetPosition(), gps) < closestDistance[player.SteamUserId]) {
                                             closestDistance[player.SteamUserId] = Vector3D.DistanceSquared(player.GetPosition(), gps);
                                             ClosestGate[player.SteamUserId] = name;
+                                            #pragma warning disable CS1717
+                                            TargetAlias = TargetAlias;
+                                            #pragma warning restore CS1717
                                         }
                                     }
                                     firstcheck = false;
@@ -394,8 +432,9 @@ namespace SwitchMe {
                                                 }
                                                 if (inZone[player.SteamUserId] == false) {
                                                     inZone[player.SteamUserId] = true;
+
                                                     VoidManager voidm = new VoidManager(this);
-                                                    await voidm.SendGrid(gridname, ClosestGate[player.SteamUserId], player.DisplayName, player.IdentityId, ip);
+                                                    await voidm.SendGrid(gridname, ClosestGate[player.SteamUserId], player.DisplayName, player.IdentityId, ip, TargetAlias);
                                                     inZone[player.SteamUserId] = false;
                                                 }
                                             }
@@ -845,7 +884,15 @@ namespace SwitchMe {
                         }
                     }
                     Log.Info($"{gates} Jumpgates created!");
-                        break;
+                    if (Config.Debug) {
+                        Log.Warn($"Load Failure flag is {loadFailure}");
+                    }
+                    if (loadFailure) {
+                        System.IO.File.Copy(Path.Combine(StoragePath, "SwitchMe.cfg"), Path.Combine(StoragePath, "OLD-SwitchMe.cfg"));
+                        File.Delete(Path.Combine(StoragePath, "SwitchMe.cfg"));
+                        Torch.Restart(false);
+                    }
+                    break;
 
                 case TorchSessionState.Unloaded:
                     //unload
@@ -1085,8 +1132,16 @@ namespace SwitchMe {
         private void _timer_Elapsed(object sender, ElapsedEventArgs e) {
             try {
                 string xml = "";
+                string name = "";
+                string location = "";
+                string alias = "";
+                Dictionary<string, string> gateData = new Dictionary<string,string>();string targetAlias = "";
+                Dictionary<string, Dictionary<string, string>> gate = new Dictionary<string, Dictionary<string, string>>();
+                Dictionary<string, Dictionary<string, Dictionary<string, string>>> gates = new Dictionary<string, Dictionary<string, Dictionary<string, string>>>();
+
+                IEnumerable<string> channelIds = Config.Gates;
                 try {
-                    xml = File.ReadAllText(Path.Combine(StoragePath, "SwitchMe.cfg"));
+                xml = File.ReadAllText(Path.Combine(StoragePath, "SwitchMe.cfg"));
                 }
                 catch {
                     xml = File.ReadAllText("SwitchMe.cfg");
@@ -1123,6 +1178,20 @@ namespace SwitchMe {
                     string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
                     string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
+                    foreach (string chId in channelIds) {
+                        name = chId.Split('/')[0];
+                        location = chId.Split('/')[1];
+                        alias = chId.Split('/')[2];
+                        targetAlias = chId.Split('/')[3];
+                        //gateData.Add(name, location);
+                        //gate.Add(targetAlias,gateData);
+                        //gates.Add($"{alias}-{currentIp}", gate);
+                        //gate.Clear();
+                        //gateData.Clear();
+                        
+                    }
+                    string json = JsonSerializer.Serialize(channelIds);
+
                     if (Torch.CurrentSession != null && currentIp.Length > 1) {
 
                         if (Config.InboundTransfersState)
@@ -1136,11 +1205,12 @@ namespace SwitchMe {
                                     { "currentplayers", currentPlayers },
                                     { "maxplayers", maxPlayers },
                                     { "serverip", currentIp},
-                                    { "verion", "1.5.13"},
+                                    { "verion", "1.6.0-DEV"},
                                     { "bindKey", Config.LocalKey},
                                     { "inbound", Inbound },
                                     { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
-                                    { "config", xml }
+                                    { "config", xml },
+                                    { "gates", json }
                                 };
 
                                 client.UploadValues("http://switchplugin.net/index.php", postData);
