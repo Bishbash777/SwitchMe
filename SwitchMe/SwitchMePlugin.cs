@@ -491,27 +491,6 @@ namespace SwitchMe {
                                     MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
                                 });
                                 await recovery(player_id, spawn_vector_location);
-                                MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-                                    var playerEndpoint = new Endpoint(steamid, 0);
-                                    var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
-                                    var clientDataDict = _clientStates.Invoke(replicationServer);
-                                    object clientData;
-                                    try {
-                                        clientData = clientDataDict[playerEndpoint];
-                                    }
-                                    catch {
-                                        return;
-                                    }
-                                    var clientReplicables = _replicables.Invoke(clientData);
-                                    var replicableList = new List<IMyReplicable>(clientReplicables.Count);
-                                    foreach (var pair in clientReplicables)
-                                        replicableList.Add(pair.Key);
-                                    foreach (var replicable in replicableList) {
-                                        _removeForClient.Invoke(replicationServer, replicable, clientData, true);
-                                        _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
-
-                                    }
-                                });
                             }
                             clear_ids.Add(player_id);
                         }
@@ -574,7 +553,7 @@ namespace SwitchMe {
                     Log.Info("Grid has been pulled from the void!");
                     string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
                     string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-                    DeleteFromWeb(currentIp);
+                    DeleteFromWeb(steamid);
                     await RemoveConnection(steamid);
 
                     return;
@@ -1114,18 +1093,25 @@ namespace SwitchMe {
             StartTimer();
         }
 
-        public void DeleteFromWeb(string ip) {
+        public void DeleteFromWeb(ulong steamid) {
+            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            if (externalIP.Contains("0.0")
+                || externalIP.Contains("127.0")
+                || externalIP.Contains("192.168")) {
+                externalIP = Config.LocalIP;
+            }
 
+            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
             using (WebClient client = new WebClient()) {
 
 
                 NameValueCollection postData = new NameValueCollection()
                 {
-                    { "posCheck", "processed"},
-                    { "currentIP", ip}
+                    { "processed", steamid.ToString() },
+                    { "currentIP", currentIp}
                 };
 
-                client.UploadValues("http://switchplugin.net/recovery.php", postData);
+                client.UploadValues("http://switchplugin.net/api/index.php", postData);
             }
         }
 
