@@ -104,6 +104,7 @@ namespace SwitchMe {
         public UserControl GetControl() => _control ?? (_control = new SwitchMeControl(this));
         public void Save() => _config?.Save();
         MyPlayer player;
+        public string API_URL = "http://switchplugin.net/api/index.php";
 
         public bool loadFailure = false;
 
@@ -129,11 +130,6 @@ namespace SwitchMe {
         }
         private async void Multibase_PlayerJoined(IPlayer obj) {
 
-            if (!Config.EnabledMirror && !Config.LockedTransfer) {
-                Log.Error("Invalid setup for onjoin spawning - please make sure a position option is selected");
-                return;
-            }
-
             Log.Info( obj.SteamId.ToString() + " connected - Starting SwitchMe handle");
             CurrentCooldown cooldown = new CurrentCooldown(this);
             if (!Config.Enabled) 
@@ -146,17 +142,7 @@ namespace SwitchMe {
             if (!SwitchConnection) {
                 return;
             }
-            if (Config.EnabledJumpgate) {
-                IEnumerable<string> channelIds = Config.Gates;
-                foreach (string chId in channelIds) {
-                    string name = chId.Split('/')[0];
-                    string location = chId.Split('/')[1];
-                    Vector3D.TryParse(location, out Vector3D gps);
-                    var entry = gps;
-                    MyAPIGateway.Session?.GPS.AddGps(MySession.Static.Players.TryGetIdentityId(obj.SteamId), new MyGps());
-                }
-            }
-
+           
             HttpResponseMessage response;
             string filename = "";
             string targetFile = "";
@@ -170,7 +156,7 @@ namespace SwitchMe {
                         new KeyValuePair<string, string>("currentIP", currentIp)
                     };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                response = await clients.PostAsync("http://switchplugin.net/api/index.php", content);
+                response = await clients.PostAsync(API_URL, content);
             }
             Dictionary<string,string> gridData = utils.ParseQueryString(await response.Content.ReadAsStringAsync());
             Directory.CreateDirectory("SwitchTemp");
@@ -208,7 +194,7 @@ namespace SwitchMe {
                     new KeyValuePair<string, string>("bindKey", Config.LocalKey)
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/api/index.php", content);
+                HttpResponseMessage httpResponseMessage = await clients.PostAsync(API_URL, content);
                 response = httpResponseMessage;
                 httpResponseMessage = null;
                 string texts = await response.Content.ReadAsStringAsync();
@@ -511,7 +497,7 @@ namespace SwitchMe {
 
 
             if (MyObjectBuilderSerializer.DeserializeXML(target_file_list[steamid], out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) {
-
+                bool failure = false;
                 try {
                     MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 
@@ -524,6 +510,7 @@ namespace SwitchMe {
 
                         if (prefabs == null || prefabs.Length != 1) {
                             Log.Info($"Grid has unsupported format!");
+                            failure = true;
                             return;
                         }
                         var prefab = prefabs[0];
@@ -532,12 +519,14 @@ namespace SwitchMe {
                         var pos = FindPastePosition(grids, spawn_vector_location);
                         if (pos == null) {
                             Log.Info("No free place.");
+                            failure = true;
                             return;
                         }
 
                         /* Update GridsPosition if that doesnt work get out of here. */
                         if (!UpdateGridsPosition(grids, (Vector3D)pos)) {
                             Log.Error("Failed to find update the grids position");
+                            failure = true;
                             return;
                         }
 
@@ -553,8 +542,10 @@ namespace SwitchMe {
                     Log.Info("Grid has been pulled from the void!");
                     string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
                     string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-                    DeleteFromWeb(steamid);
-                    await RemoveConnection(steamid);
+                    if (!failure) {
+                        DeleteFromWeb(steamid);
+                        await RemoveConnection(steamid);
+                    }
 
                     return;
                 }
@@ -703,7 +694,7 @@ namespace SwitchMe {
                     new KeyValuePair<string, string>("RemoveConnection", player.ToString())
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                await client.PostAsync("http://switchplugin.net/api/index.php", content);
+                await client.PostAsync(API_URL, content);
             }
         }
         public async Task<bool> CheckConnection(IPlayer player) {
@@ -738,7 +729,7 @@ namespace SwitchMe {
                     new KeyValuePair<string, string>("ConnectionCheck", player.SteamId.ToString())
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/api/index.php", content);
+                HttpResponseMessage httpResponseMessage = await client.PostAsync(API_URL, content);
                 HttpResponseMessage response = httpResponseMessage;
                 httpResponseMessage = null;
                 string text = await response.Content.ReadAsStringAsync();
@@ -1111,7 +1102,7 @@ namespace SwitchMe {
                     { "currentIP", currentIp}
                 };
 
-                client.UploadValues("http://switchplugin.net/api/index.php", postData);
+                client.UploadValues(API_URL, postData);
             }
         }
 
@@ -1191,7 +1182,7 @@ namespace SwitchMe {
                                     { "currentplayers", currentPlayers },
                                     { "maxplayers", maxPlayers },
                                     { "serverip", currentIp},
-                                    { "verion", "1.6.01-DEV"},
+                                    { "verion", "1.6.02"},
                                     { "bindKey", Config.LocalKey},
                                     { "inbound", Inbound },
                                     { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },

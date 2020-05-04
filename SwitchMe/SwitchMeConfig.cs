@@ -25,15 +25,6 @@ namespace SwitchMe {
         private bool _inboundTransfersState = false;
         public bool InboundTransfersState { get => _inboundTransfersState; set => SetValue(ref _inboundTransfersState, value); }
 
-        private bool _enabledPositioning = false;
-        public bool EnabledPositioning { get => _enabledPositioning; set => SetValue(ref _enabledPositioning, value); }
-
-        private bool _enabledMirror = true;
-        public bool EnabledMirror { get => _enabledMirror; set => SetValue(ref _enabledMirror, value); }
-
-        private bool _lockedTransfer = false;
-        public bool LockedTransfer { get => _lockedTransfer; set => SetValue(ref _lockedTransfer, value); }
-        
         private string _Xcord = "";
         public string XCord { get => _Xcord; set => SetValue(ref _Xcord, value); }
 

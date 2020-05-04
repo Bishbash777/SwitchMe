@@ -39,19 +39,6 @@ namespace SwitchMe {
 
                 IMyEntity targetEntity = player?.Controller.ControlledEntity.Entity;
 
-                if (Plugin.Config.EnabledMirror) {
-
-                    var p = player;
-                    var parent = p.Character?.Parent;
-
-                    if (parent == null) {
-                    }
-
-                    if (parent is MyShipController c) {
-                        c.RemoveUsers(false);
-                    }
-                }
-
                 utils.NotifyMessage($"Importing grid from {targetFile}", player.SteamUserId);
 
                 var prefabs = myObjectBuilder_Definitions.Prefabs;
@@ -281,11 +268,6 @@ namespace SwitchMe {
              * Now we know the radius that can house all grids which will now be 
              * used to determine the perfect place to paste the grids to. 
              */
-
-            if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror || Plugin.Config.EnabledMirror)
-            {
-                return MyEntities.FindFreePlace(pos, radius);
-            }
 
             return MyEntities.FindFreePlace(player.GetPosition(), radius);
         }

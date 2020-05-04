@@ -216,7 +216,7 @@ namespace SwitchMe {
                     new KeyValuePair<string, string>("RemoveConnection", player.ToString())
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                await client.PostAsync("http://switchplugin.net/api/index.php", content);
+                await client.PostAsync(Plugin.API_URL, content);
             }
         }
 

@@ -88,34 +88,64 @@ namespace SwitchMe {
                 string POSsource = "";
                 string filename;
                 string targetFile;
-                using (HttpClient clients = new HttpClient())
-                {
+                string source = "";
+
+                using (HttpClient clients = new HttpClient()) {
                     List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                     {
-                        new KeyValuePair<string, string>("steamID", steamid.ToString()),
-                        new KeyValuePair<string, string>("posCheck", "1"),
-                        new KeyValuePair<string, string>("currentIP", currentIp)
-                    };
+                    new KeyValuePair<string, string>("recover", steamid.ToString()),
+                    new KeyValuePair<string, string>("currentIP", currentIp),
+                    new KeyValuePair<string, string>("bindKey", Plugin.Config.LocalKey)
+                };
                     FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                    HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
-                    HttpResponseMessage response = httpResponseMessage;
+                    HttpResponseMessage httpResponseMessage = await clients.PostAsync(Plugin.API_URL, content);
+                    var response = httpResponseMessage;
                     httpResponseMessage = null;
-                    string text = await response.Content.ReadAsStringAsync();
-                    POSsource = text;
+                    string texts = await response.Content.ReadAsStringAsync();
+                    POSsource = texts;
+                    //
+                    // DO THE RANDOMISER SHIT BISH
+                    //
+                    bool foundGate = false;
+                    IEnumerable<string> channelIds = Plugin.Config.Gates.Where(c => c.Split('/')[2].Equals(POSsource));
+                    foreach (string chId in channelIds) {
+                        POS = chId.Split('/')[1];
+                        foundGate = true;
+                    }
+                    if (Plugin.Config.RandomisedExit) {
+                        Dictionary<string, string> gateSelection = new Dictionary<string, string>();
+                        channelIds = Plugin.Config.Gates;
+                        int i = 0;
+                        foreach (string gate in channelIds) {
+                            i++;
+                            gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
+                        }
+                        if (i != 0) {
+                            POS = utils.SelectRandomGate(gateSelection);
+                        }
+                    }
+                    if (!Plugin.Config.RandomisedExit) {
+                        Log.Warn($"API: Gate elected = {POSsource}");
+                    }
+                    else {
+                        Log.Warn("Using randomly selected gate as exit");
+                    }
+
+                    if (!foundGate) {
+                        POS = "{X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord + "}";
+                        Log.Error($"Target gate ({POSsource}) does not exist... Using default");
+                    }
+                    /*
+                    else if (config.EnabledMirror)
+                        POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+                    */
+                    POS = POS.TrimStart('{').TrimEnd('}');
+                    Vector3D.TryParse(POS, out Vector3D gps);
+                    newPos = gps;
+                    Log.Info("Selected GPS: " + gps.ToString());
                 }
 
 
-                var config = Plugin.Config;
-
-                if (config.LockedTransfer)
-                    POS = "{X:" + config.XCord + " Y:" + config.YCord + " Z:" + config.ZCord + "}";
-                else if (config.EnabledMirror)
-                    POS = POSsource.Substring(0, POSsource.IndexOf("^"));
-
-                POS = POS.TrimStart('{').TrimEnd('}');
-                Vector3D.TryParse(POS, out Vector3D gps);
-                newPos = gps;
-                string source = "";
 
                 using (HttpClient clients = new HttpClient())
                 {
@@ -210,7 +240,7 @@ namespace SwitchMe {
                             new KeyValuePair<string, string>("AddConnection",player.SteamUserId.ToString())
                         };
                         FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                        HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/api/index.php", content);
+                        HttpResponseMessage httpResponseMessage = await client.PostAsync(Plugin.API_URL, content);
                         HttpResponseMessage response = httpResponseMessage;
                         httpResponseMessage = null;
                         string text = await response.Content.ReadAsStringAsync();

@@ -25,7 +25,7 @@
         </StackPanel>
         <CheckBox Content="Enable outbound grid transfers" Margin="3" IsChecked="{Binding EnabledTransfers}" ToolTip="Enable or disable grid transfers on SwitchMe" Height="18"/>
         <CheckBox Content="Enable inbound grid transfers" Margin="3" IsChecked="{Binding InboundTransfersState}" ToolTip="Enable or disable inbound grid transfers on SwitchMe" Height="18"/>
-        <CheckBox Content="Randomise exit gate at target server" Margin="3" IsChecked="{Binding RandomisedExit}" ToolTip="Randomise exit gate on target server..." Height="18"/>
+        <CheckBox Content="Randomise exit gate at target server" Margin="3" IsChecked="{Binding RandomisedExit}" ToolTip="Randomise exit gate on this server..." Height="18"/>
         <StackPanel Orientation="Horizontal">
             <Label Content="Radius of jumpgate (Meters):"/>
             <TextBox x:Name="txtSafeRange" Width="29" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding GateSize}" />
@@ -81,16 +81,15 @@
             </DataGrid>
         </StackPanel>
 
-        <Label FontWeight="Bold" FontSize="13" Content="Position settings:" Height="27" Margin="1,0,0,0" />
-        <!--<Label Content="DO NOT ENABLE IF YOU HAVE A WORLD LIMIT!" FontSize="9" Margin="28,0,0,0" />-->
-        <RadioButton GroupName="positioning" Content="Enable mirrored positioning" Margin="31,3,3,3" IsChecked="{Binding EnabledMirror}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
+
+        <!--<Label FontWeight="Bold" FontSize="13" Content="Position settings:" Height="27" Margin="1,0,0,0" />
+        <Label Content="DO NOT ENABLE IF YOU HAVE A WORLD LIMIT!" FontSize="9" Margin="28,0,0,0" />-->
+        <!--<RadioButton GroupName="positioning" Content="Enable mirrored positioning" Margin="31,3,3,3" IsChecked="{Binding EnabledMirror}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
         <RadioButton GroupName="positioning" Content="Lock recoveries to a certain GPS position" Margin="31,3,3,3" IsChecked="{Binding LockedTransfer}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
-        <!--<CheckBox Content="Enable specified positioning settings for recover command" Margin="3,3,3,3" IsChecked="{Binding EnabledPositioning}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
-        -->
+        <CheckBox Content="Enable specified positioning settings for recover command" Margin="3,3,3,3" IsChecked="{Binding EnabledPositioning}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
         <Label Height="3">
             <LineBreak/>
         </Label>
-        <!--
         <Label FontWeight="Bold" FontSize="13" Content="Economy settings:" Height="31" Margin="1,0,0,0" />
         <CheckBox Content="Enable" Margin="6,3,3,3" IsChecked="{Binding EnableEcon}" ToolTip="Enable or economy integration"/>
         <RadioButton GroupName="econ" IsChecked="{Binding PerTransfer}" Content="Per transfer cost" Margin="28,0,0,0"/>
