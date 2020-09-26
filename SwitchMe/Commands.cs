@@ -71,6 +71,13 @@ namespace SwitchMe {
             await voidManager.PlayerTransfer("single", Sandbox.Game.Multiplayer.Sync.MyId);
         }
 
+
+        [Command("debug")]
+        [Permission(MyPromoteLevel.Admin)]
+        public void debug(bool state) {
+            Plugin.debug = state;
+        }
+
         [Command("all", "Automatically connects all players to your server of choice within this network. USAGE: !switch all <Insert Server name here>")]
         [Permission(MyPromoteLevel.Admin)]
         public async Task SwitchAllAsync() {
@@ -208,153 +215,28 @@ namespace SwitchMe {
 
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
             Log.Warn("Removing conneciton flag for " + player);
+
+            Dictionary<string, string> webData = new Dictionary<string, string>();
+
+            webData.Add("BindKey", Plugin.Config.LocalKey);
+            webData.Add("CurrentIP", currentIp);
+            webData.Add("RemoveConnection", player.ToString());
+
             using (HttpClient client = new HttpClient()) {
+
+                List<KeyValuePair<string, string>> test = new List<KeyValuePair<string, string>>();
                 List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                 {
                     new KeyValuePair<string, string>("BindKey", Plugin.Config.LocalKey),
                     new KeyValuePair<string, string>("CurrentIP", currentIp ),
                     new KeyValuePair<string, string>("RemoveConnection", player.ToString())
                 };
+
+                test.Add(new KeyValuePair<string, string>("BindKey",Plugin.Config.LocalKey));
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
                 await client.PostAsync(Plugin.API_URL, content);
             }
         }
-
-        /*
-        [Command("grid", "Transfers the target grid to the target server")]
-        [Permission(MyPromoteLevel.None)]
-        public async Task GridAsync(string gridTarget, string serverTarget) {
-
-            if (!Plugin.Config.Enabled) {
-                Context.Respond("SwitchMe not enabled");
-                return;
-            }
-            if (Context.Player == null) {
-                Context.Respond("Console cannot run this command");
-                return;
-            }
-            if (!Plugin.Config.EnabledTransfers) {
-                Context.Respond("Grid Transfers are not enabled!");
-                return;
-            }
-
-            int i = 0;
-            string ip = "";
-            string name = "";
-            string port = "";
-            string existanceCheck = "";
-
-            IEnumerable<string> channelIds = Plugin.Config.Servers;
-            foreach (string chId in channelIds) {
-
-                ip = chId.Split(':')[1];
-                name = chId.Split(':')[0];
-                port = chId.Split(':')[2];
-                i++;
-            }
-            channelIds = Plugin.Config.Servers.Where(c => c.Split(':')[0].Equals(serverTarget));
-            foreach (string chId in channelIds) {
-
-                ip = chId.Split(':')[1];
-                name = chId.Split(':')[0];
-                port = chId.Split(':')[2];
-            }
-
-            string target = ip + ":" + port;
-            ip += ":" + port;
-            if (ip == null || name == null || port == null) {
-                Context.Respond("Invalid Configuration!");
-                return;
-            }
-
-
-            string slotinfo = await Plugin.CheckSlotsAsync(target);
-            existanceCheck = slotinfo.Split(';').Last();
-            bool paired = await Plugin.CheckKeyAsync(target);
-
-            if (target.Length < 1) {
-                Context.Respond("Unknown Server. Please use '!switch list' to see a list of validated servers!");
-                return;
-            }
-
-            if (existanceCheck != "1") {
-                Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
-                return;
-            }
-
-            if (!paired) {
-                Context.Respond("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
-                return;
-            }
-
-            if (!Plugin.CheckStatus(target)) {
-                Context.Respond("Target server is offline... preventing switch");
-                return;
-            }
-
-            bool InboundCheck = await Plugin.CheckInboundAsync(target);
-            if (!InboundCheck) {
-                Context.Respond("The target server does not allow inbound transfers");
-                return;
-            }
-
-            Log.Warn("Checking " + target);
-            int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-            string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-            Log.Warn("MAX: " + max);
-            int maxi = int.Parse(max);
-            int maxcheck = 1 + currentRemotePlayers;
-            Context.Respond("Slot Checking...");
-            Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-            if (maxcheck > maxi && Context.Player.PromoteLevel != MyPromoteLevel.Admin) {
-                Log.Warn("Not enough slots available.");
-                Context.Respond("No slots available.");
-                return;
-            }
-            var player = MySession.Static.Players.GetPlayerByName(Context.Player.DisplayName);
-            if (player != null) {
-                // If he is online we check if he is currently seated. If he is eject him.
-                if (player?.Controller.ControlledEntity is MyCockpit controller) {
-                    MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-                        controller.Use();
-                    });
-                }
-                try {
-
-                    string externalIP = utils.CreateExternalIP(Plugin.Config);
-                    string pagesource = "";
-                    string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
-
-                    //Not sure what this does but it does not belong here 
-                    using (WebClient client = new WebClient()) {
-                        NameValueCollection postData = new NameValueCollection()
-                        {
-                        {"steamID", Context.Player.SteamUserId + ""},
-                        {"currentIP", currentIp },
-                        {"gridCheck", ""}
-                    };
-                        pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/gridHandle.php", postData));
-                    }
-
-                    if (pagesource == "0") {
-                        if (!await new VoidManager(Plugin).SendGrid(gridTarget, serverTarget, Context.Player.DisplayName, Context.Player.IdentityId, target)) {
-                            return;
-                        }
-                        Log.Warn("Connected clients to " + serverTarget + " @ " + ip);
-                    }
-                    else {
-                        Log.Fatal(pagesource);
-                        Context.Respond("Cannot transfer! You have a transfer ready to be recieved!");
-                        return;
-                    }
-                }
-                catch (Exception e) {
-                    Log.Fatal(e, e.Message);
-                    Context.Respond("Failure");
-                }
-            }
-        }
-        */
 
         [Command("restore", "Completes the transfer of one grid from one server to another")]
         [Permission(MyPromoteLevel.None)]
@@ -365,56 +247,14 @@ namespace SwitchMe {
         [Command("reload", "Reload and refresh jumpgates with debug options")]
         [Permission(MyPromoteLevel.Admin)]
         public void reload() {
-            //Delete all registered gates
-            int i = 0;
-            foreach (var zone in Plugin.zones) {
-                foreach (var entity in MyEntities.GetEntities()) {
-                    if (entity?.DisplayName?.Contains(zone, StringComparison.CurrentCultureIgnoreCase) ?? false) {
-                        i++;
-                        entity.Close();
-                    }
-                }
-            }
-            IMyPlayer player = Context.Player;
+            var player = Context.Player;
+            Plugin.CloseGates();
+            Plugin.OpenGates();
             if (player == null) {
-                Context.Respond($"{i} Jumpgates closed!");
+                Context.Respond($"Jumpgates created!");
             }
             else {
-                utils.NotifyMessage($"{i} Jumpgates closed!", Context.Player.SteamUserId);
-            }
-
-            //Rebuild all gates
-            int gates = 0;
-            IEnumerable<string> channelIds = Plugin.Config.Gates;
-            string name = "";
-            string location = "";
-            foreach (string chId in channelIds) {
-                name = chId.Split('/')[0];
-                location = chId.Split('/')[1];
-                location = location.TrimStart('{').TrimEnd('}');
-                Vector3D.TryParse(location, out Vector3D gps);
-                var ob = new MyObjectBuilder_SafeZone();
-                ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
-                ob.PersistentFlags = MyPersistentEntityFlags2.InScene;
-                ob.Shape = MySafeZoneShape.Sphere;
-                ob.Radius = Plugin.Config.GateSize;
-                ob.Enabled = true;
-                ob.DisplayName = $"SM-{gps}";
-                ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
-                ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
-                ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;
-                ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
-                var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
-                gates++;
-                if (!Plugin.zones.Contains(ob.DisplayName)) {
-                    Plugin.zones.Add(ob.DisplayName);
-                }
-            }
-            if (player == null) {
-                Context.Respond($"{gates} Jumpgates created!");
-            }
-            else {
-                utils.NotifyMessage($"{gates} Jumpgates created!", Context.Player.SteamUserId);
+                utils.NotifyMessage($"Jumpgates created!", Context.Player.SteamUserId);
             }
         }
 

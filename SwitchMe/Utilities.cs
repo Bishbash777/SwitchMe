@@ -24,8 +24,10 @@ using Torch.API;
 namespace SwitchMe {
 
     public class utils {
+        public static string API_URL = "http://switchplugin.net/api/index.php";
         public static ITorchBase Torch { get; }
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
+        public static Dictionary<string, string> webdata = new Dictionary<string, string>();
         public static string CreateExternalIP(SwitchMeConfig Config) {
 
             if (MySandboxGame.ConfigDedicated.IP.Contains("0.0") || MySandboxGame.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
@@ -195,6 +197,22 @@ namespace SwitchMe {
             }
 
             return null;
+        }
+
+        public static async Task<string> SendAPIRequestAsync() {
+            using (HttpClient client = new HttpClient()) {
+
+                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>();
+
+                foreach(var kvp in webdata) {
+                    pairs.Add(new KeyValuePair<string, string>(kvp.Key, kvp.Value));
+                }
+
+                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                HttpResponseMessage response = await client.PostAsync(API_URL, content);
+                webdata.Clear();
+                return await response.Content.ReadAsStringAsync();
+            }
         }
     }
 }

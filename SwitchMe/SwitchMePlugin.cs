@@ -104,6 +104,7 @@ namespace SwitchMe {
         public UserControl GetControl() => _control ?? (_control = new SwitchMeControl(this));
         public void Save() => _config?.Save();
         MyPlayer player;
+        public bool debug = false;
         public string API_URL = "http://switchplugin.net/api/index.php";
 
         public bool loadFailure = false;
@@ -149,16 +150,11 @@ namespace SwitchMe {
             string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
-            using (HttpClient clients = new HttpClient()) {
-                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                {
-                        new KeyValuePair<string, string>("existanceCheck",obj.SteamId.ToString()),
-                        new KeyValuePair<string, string>("currentIP", currentIp)
-                    };
-                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                response = await clients.PostAsync(API_URL, content);
-            }
-            Dictionary<string,string> gridData = utils.ParseQueryString(await response.Content.ReadAsStringAsync());
+            var utils = new utils();
+            utils.webdata.Add("existanceCheck", obj.SteamId.ToString());
+            utils.webdata.Add("currentIP", currentIp); 
+            Dictionary<string,string> gridData = utils.ParseQueryString(await utils.SendAPIRequestAsync());
+
             Directory.CreateDirectory("SwitchTemp");
             if (gridData["filename"] != "NULL") {
                 filename = gridData["filename"] + ".xml";
@@ -185,61 +181,53 @@ namespace SwitchMe {
             }
 
             string POS = "";
-            string POSsource = "";
-            using (HttpClient clients = new HttpClient()) {
-                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                {
-                    new KeyValuePair<string, string>("recover", obj.SteamId.ToString()),
-                    new KeyValuePair<string, string>("currentIP", currentIp),
-                    new KeyValuePair<string, string>("bindKey", Config.LocalKey)
-                };
-                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage httpResponseMessage = await clients.PostAsync(API_URL, content);
-                response = httpResponseMessage;
-                httpResponseMessage = null;
-                string texts = await response.Content.ReadAsStringAsync();
-                POSsource = texts;
-                //
-                // DO THE RANDOMISER SHIT BISH
-                //
-                bool foundGate = false;
-                IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(POSsource));
-                foreach (string chId in channelIds) {
-                    POS = chId.Split('/')[1];
-                    foundGate = true;
-                }
-                if (Config.RandomisedExit) {
-                    Dictionary<string, string> gateSelection = new Dictionary<string, string>();
-                    channelIds = Config.Gates;
-                    int i = 0;
-                    foreach (string gate in channelIds) {
-                        i++;
-                        gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
-                    }
-                    if (i != 0) {
-                        POS = utils.SelectRandomGate(gateSelection);
-                    }
-                }
-                if (!Config.RandomisedExit) {
-                    Log.Warn($"API: Gate elected = {POSsource}");
-                }
-                else {
-                    Log.Warn("Using randomly selected gate as exit");
-                }
+            utils.webdata.Add("recover", obj.SteamId.ToString());
+            utils.webdata.Add("currentIP", currentIp);
+            utils.webdata.Add("bindkey", Config.LocalKey);
+            string api_response = await utils.SendAPIRequestAsync();
 
-                if (!foundGate) {
-                    POS = "{X:" + Config.XCord + " Y:" + Config.YCord + " Z:" + Config.ZCord + "}";
-                    Log.Error($"Target gate ({POSsource}) does not exist... Using default");
-                }
-                /*
-                else if (config.EnabledMirror)
-                    POS = POSsource.Substring(0, POSsource.IndexOf("^"));
-                */
-                POS = POS.TrimStart('{').TrimEnd('}');
-                Vector3D.TryParse(POS, out Vector3D gps);
-                spawn_vector_location = gps;
-                Log.Info("Selected GPS: " + gps.ToString());
+
+            //
+            // DO THE RANDOMISER SHIT BISH
+            //
+            bool foundGate = false;
+            IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(api_response));
+            foreach (string chId in channelIds) {
+                POS = chId.Split('/')[1];
+                foundGate = true;
             }
+            if (Config.RandomisedExit) {
+                Dictionary<string, string> gateSelection = new Dictionary<string, string>();
+                channelIds = Config.Gates;
+                int i = 0;
+                foreach (string gate in channelIds) {
+                    i++;
+                    gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
+                }
+                if (i != 0) {
+                    POS = utils.SelectRandomGate(gateSelection);
+                }
+            }
+            if (!Config.RandomisedExit) {
+                Log.Warn($"API: Gate elected = {api_response}");
+            }
+            else {
+                Log.Warn("Using randomly selected gate as exit");
+            }
+
+            if (!foundGate) {
+                POS = "{X:" + Config.XCord + " Y:" + Config.YCord + " Z:" + Config.ZCord + "}";
+                Log.Error($"Target gate ({api_response}) does not exist... Using default");
+            }
+            /*
+            else if (config.EnabledMirror)
+                POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+            */
+            POS = POS.TrimStart('{').TrimEnd('}');
+            Vector3D.TryParse(POS, out Vector3D gps);
+            spawn_vector_location = gps;
+            Log.Info("Selected GPS: " + gps.ToString());
+            
             if (!connecting.ContainsKey(obj.SteamId)) {
                 connecting.Add(obj.SteamId, true);
             }
@@ -699,7 +687,7 @@ namespace SwitchMe {
             return true;
         }
 
-        public async Task RemoveConnection(ulong player) {
+        public string currentIP() {
             string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
             if (externalIP.Contains("0.0")
                 || externalIP.Contains("127.0")
@@ -708,59 +696,29 @@ namespace SwitchMe {
             }
 
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+
+            return currentIp;
+        }
+        public async Task RemoveConnection(ulong player) {
             Log.Warn("Removing conneciton flag for " + player);
-            using (HttpClient client = new HttpClient()) {
-                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                {
-                    new KeyValuePair<string, string>("BindKey", Config.LocalKey),
-                    new KeyValuePair<string, string>("CurrentIP", currentIp ),
-                    new KeyValuePair<string, string>("RemoveConnection", player.ToString())
-                };
-                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                await client.PostAsync(API_URL, content);
-            }
+            utils.webdata.Add("BindKey", Config.LocalKey);
+            utils.webdata.Add("CurrnetIP", currentIP());
+            utils.webdata.Add("RemoveConnection", player.ToString());
+            await utils.SendAPIRequestAsync();
         }
         public async Task<bool> CheckConnection(IPlayer player) {
-            string externalIP;
-            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0")
-                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0")
-                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168")
-                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("10.0")) {
-
-                externalIP = Config.LocalIP;
-
-                if (externalIP.Contains("127.0")
-                || externalIP.Contains("192.168")
-                || externalIP.Contains("0.0")
-                || externalIP.Contains("10.0")) {
-                    Log.Error("Incorrect IP setup... SwitchMe will NOT work");
-                    return false;
-                }
-
-            }
-            else {
-                externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-            }
-            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+            
             Log.Warn("Checking inbound conneciton for " + player.SteamId);
-            string pagesource;
-            using (HttpClient client = new HttpClient()) {
-                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                {
-                    new KeyValuePair<string, string>("BindKey", Config.LocalKey),
-                    new KeyValuePair<string, string>("CurrentIP", currentIp ),
-                    new KeyValuePair<string, string>("ConnectionCheck", player.SteamId.ToString())
-                };
-                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage httpResponseMessage = await client.PostAsync(API_URL, content);
-                HttpResponseMessage response = httpResponseMessage;
-                httpResponseMessage = null;
-                string text = await response.Content.ReadAsStringAsync();
-                pagesource = text;
-                Log.Warn(pagesource);
-            }
 
-            if (pagesource.Contains("connecting=false")) {
+
+            utils.webdata.Add("BindKey", Config.LocalKey);
+            utils.webdata.Add("CurrentIP", currentIP());
+            utils.webdata.Add("ConnectionCheck", player.SteamId.ToString());
+            string text = await utils.SendAPIRequestAsync();
+
+
+            if (debug) {Log.Warn(text);}
+            if (text.Contains("connecting=false")) {
                 return false;
             }
             return true ;
@@ -848,35 +806,9 @@ namespace SwitchMe {
 
                 case TorchSessionState.Loaded:
                     //load
-                    int gates = 0;
                     MyVisualScriptLogicProvider.PlayerConnected += PlayerConnect;
                     LoadSEDB();
-                    IEnumerable<string> channelIds = Config.Gates;
-                    string name = "";
-                    string location = "";
-                    foreach (string chId in channelIds) {
-                        name = chId.Split('/')[0];
-                        location = chId.Split('/')[1];
-                        Vector3D.TryParse(location, out Vector3D gps);
-                        var ob = new MyObjectBuilder_SafeZone();
-                        ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
-                        ob.PersistentFlags = MyPersistentEntityFlags2.InScene;
-                        ob.Shape = MySafeZoneShape.Sphere;
-                        ob.Radius = (float)50;
-                        ob.Enabled = true;
-                        ob.DisplayName = $"SM-{gps}";
-                        ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
-                        ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
-                        ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;
-                        ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
-                        var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
-                        gates++;
-                        if (!zones.Contains(ob.DisplayName)) {
-                            zones.Add(ob.DisplayName);
-                        }
-                    }
-                    Log.Info($"{gates} Jumpgates created!");
-                        break;
+                    break;
 
                 case TorchSessionState.Unloaded:
                     //unload
@@ -895,6 +827,35 @@ namespace SwitchMe {
             }
         }
 
+
+        public void OpenGates() {
+            int gates = 0;
+            IEnumerable<string> channelIds = Config.Gates;
+            string name = "";
+            string location = "";
+            foreach (string chId in channelIds) {
+                name = chId.Split('/')[0];
+                location = chId.Split('/')[1];
+                Vector3D.TryParse(location, out Vector3D gps);
+                var ob = new MyObjectBuilder_SafeZone();
+                ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
+                ob.PersistentFlags = MyPersistentEntityFlags2.InScene;
+                ob.Shape = MySafeZoneShape.Sphere;
+                ob.Radius = (float)50;
+                ob.Enabled = true;
+                ob.DisplayName = $"SM-{gps}";
+                ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
+                ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
+                ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;
+                ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
+                var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
+                gates++;
+                if (!zones.Contains(ob.DisplayName)) {
+                    zones.Add(ob.DisplayName);
+                }
+            }
+            Log.Info($"{gates} Jumpgates created!");
+        }
         public void CloseGates() {
             int i = 0;
             foreach (var zone in zones) {
@@ -1102,7 +1063,7 @@ namespace SwitchMe {
             StartTimer();
         }
 
-        public void DeleteFromWeb(ulong steamid) {
+        public async void DeleteFromWeb(ulong steamid) {
             string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
             if (externalIP.Contains("0.0")
                 || externalIP.Contains("127.0")
@@ -1122,6 +1083,11 @@ namespace SwitchMe {
 
                 client.UploadValues(API_URL, postData);
             }
+
+            utils.webdata.Add("proccessed",steamid.ToString());
+            utils.webdata.Add("currentIP", currentIP());
+            await utils.SendAPIRequestAsync();
+
         }
 
         private void _timer_Elapsed(object sender, ElapsedEventArgs e) {
