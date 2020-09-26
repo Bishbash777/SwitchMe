@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Navigation;
 using System.Text.RegularExpressions;
+using Torch;
 
 using VRage.Game;
 using System.Windows.Input;
@@ -17,7 +18,7 @@ namespace SwitchMe {
     /// Interação lógica para SEDBControl.xaml
     /// </summary>
     public partial class SwitchMeControl : UserControl {
-        private SwitchMePlugin Plugin { get; }
+        public SwitchMePlugin Plugin { get; }
 
         public SwitchMeControl() {
 
@@ -37,10 +38,13 @@ namespace SwitchMe {
             var servers = from f in Plugin.Config.Servers select new { SERVER = f.Split(':')[0], IP = f.Split(':')[1], PORT = f.Split(':')[2] };
 
             dgServerList.ItemsSource = servers;
-
-            var gates = from f in Plugin.Config.Gates select new { GateTarget = f.Split('/')[0], GPS = f.Split('/')[1]};
-
-            dgServerGates.ItemsSource = gates;
+            try {
+                var gates = from f in Plugin.Config.Gates select new { GateTarget = f.Split('/')[0], GPS = f.Split('/')[1], Alias = f.Split('/')[2], TargetAlias = f.Split('/')[3] };
+                dgServerGates.ItemsSource = gates;
+            }
+            catch (System.IndexOutOfRangeException) {
+                Plugin.loadFailure = true;
+            }
         }
 
         private void SaveConfig_OnClick(object sender, RoutedEventArgs e) {
@@ -103,7 +107,7 @@ namespace SwitchMe {
             string POS = "{X:" + XCordGate.Text + " Y:" + YCordGate.Text + " Z:" + ZCordGate.Text + "}";
             if (POS.Length > 0) {
 
-                Plugin.Config.Gates.Add(txtGateTarget.Text + "/" + POS);
+                Plugin.Config.Gates.Add($"{txtGateTarget.Text}/{POS}/{txtGateAlias.Text}/{txtTargetAlias.Text}");
 
                 UpdateDataGrid();
 
@@ -116,7 +120,7 @@ namespace SwitchMe {
 
                 dynamic dataRowGate = dgServerGates.SelectedItem;
 
-                Plugin.Config.Gates.Remove(dataRowGate.GateTarget + "/" + dataRowGate.GPS);
+                Plugin.Config.Gates.Remove($"{dataRowGate.GateTarget}/{dataRowGate.GPS}/{dataRowGate.Alias}/{dataRowGate.TargetAlias}");
 
                 UpdateDataGrid();
             }

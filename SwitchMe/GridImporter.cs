@@ -11,7 +11,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Torch;
 using Torch.Commands;
-using Sandbox.Common.ObjectBuilders;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Groups;
@@ -28,7 +27,6 @@ namespace SwitchMe {
 
         private readonly SwitchMePlugin Plugin;
         private readonly CommandContext Context;
-        private MyPlayer player;
 
         public GridImporter(SwitchMePlugin Plugin, CommandContext Context) {
             this.Plugin = Plugin;
@@ -40,19 +38,6 @@ namespace SwitchMe {
             if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) {
 
                 IMyEntity targetEntity = player?.Controller.ControlledEntity.Entity;
-
-                if (Plugin.Config.EnabledMirror) {
-
-                    var p = player;
-                    var parent = p.Character?.Parent;
-
-                    if (parent == null) {
-                    }
-
-                    if (parent is MyShipController c) {
-                        c.RemoveUsers(false);
-                    }
-                }
 
                 utils.NotifyMessage($"Importing grid from {targetFile}", player.SteamUserId);
 
@@ -162,7 +147,7 @@ namespace SwitchMe {
                     return false;
                 }
                 //Economy stuff
-                if (Plugin.Config.EnableEcon && Plugin.Config.PerTransfer && Plugin.Config.PerBlock) {
+                /*if (Plugin.Config.EnableEcon && Plugin.Config.PerTransfer && Plugin.Config.PerBlock) {
                     Log.Warn("Invalid econ setup");
                     utils.NotifyMessage("Invalid econ setup - please notify an admin.", player.SteamUserId);
                     return false;
@@ -177,9 +162,9 @@ namespace SwitchMe {
                     player.TryGetBalanceInfo(out balance);
                     long mathResult = (balance - withdraw);
                     Log.Info("Cost of transfer for" + player.DisplayName + ": " + i);
-                    CurrentCooldown cooldown = new CurrentCooldown(Plugin, Context);
+                    CurrentCooldown cooldown = new CurrentCooldown(Plugin);
                     //verify that user wants to go ahead with transfer.
-                    if (cooldown.Confirm(i)) {
+                    if (cooldown.Confirm(i, player.SteamUserId)) {
                         if (mathResult < 0) {
                             Log.Info("Cost of transfer for" + player.DisplayName + ": " + i);
                             utils.NotifyMessage("Not enough funds for transfer", player.SteamUserId);
@@ -188,6 +173,7 @@ namespace SwitchMe {
                         player.RequestChangeBalance(-withdraw);
                     }
                 }
+                */
                 MyObjectBuilder_Definitions builderDefinition = MyObjectBuilderSerializer.CreateNewObject<MyObjectBuilder_Definitions>();
                 builderDefinition.Prefabs = new MyObjectBuilder_PrefabDefinition[] { definition };
                 bool worked = MyObjectBuilderSerializer.SerializeXML(path, false, builderDefinition);
@@ -195,7 +181,7 @@ namespace SwitchMe {
                 return true;
 
             } catch (Exception e) {
-                Log.Fatal(e, "ERROR AT SERIALIZATION: " + e.Message);
+                Log.Fatal(e.Message);
                 return false;
             }
         }
@@ -282,11 +268,6 @@ namespace SwitchMe {
              * Now we know the radius that can house all grids which will now be 
              * used to determine the perfect place to paste the grids to. 
              */
-
-            if (Plugin.Config.LockedTransfer && Plugin.Config.EnabledMirror || Plugin.Config.EnabledMirror)
-            {
-                return MyEntities.FindFreePlace(pos, radius);
-            }
 
             return MyEntities.FindFreePlace(player.GetPosition(), radius);
         }

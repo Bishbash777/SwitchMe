@@ -26,6 +26,10 @@ using System.Collections;
 using System.Threading.Tasks;
 using Sandbox.ModAPI;
 using System.Net.Http;
+using Sandbox.Game;
+using Sandbox.Common.ObjectBuilders;
+using VRage;
+using VRage.ObjectBuilders;
 
 namespace SwitchMe {
 
@@ -115,8 +119,14 @@ namespace SwitchMe {
             Context.Respond("`!switch list` Displays a list of valid Server names to connect to.");
             Context.Respond("`!switch grid '<targetgrid>' '<targetserver>'` Transfers the target grid to the target server.");
             Context.Respond("`!switch recover` Completes the transfer of a grid");
+            Context.Respond("`!switch gates` Displayes the GPS locations of valid jump gates.");
         }
 
+        [Command("verify", "Verify gate configuration")]
+        [Permission(MyPromoteLevel.Admin)]
+        public async void verify() {
+
+        }
 
         [Command("gates","Get the gps locations of jump gates in this server")]
         [Permission(MyPromoteLevel.None)]
@@ -160,7 +170,7 @@ namespace SwitchMe {
                 if (gridManager.DeserializeGridFromPath(targetFile, Context.Player.DisplayName, newPos))
                 {
                     File.Delete(targetFile);
-                    Plugin.DeleteFromWeb(currentIp);
+                    Plugin.DeleteFromWeb(Context.Player.SteamUserId);
                 }
             });
             await RemoveConnection(Context.Player.SteamUserId);
@@ -206,10 +216,11 @@ namespace SwitchMe {
                     new KeyValuePair<string, string>("RemoveConnection", player.ToString())
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                await client.PostAsync("http://switchplugin.net/api/index.php", content);
+                await client.PostAsync(Plugin.API_URL, content);
             }
         }
 
+        /*
         [Command("grid", "Transfers the target grid to the target server")]
         [Permission(MyPromoteLevel.None)]
         public async Task GridAsync(string gridTarget, string serverTarget) {
@@ -295,14 +306,14 @@ namespace SwitchMe {
             int maxcheck = 1 + currentRemotePlayers;
             Context.Respond("Slot Checking...");
             Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-            if (maxcheck > maxi && !Context.Player.IsAdmin) {
+            if (maxcheck > maxi && Context.Player.PromoteLevel != MyPromoteLevel.Admin) {
                 Log.Warn("Not enough slots available.");
                 Context.Respond("No slots available.");
                 return;
             }
             var player = MySession.Static.Players.GetPlayerByName(Context.Player.DisplayName);
             if (player != null) {
-                /* If he is online we check if he is currently seated. If he is eject him. */
+                // If he is online we check if he is currently seated. If he is eject him.
                 if (player?.Controller.ControlledEntity is MyCockpit controller) {
                     MyAPIGateway.Utilities.InvokeOnGameThread(() => {
                         controller.Use();
@@ -314,7 +325,7 @@ namespace SwitchMe {
                     string pagesource = "";
                     string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
 
-                    /* Not sure what this does but it does not belong here */
+                    //Not sure what this does but it does not belong here 
                     using (WebClient client = new WebClient()) {
                         NameValueCollection postData = new NameValueCollection()
                         {
@@ -343,12 +354,69 @@ namespace SwitchMe {
                 }
             }
         }
+        */
 
         [Command("restore", "Completes the transfer of one grid from one server to another")]
         [Permission(MyPromoteLevel.None)]
         public void Restore() {
             Recover();
-        } 
+        }
+
+        [Command("reload", "Reload and refresh jumpgates with debug options")]
+        [Permission(MyPromoteLevel.Admin)]
+        public void reload() {
+            //Delete all registered gates
+            int i = 0;
+            foreach (var zone in Plugin.zones) {
+                foreach (var entity in MyEntities.GetEntities()) {
+                    if (entity?.DisplayName?.Contains(zone, StringComparison.CurrentCultureIgnoreCase) ?? false) {
+                        i++;
+                        entity.Close();
+                    }
+                }
+            }
+            IMyPlayer player = Context.Player;
+            if (player == null) {
+                Context.Respond($"{i} Jumpgates closed!");
+            }
+            else {
+                utils.NotifyMessage($"{i} Jumpgates closed!", Context.Player.SteamUserId);
+            }
+
+            //Rebuild all gates
+            int gates = 0;
+            IEnumerable<string> channelIds = Plugin.Config.Gates;
+            string name = "";
+            string location = "";
+            foreach (string chId in channelIds) {
+                name = chId.Split('/')[0];
+                location = chId.Split('/')[1];
+                location = location.TrimStart('{').TrimEnd('}');
+                Vector3D.TryParse(location, out Vector3D gps);
+                var ob = new MyObjectBuilder_SafeZone();
+                ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
+                ob.PersistentFlags = MyPersistentEntityFlags2.InScene;
+                ob.Shape = MySafeZoneShape.Sphere;
+                ob.Radius = Plugin.Config.GateSize;
+                ob.Enabled = true;
+                ob.DisplayName = $"SM-{gps}";
+                ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
+                ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
+                ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;
+                ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
+                var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
+                gates++;
+                if (!Plugin.zones.Contains(ob.DisplayName)) {
+                    Plugin.zones.Add(ob.DisplayName);
+                }
+            }
+            if (player == null) {
+                Context.Respond($"{gates} Jumpgates created!");
+            }
+            else {
+                utils.NotifyMessage($"{gates} Jumpgates created!", Context.Player.SteamUserId);
+            }
+        }
 
 
         /*[Command("link")]

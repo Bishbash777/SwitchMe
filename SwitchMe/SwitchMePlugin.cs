@@ -13,6 +13,8 @@ using System.Runtime;
 using System.Windows.Controls;
 using Torch.API.Managers;
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Timers;
 using System.Collections.Specialized;
 using System.Net;
@@ -24,7 +26,6 @@ using System.IO;
 using System.Net.Http;
 using Sandbox.Game;
 using Sandbox.ModAPI.Ingame;
-using VRage.Game.ModAPI;
 using VRage.Groups;
 using VRage.Utils;
 using VRage.Network;
@@ -71,13 +72,12 @@ namespace SwitchMe {
         private IMultiplayerManagerBase _multibase;
         private readonly List<long> player_ids_to_spawn = new List<long>();
         private readonly List<IMyPlayer> all_players = new List<IMyPlayer>();
-        private List<string> zones = new List<string>();
+        public List<string> zones = new List<string>();
         private readonly Dictionary<long, IMyPlayer> current_player_ids = new Dictionary<long, IMyPlayer>();
         private readonly Dictionary<ulong, string> target_file_list = new Dictionary<ulong, string>();
         private readonly Dictionary<ulong, bool> connecting = new Dictionary<ulong, bool>();
         public Dictionary<Vector3D, string> JumpInfo = new Dictionary<Vector3D, string>();
         private readonly List<long> clear_ids = new List<long>();
-        //public bool connecting = false;
         private static Vector3D spawn_vector_location = Vector3D.One;
         private MatrixD spawn_matrix = MatrixD.Identity;
         private Dictionary<ulong, string> ClosestGate = new Dictionary<ulong, string>();
@@ -85,7 +85,6 @@ namespace SwitchMe {
         public MyPlayer closestPlayer = null;
         private int _timerSpawn = 0;
         Dictionary<double, MyPlayer> distanceData = new Dictionary<double, MyPlayer>();
-        private bool firstrun = true;
         private Dictionary<ulong,double> distance = new Dictionary<ulong, double>();
         private Dictionary<ulong,double> closestDistance = new Dictionary<ulong, double>();
         private Dictionary<ulong, bool> SafetyNet = new Dictionary<ulong, bool>();
@@ -94,20 +93,23 @@ namespace SwitchMe {
         private Dictionary<ulong, bool> JumpProtect = new Dictionary<ulong, bool>();
         private Dictionary<long, string> Factions = new Dictionary<long, string>();
         private Dictionary<long, Dictionary<long, bool>> FMembers = new Dictionary<long, Dictionary<long, bool>>();
-
         private int tick = 0;
-
-
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
-        public Dictionary<long, CurrentCooldown> CurrentCooldownMap { get; } = new Dictionary<long, CurrentCooldown>();
-        public Dictionary<long, CurrentCooldown> ConfirmationsMap { get; } = new Dictionary<long, CurrentCooldown>();
+        public Dictionary<ulong, CurrentCooldown> CurrentCooldownMapCommand { get; } = new Dictionary<ulong, CurrentCooldown>();
+        public Dictionary<ulong, CurrentCooldown> ConfirmationsMapCommand { get; } = new Dictionary<ulong, CurrentCooldown>();
+        public Dictionary<ulong, CurrentCooldown> ProtectionCooldownMap { get; } = new Dictionary<ulong, CurrentCooldown>();
         public long Cooldown { get { return Config.CooldownInSeconds * 1000; } }
         public long CooldownConfirmationSeconds { get { return Config.ConfirmationInSeconds; } }
         public long CooldownConfirmation { get { return Config.ConfirmationInSeconds * 1000; } }
-        /// <inheritdoc />
         public UserControl GetControl() => _control ?? (_control = new SwitchMeControl(this));
         public void Save() => _config?.Save();
-        MyPlayer player; 
+        MyPlayer player;
+        public string API_URL = "http://switchplugin.net/api/index.php";
+
+        public bool loadFailure = false;
+
+
+
 
         public override void Init(ITorchBase torch) {
             base.Init(torch);
@@ -128,13 +130,9 @@ namespace SwitchMe {
         }
         private async void Multibase_PlayerJoined(IPlayer obj) {
 
-            if (Config.RecoverOnJoin && (!Config.EnabledMirror && !Config.LockedTransfer)) {
-                Log.Error("Invalid setup for onjoin spawning - please make sure a position option is selected");
-                return;
-            }
-
             Log.Info( obj.SteamId.ToString() + " connected - Starting SwitchMe handle");
-            if (!Config.Enabled || !Config.RecoverOnJoin) 
+            CurrentCooldown cooldown = new CurrentCooldown(this);
+            if (!Config.Enabled) 
                 return;
             if (Config.XCord == null || Config.YCord == null || Config.ZCord == null) {
                 Log.Warn("Invalid GPS configuration - cancelling spawn operation");
@@ -144,18 +142,8 @@ namespace SwitchMe {
             if (!SwitchConnection) {
                 return;
             }
-            if (Config.EnabledJumpgate) {
-                IEnumerable<string> channelIds = Config.Gates;
-                foreach (string chId in channelIds) {
-                    string name = chId.Split('/')[0];
-                    string location = chId.Split('/')[1];
-                    Vector3D.TryParse(location, out Vector3D gps);
-                    var entry = gps;
-                    MyAPIGateway.Session?.GPS.AddGps(MySession.Static.Players.TryGetIdentityId(obj.SteamId), new MyGps());
-                }
-            }
-
-            string source = "";
+           
+            HttpResponseMessage response;
             string filename = "";
             string targetFile = "";
             string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
@@ -164,20 +152,16 @@ namespace SwitchMe {
             using (HttpClient clients = new HttpClient()) {
                 List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                 {
-                        new KeyValuePair<string, string>("steamID",obj.SteamId.ToString()),
+                        new KeyValuePair<string, string>("existanceCheck",obj.SteamId.ToString()),
                         new KeyValuePair<string, string>("currentIP", currentIp)
                     };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
-                HttpResponseMessage response = httpResponseMessage;
-                httpResponseMessage = null;
-                string text = await response.Content.ReadAsStringAsync();
-                source = text;
+                response = await clients.PostAsync(API_URL, content);
             }
-            string existance = source.Substring(0, source.IndexOf(":"));
-            Directory.CreateDirectory(StoragePath + "SwitchTemp");
-            if (existance == "1") {
-                filename = source.Split(':').Last() + ".xml";
+            Dictionary<string,string> gridData = utils.ParseQueryString(await response.Content.ReadAsStringAsync());
+            Directory.CreateDirectory("SwitchTemp");
+            if (gridData["filename"] != "NULL") {
+                filename = gridData["filename"] + ".xml";
                 try {
                     string remoteUri = "http://www.switchplugin.net/transportedGrids/" + filename;
                     targetFile = "SwitchTemp\\" + filename;
@@ -205,21 +189,53 @@ namespace SwitchMe {
             using (HttpClient clients = new HttpClient()) {
                 List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
                 {
-                    new KeyValuePair<string, string>("steamID", obj.SteamId.ToString()),
-                    new KeyValuePair<string, string>("posCheck", "1"),
-                    new KeyValuePair<string, string>("currentIP", currentIp)
+                    new KeyValuePair<string, string>("recover", obj.SteamId.ToString()),
+                    new KeyValuePair<string, string>("currentIP", currentIp),
+                    new KeyValuePair<string, string>("bindKey", Config.LocalKey)
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
-                HttpResponseMessage response = httpResponseMessage;
+                HttpResponseMessage httpResponseMessage = await clients.PostAsync(API_URL, content);
+                response = httpResponseMessage;
                 httpResponseMessage = null;
                 string texts = await response.Content.ReadAsStringAsync();
                 POSsource = texts;
-                var config = Config;
-                if (config.LockedTransfer)
-                    POS = "{X:" + config.XCord + " Y:" + config.YCord + " Z:" + config.ZCord + "}";
+                //
+                // DO THE RANDOMISER SHIT BISH
+                //
+                bool foundGate = false;
+                IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(POSsource));
+                foreach (string chId in channelIds) {
+                    POS = chId.Split('/')[1];
+                    foundGate = true;
+                }
+                if (Config.RandomisedExit) {
+                    Dictionary<string, string> gateSelection = new Dictionary<string, string>();
+                    channelIds = Config.Gates;
+                    int i = 0;
+                    foreach (string gate in channelIds) {
+                        i++;
+                        gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
+                    }
+                    if (i != 0) {
+                        POS = utils.SelectRandomGate(gateSelection);
+                    }
+                }
+                if (!Config.RandomisedExit) {
+                    Log.Warn($"API: Gate elected = {POSsource}");
+                }
+                else {
+                    Log.Warn("Using randomly selected gate as exit");
+                }
+
+                if (!foundGate) {
+                    POS = "{X:" + Config.XCord + " Y:" + Config.YCord + " Z:" + Config.ZCord + "}";
+                    Log.Error($"Target gate ({POSsource}) does not exist... Using default");
+                }
+                /*
                 else if (config.EnabledMirror)
                     POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+                */
+                POS = POS.TrimStart('{').TrimEnd('}');
                 Vector3D.TryParse(POS, out Vector3D gps);
                 spawn_vector_location = gps;
                 Log.Info("Selected GPS: " + gps.ToString());
@@ -269,43 +285,43 @@ namespace SwitchMe {
 
 
 
-        public async Task<bool> CheckServer(IMyPlayer player, string servername, string target ) {
-                string slotinfo = await CheckSlotsAsync(target);
-                string existanceCheck = slotinfo.Split(';').Last();
-                bool paired = await CheckKeyAsync(target);
+        public async Task<bool> CheckServer(IMyPlayer player, string servername, string target) {
+            string slotinfo = await CheckSlotsAsync(target);
+            string existanceCheck = slotinfo.Split(';').Last();
+            bool paired = await CheckKeyAsync(target);
 
+                
+            if (target.Length < 1) {
+            Log.Warn("Unknown Server. Please use '!switch list' to see a list of valid servers!");
+                utils.NotifyMessage("Unknown Server. Please use '!switch list' to see a list of valid servers!", player.SteamUserId);
+                return false;
+            }
 
-                if (target.Length < 1) {
-                Log.Warn("Unknown Server. Please use '!switch list' to see a list of valid servers!");
-                    utils.NotifyMessage("Unknown Server. Please use '!switch list' to see a list of valid servers!", player.SteamUserId);
-                    return false;
-                }
+            if (existanceCheck != "1") {
+            Log.Warn("Cannot communicate with target, please make sure SwitchMe is installed there!");
+                utils.NotifyMessage("Cannot communicate with target, please make sure SwitchMe is installed there!", player.SteamUserId);
+                return false;
+            }
 
-                if (existanceCheck != "1") {
-                Log.Warn("Cannot communicate with target, please make sure SwitchMe is installed there!");
-                    utils.NotifyMessage("Cannot communicate with target, please make sure SwitchMe is installed there!", player.SteamUserId);
-                    return false;
-                }
+            if (paired != true) {
+            Log.Warn("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
+                utils.NotifyMessage("Unauthorised Switch! Please make sure the servers have the same Bind Key!", player.SteamUserId);
+                return false;
+            }
 
-                if (paired != true) {
-                Log.Warn("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
-                    utils.NotifyMessage("Unauthorised Switch! Please make sure the servers have the same Bind Key!", player.SteamUserId);
-                    return false;
-                }
-
-                ///   Slot checking
-                Log.Warn("Checking " + target);
-                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                currentLocalPlayers = 1;
-                int maxi = int.Parse(max);
-                int maxcheck = currentLocalPlayers + currentRemotePlayers;
-                if (maxcheck > maxi && !player.IsAdmin) {
-                    utils.NotifyMessage("Not enough slots free to use gate!", player.SteamUserId);
-                    return false;
-                }
-                return true;
+            ///   Slot checking
+            Log.Warn("Checking " + target);
+            int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
+            string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
+            int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+            currentLocalPlayers = 1;
+            int maxi = int.Parse(max);
+            int maxcheck = currentLocalPlayers + currentRemotePlayers;
+            if (maxcheck > maxi && player.PromoteLevel != MyPromoteLevel.Admin) {
+                utils.NotifyMessage("Not enough slots free to use gate!", player.SteamUserId);
+                return false;
+            }
+            return true;
         }
 
 
@@ -321,94 +337,110 @@ namespace SwitchMe {
                     if (tick % 16 == 0) {
                         foreach (var playerOnline in MySession.Static.Players.GetOnlinePlayers()) {
                             var player = utils.GetPlayerByNameOrId(playerOnline.DisplayName);
-                            if (!PlayerSending.ContainsKey(player.SteamUserId)) {
-                                PlayerSending.Add(player.SteamUserId, true);
-                            }
-                            IEnumerable<string> channelIds = Config.Gates;
-                            bool firstcheck = true;
-                            distance.Clear();
-                            closestDistance.Clear();
-                            ClosestGate.Clear();
-                            foreach (string chId in channelIds) {
+                            if (player.Character != null) {
+                                if (!PlayerSending.ContainsKey(player.SteamUserId)) {
+                                    PlayerSending.Add(player.SteamUserId, true);
+                                }
+                                IEnumerable<string> channelIds = Config.Gates;
+                                bool firstcheck = true;
+                                string Alias = "";
+                                string TargetAlias = "";
+                                distance.Clear();
+                                closestDistance.Clear();
+                                ClosestGate.Clear();
+                                foreach (string chId in channelIds) {
 
-                                name = chId.Split('/')[0];
-                                location = chId.Split('/')[1];
-                                Vector3D.TryParse(location, out Vector3D gps);
-                                if (firstcheck) {
-                                    closestDistance.Add(player.SteamUserId, Vector3D.DistanceSquared(player.GetPosition(), gps));
-                                    ClosestGate.Add(player.SteamUserId, name);
-                                }
-                                if (!firstcheck) {
-                                    double value1 = Vector3D.DistanceSquared(player.GetPosition(), gps);
-                                    double value2 = closestDistance[player.SteamUserId];
-                                    if (Vector3D.DistanceSquared(player.GetPosition(), gps) < closestDistance[player.SteamUserId]) {
-                                        closestDistance[player.SteamUserId] = Vector3D.DistanceSquared(player.GetPosition(), gps);
-                                        ClosestGate[player.SteamUserId] = name;
+                                    name = chId.Split('/')[0];
+                                    location = chId.Split('/')[1];
+                                    Alias = chId.Split('/')[2];
+                                    TargetAlias = chId.Split('/')[3];
+                                    location = location.TrimStart('{').TrimEnd('}');
+                                    Vector3D.TryParse(location, out Vector3D gps);
+                                    if (firstcheck) {
+                                        closestDistance.Add(player.SteamUserId, Vector3D.DistanceSquared(player.GetPosition(), gps));
+                                        ClosestGate.Add(player.SteamUserId, name);
                                     }
+                                    if (!firstcheck) {
+                                        double value1 = Vector3D.DistanceSquared(player.GetPosition(), gps);
+                                        double value2 = closestDistance[player.SteamUserId];
+                                        if (Vector3D.DistanceSquared(player.GetPosition(), gps) < closestDistance[player.SteamUserId]) {
+                                            closestDistance[player.SteamUserId] = Vector3D.DistanceSquared(player.GetPosition(), gps);
+                                            ClosestGate[player.SteamUserId] = name;
+                                            #pragma warning disable CS1717
+                                            TargetAlias = TargetAlias;
+                                            #pragma warning restore CS1717
+                                        }
+                                    }
+                                    firstcheck = false;
                                 }
-                                firstcheck = false;
-                            }
-                            channelIds = Config.Servers.Where(c => c.Split(':')[0].Equals(ClosestGate[player.SteamUserId]));
+                                channelIds = Config.Servers.Where(c => c.Split(':')[0].Equals(ClosestGate[player.SteamUserId]));
 
-                            foreach (string chId in channelIds) {
-                                ip = chId.Split(':')[1];
-                                name = chId.Split(':')[0];
-                                port = chId.Split(':')[2];
-                            }
-                            string target = ip + ":" + port;
-                            ip += ":" + port;
-                            if (DisplayedMessage.ContainsKey(player.SteamUserId) && closestDistance[player.SteamUserId] > 22505) {
-                                DisplayedMessage[player.SteamUserId] = true;
-                            }
-                            if (closestDistance[player.SteamUserId] < 22500 /* 150m away from jumpCentre */) {
-                                if (closestDistance[player.SteamUserId] > 3025) {
-                                    if (JumpProtect.ContainsKey(player.SteamUserId)) {
-                                        JumpProtect[player.SteamUserId] = false;
-                                    }
+                                foreach (string chId in channelIds) {
+                                    ip = chId.Split(':')[1];
+                                    name = chId.Split(':')[0];
+                                    port = chId.Split(':')[2];
                                 }
-                                if (!DisplayedMessage.ContainsKey(player.SteamUserId)) {
-                                    DisplayedMessage.Add(player.SteamUserId, false);
-                                }
-
-                                if (!DisplayedMessage[player.SteamUserId]) {
-                                    if (!await CheckServer(player, name, target)) {
-                                        return;
-                                    }
-                                    utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
+                                string target = ip + ":" + port;
+                                ip += ":" + port;
+                                if (DisplayedMessage.ContainsKey(player.SteamUserId) && closestDistance[player.SteamUserId] > (Math.Pow(Config.GateSize, 2) + 500)) {
                                     DisplayedMessage[player.SteamUserId] = true;
                                 }
-                                if (closestDistance[player.SteamUserId] <= 2500 ) {
-                                    /* If he is online we check if he is currently seated. If he is - get the grid name */
-                                    if (player?.Controller.ControlledEntity is MyCockpit controller) {
-                                        string gridname = controller.Parent.DisplayName;
-                                        //Log.Error("Player seated in: " + gridname);
-                                        try {
-                                            if (!inZone.ContainsKey(player.SteamUserId)) {
-                                                inZone.Add(player.SteamUserId, false);
-                                            }
-                                            if (inZone[player.SteamUserId] == false) {
-                                                inZone[player.SteamUserId] = true;
-                                                VoidManager voidm = new VoidManager(this);
-                                                await voidm.SendGrid(gridname, ClosestGate[player.SteamUserId], player.DisplayName, player.IdentityId, ip);
-                                                inZone[player.SteamUserId] = false;
-                                            }
+
+                                if (Config.Debug && tick % 64 == 0) {
+                                    Log.Warn($"{player.DisplayName} is {closestDistance[player.SteamUserId]} away (meters squared)");
+                                }
+
+                                if (closestDistance[player.SteamUserId] < (Math.Pow(Config.GateSize,2) * 4) /* 4x gate size away from jumpCentre */) {
+                                    if (closestDistance[player.SteamUserId] > (Math.Pow(Config.GateSize,2) + 1000)) {
+                                        if (JumpProtect.ContainsKey(player.SteamUserId)) {
+                                            JumpProtect[player.SteamUserId] = false;
                                         }
-                                        catch (Exception e) {
-                                            PlayerSending[player.SteamUserId] = true;
-                                            Log.Warn(e.ToString());
+                                    }
+                                    if (!DisplayedMessage.ContainsKey(player.SteamUserId)) {
+                                        DisplayedMessage.Add(player.SteamUserId, false);
+                                    }
+
+                                    if (!DisplayedMessage[player.SteamUserId]) {
+                                        if (!await CheckServer(player, name, target)) {
+                                            return;
+                                        }
+                                        utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
+                                        DisplayedMessage[player.SteamUserId] = true;
+                                    }
+                                    if (closestDistance[player.SteamUserId] <= Math.Pow(Config.GateSize, 2)) {
+                                        /* If he is online we check if he is currently seated. If he is - get the grid name */
+                                        if (player?.Controller.ControlledEntity is MyCockpit controller) {
+                                            string gridname = controller.Parent.DisplayName;
+                                            //Log.Error("Player seated in: " + gridname);
+                                            try {
+                                                if (!inZone.ContainsKey(player.SteamUserId)) {
+                                                    inZone.Add(player.SteamUserId, false);
+                                                }
+                                                if (inZone[player.SteamUserId] == false) {
+                                                    inZone[player.SteamUserId] = true;
+
+                                                    VoidManager voidm = new VoidManager(this);
+                                                    await voidm.SendGrid(gridname, ClosestGate[player.SteamUserId], player.DisplayName, player.IdentityId, ip, TargetAlias);
+                                                    inZone[player.SteamUserId] = false;
+                                                }
+                                            }
+                                            catch (Exception e) {
+                                                PlayerSending[player.SteamUserId] = true;
+                                                Log.Warn(e.ToString());
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            else {
-                                if (DisplayedMessage.ContainsKey(player.SteamUserId)) {
-                                    DisplayedMessage[player.SteamUserId] = false;
+                                else {
+                                    if (DisplayedMessage.ContainsKey(player.SteamUserId)) {
+                                        DisplayedMessage[player.SteamUserId] = false;
+                                    }
                                 }
+                                if (SafetyNet.ContainsKey(player.SteamUserId)) {
+                                    SafetyNet[player.SteamUserId] = false;
+                                }
+                                firstcheck = true;
                             }
-                            if (SafetyNet.ContainsKey(player.SteamUserId)) {
-                                SafetyNet[player.SteamUserId] = false;
-                            }
-                            firstcheck = true;
                         }
                         ClosestGate.Clear();
 
@@ -447,7 +479,6 @@ namespace SwitchMe {
 
                                 CloseGates();
                                 await recovery(player_id, spawn_vector_location);
-                                OpenGates();
                                 MyAPIGateway.Utilities.InvokeOnGameThread(() => {
                                     var playerEndpoint = new Endpoint(steamid, 0);
                                     var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
@@ -489,7 +520,7 @@ namespace SwitchMe {
 
 
             if (MyObjectBuilderSerializer.DeserializeXML(target_file_list[steamid], out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) {
-
+                bool failure = false;
                 try {
                     MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 
@@ -502,6 +533,7 @@ namespace SwitchMe {
 
                         if (prefabs == null || prefabs.Length != 1) {
                             Log.Info($"Grid has unsupported format!");
+                            failure = true;
                             return;
                         }
                         var prefab = prefabs[0];
@@ -510,12 +542,14 @@ namespace SwitchMe {
                         var pos = FindPastePosition(grids, spawn_vector_location);
                         if (pos == null) {
                             Log.Info("No free place.");
+                            failure = true;
                             return;
                         }
 
                         /* Update GridsPosition if that doesnt work get out of here. */
                         if (!UpdateGridsPosition(grids, (Vector3D)pos)) {
                             Log.Error("Failed to find update the grids position");
+                            failure = true;
                             return;
                         }
 
@@ -531,8 +565,10 @@ namespace SwitchMe {
                     Log.Info("Grid has been pulled from the void!");
                     string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
                     string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-                    DeleteFromWeb(currentIp);
-                    await RemoveConnection(steamid);
+                    if (!failure) {
+                        DeleteFromWeb(steamid);
+                        await RemoveConnection(steamid);
+                    }
 
                     return;
                 }
@@ -585,7 +621,6 @@ namespace SwitchMe {
         private Vector3D? FindPastePosition(MyObjectBuilder_CubeGrid[] grids, Vector3D position) {
             Vector3? vector = null;
             float radius = 0F;
-            Vector3D gps;
 
             foreach (var grid in grids) {
 
@@ -682,7 +717,7 @@ namespace SwitchMe {
                     new KeyValuePair<string, string>("RemoveConnection", player.ToString())
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                await client.PostAsync("http://switchplugin.net/api/index.php", content);
+                await client.PostAsync(API_URL, content);
             }
         }
         public async Task<bool> CheckConnection(IPlayer player) {
@@ -717,7 +752,7 @@ namespace SwitchMe {
                     new KeyValuePair<string, string>("ConnectionCheck", player.SteamId.ToString())
                 };
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/api/index.php", content);
+                HttpResponseMessage httpResponseMessage = await client.PostAsync(API_URL, content);
                 HttpResponseMessage response = httpResponseMessage;
                 httpResponseMessage = null;
                 string text = await response.Content.ReadAsStringAsync();
@@ -804,39 +839,6 @@ namespace SwitchMe {
             return pagesource;
         }
 
-        public void OpenGates() {
-            int gates = 0;
-
-            IEnumerable<string> channelIds = Config.Gates;
-            string name = "";
-            string location = "";
-            foreach (string chId in channelIds) {
-                name = chId.Split('/')[0];
-                location = chId.Split('/')[1];
-                Vector3D.TryParse(location, out Vector3D gps);
-                var ob = new MyObjectBuilder_SafeZone();
-                ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
-                ob.PersistentFlags = MyPersistentEntityFlags2.InScene;
-                ob.Shape = MySafeZoneShape.Sphere;
-                ob.Radius = (float)50;
-                ob.Enabled = true;
-                ob.DisplayName = $"SM-{gps}";
-                ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
-                ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
-                ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;
-
-
-
-                ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
-                var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
-                gates++;
-                if (!zones.Contains(ob.DisplayName)) {
-                    zones.Add(ob.DisplayName);
-                }
-            }
-            Log.Info($"{gates} Jumpgates created!");
-        }
-
         private void SessionChanged(ITorchSession session, TorchSessionState state) {
 
             if (!Config.Enabled)
@@ -845,11 +847,36 @@ namespace SwitchMe {
             switch (state) {
 
                 case TorchSessionState.Loaded:
+                    //load
+                    int gates = 0;
                     MyVisualScriptLogicProvider.PlayerConnected += PlayerConnect;
                     LoadSEDB();
-                    //load
-                    OpenGates();
-                    break;
+                    IEnumerable<string> channelIds = Config.Gates;
+                    string name = "";
+                    string location = "";
+                    foreach (string chId in channelIds) {
+                        name = chId.Split('/')[0];
+                        location = chId.Split('/')[1];
+                        Vector3D.TryParse(location, out Vector3D gps);
+                        var ob = new MyObjectBuilder_SafeZone();
+                        ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
+                        ob.PersistentFlags = MyPersistentEntityFlags2.InScene;
+                        ob.Shape = MySafeZoneShape.Sphere;
+                        ob.Radius = (float)50;
+                        ob.Enabled = true;
+                        ob.DisplayName = $"SM-{gps}";
+                        ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
+                        ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
+                        ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;
+                        ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
+                        var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
+                        gates++;
+                        if (!zones.Contains(ob.DisplayName)) {
+                            zones.Add(ob.DisplayName);
+                        }
+                    }
+                    Log.Info($"{gates} Jumpgates created!");
+                        break;
 
                 case TorchSessionState.Unloaded:
                     //unload
@@ -971,36 +998,6 @@ namespace SwitchMe {
             }
         }
 
-        public string Debug() {
-            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-            if (Config.LocalKey == "10551Debug") {
-
-                string pagesource;
-
-                try {
-
-                    using (WebClient client = new WebClient()) {
-
-                        NameValueCollection postData = new NameValueCollection()
-                        {
-                            //order: {"parameter name", "parameter value"}
-                            {"key", Config.ActivationKey},
-                            {"currentIP", currentIp}
-                        };
-
-                        pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/test.php", postData));
-
-                        return pagesource;
-                    }
-
-                } catch {
-                    Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
-                }
-            }
-            return null;
-        }
-
         public bool CheckStatus(string target) {
 
             string pagesource;
@@ -1100,32 +1097,46 @@ namespace SwitchMe {
         }
 
         int i = 0;
-        private object myObjectBuilder_Definitions;
 
         private void InitPost() {
             StartTimer();
         }
 
-        public void DeleteFromWeb(string ip) {
+        public void DeleteFromWeb(ulong steamid) {
+            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
+            if (externalIP.Contains("0.0")
+                || externalIP.Contains("127.0")
+                || externalIP.Contains("192.168")) {
+                externalIP = Config.LocalIP;
+            }
 
+            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
             using (WebClient client = new WebClient()) {
 
 
                 NameValueCollection postData = new NameValueCollection()
                 {
-                    { "posCheck", "processed"},
-                    { "currentIP", ip}
+                    { "processed", steamid.ToString() },
+                    { "currentIP", currentIp}
                 };
 
-                client.UploadValues("http://switchplugin.net/recovery.php", postData);
+                client.UploadValues(API_URL, postData);
             }
         }
 
         private void _timer_Elapsed(object sender, ElapsedEventArgs e) {
             try {
                 string xml = "";
+                string name = "";
+                string location = "";
+                string alias = "";
+                Dictionary<string, string> gateData = new Dictionary<string,string>();string targetAlias = "";
+                Dictionary<string, Dictionary<string, string>> gate = new Dictionary<string, Dictionary<string, string>>();
+                Dictionary<string, Dictionary<string, Dictionary<string, string>>> gates = new Dictionary<string, Dictionary<string, Dictionary<string, string>>>();
+
+                IEnumerable<string> channelIds = Config.Gates;
                 try {
-                    xml = File.ReadAllText(Path.Combine(StoragePath, "SwitchMe.cfg"));
+                xml = File.ReadAllText(Path.Combine(StoragePath, "SwitchMe.cfg"));
                 }
                 catch {
                     xml = File.ReadAllText("SwitchMe.cfg");
@@ -1162,6 +1173,20 @@ namespace SwitchMe {
                     string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
                     string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
+                    foreach (string chId in channelIds) {
+                        name = chId.Split('/')[0];
+                        location = chId.Split('/')[1];
+                        alias = chId.Split('/')[2];
+                        targetAlias = chId.Split('/')[3];
+                        //gateData.Add(name, location);
+                        //gate.Add(targetAlias,gateData);
+                        //gates.Add($"{alias}-{currentIp}", gate);
+                        //gate.Clear();
+                        //gateData.Clear();
+                        
+                    }
+                    string json = JsonSerializer.Serialize(channelIds);
+
                     if (Torch.CurrentSession != null && currentIp.Length > 1) {
 
                         if (Config.InboundTransfersState)
@@ -1175,11 +1200,12 @@ namespace SwitchMe {
                                     { "currentplayers", currentPlayers },
                                     { "maxplayers", maxPlayers },
                                     { "serverip", currentIp},
-                                    { "verion", "1.4.02"},
+                                    { "verion", "1.6.02"},
                                     { "bindKey", Config.LocalKey},
                                     { "inbound", Inbound },
                                     { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
-                                    { "config", xml }
+                                    { "config", xml },
+                                    { "gates", json }
                                 };
 
                                 client.UploadValues("http://switchplugin.net/index.php", postData);

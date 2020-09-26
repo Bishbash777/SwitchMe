@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d" Height="1492.849">
+             mc:Ignorable="d" Height="1299.924">
     <StackPanel Margin="0,0,0,10">
         <Label x:Name="popupTarget" FontWeight="Bold" FontSize="16" Content="SwitchMe Configuration:" Height="31" Margin="1,0,0,0" />
         <DockPanel Height="31" LastChildFill="False" Margin="0,0,20,0">
@@ -18,12 +18,18 @@
             </Border>
         </DockPanel>
         <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
+        <CheckBox Content="Debug" Margin="3" IsChecked="{Binding Debug}" ToolTip="Enable or disable debug mode"/>
         <StackPanel Orientation="Horizontal">
             <CheckBox Content="Enable jumpgates" Margin="3" IsChecked="{Binding EnabledJumpgate}" ToolTip="Enable or disable SwitchMe Jumpgates"/>
             <Label Content="(Beta feature - grids *may* be stuck in the void)" FontSize="8"/>
         </StackPanel>
         <CheckBox Content="Enable outbound grid transfers" Margin="3" IsChecked="{Binding EnabledTransfers}" ToolTip="Enable or disable grid transfers on SwitchMe" Height="18"/>
         <CheckBox Content="Enable inbound grid transfers" Margin="3" IsChecked="{Binding InboundTransfersState}" ToolTip="Enable or disable inbound grid transfers on SwitchMe" Height="18"/>
+        <CheckBox Content="Randomise exit gate at target server" Margin="3" IsChecked="{Binding RandomisedExit}" ToolTip="Randomise exit gate on this server..." Height="18"/>
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Radius of jumpgate (Meters):"/>
+            <TextBox x:Name="txtSafeRange" Width="29" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding GateSize}" />
+        </StackPanel>
         <Label Height="3">
             <LineBreak/>
         </Label>
@@ -37,15 +43,6 @@
             <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding ZCord}" />
         </StackPanel>
 
-        <Label FontWeight="Bold" FontSize="13" Content="Recovery mode:" Height="31" Margin="1,0,0,0" />
-        <RadioButton GroupName="recovery" IsChecked="{Binding RecoverCommandBased}" Content="Recover via command (!switch recover)" Margin="28,0,0,0"/>
-        <Label Height="3">
-            <LineBreak/>
-        </Label>
-        <RadioButton GroupName="recovery" IsChecked="{Binding RecoverOnJoin}" Content="Recover on player connect" Margin="28,0,0,0"/>
-        <Label Height="3">
-            <LineBreak/>
-        </Label>
         <Label FontWeight="Bold" FontSize="13" Content="Jumpgates:" Height="31" Margin="1,0,0,0" />
         <StackPanel Orientation="Horizontal">
             <Label Content="Target Server Name:"/>
@@ -61,6 +58,14 @@
             <TextBox Width="88" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" x:Name="ZCordGate" Text="{Binding ZCordJump}" />
         </StackPanel>
         <StackPanel Orientation="Horizontal">
+            <Label Content="Alias:"/>
+            <TextBox x:Name="txtGateAlias" Width="169" Margin="99,3,0,3" HorizontalAlignment="Right" Height="20" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Target Gate Alias:"/>
+            <TextBox x:Name="txtTargetAlias" Width="169" Margin="35,3,0,3" HorizontalAlignment="Right" Height="20" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
             <Button x:Name="btnAddGate" Width="100" Content="Add Server" Margin="3"  Height="22" Click="btnAddGate_Click" />
             <Button x:Name="btnDelGate" Width="100" Content="Delete Server" Margin="3" Click="btnDelGate_Click" />
         </StackPanel>
@@ -70,20 +75,21 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Binding="{Binding GateTarget}" Header="Target Server"/>
                     <DataGridTextColumn Binding="{Binding GPS}" Header="GPS"/>
+                    <DataGridTextColumn Binding="{Binding Alias}" Header="Gate Alias"/>
+                    <DataGridTextColumn Binding="{Binding TargetAlias}" Header="Target Gate Alias"/>
                 </DataGrid.Columns>
             </DataGrid>
         </StackPanel>
 
-        <Label FontWeight="Bold" FontSize="13" Content="Position settings: (Required for recover on connect)" Height="27" Margin="1,0,0,0" />
-        <Label Content="DO NOT ENABLE IF YOU HAVE A WORLD LIMIT!" FontSize="9" Margin="28,0,0,0" />
-        <RadioButton GroupName="positioning" Content="Enable mirrored positioning" Margin="31,3,3,3" IsChecked="{Binding EnabledMirror}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
+
+        <!--<Label FontWeight="Bold" FontSize="13" Content="Position settings:" Height="27" Margin="1,0,0,0" />
+        <Label Content="DO NOT ENABLE IF YOU HAVE A WORLD LIMIT!" FontSize="9" Margin="28,0,0,0" />-->
+        <!--<RadioButton GroupName="positioning" Content="Enable mirrored positioning" Margin="31,3,3,3" IsChecked="{Binding EnabledMirror}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
         <RadioButton GroupName="positioning" Content="Lock recoveries to a certain GPS position" Margin="31,3,3,3" IsChecked="{Binding LockedTransfer}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
         <CheckBox Content="Enable specified positioning settings for recover command" Margin="3,3,3,3" IsChecked="{Binding EnabledPositioning}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
-
         <Label Height="3">
             <LineBreak/>
         </Label>
-
         <Label FontWeight="Bold" FontSize="13" Content="Economy settings:" Height="31" Margin="1,0,0,0" />
         <CheckBox Content="Enable" Margin="6,3,3,3" IsChecked="{Binding EnableEcon}" ToolTip="Enable or economy integration"/>
         <RadioButton GroupName="econ" IsChecked="{Binding PerTransfer}" Content="Per transfer cost" Margin="28,0,0,0"/>
@@ -95,6 +101,7 @@
             <Label Content="Cost:"/>
             <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" PreviewTextInput="NumberValidationTextBox" Height="20" Text="{Binding TransferCost}" />
         </StackPanel>
+        -->
 
         <Label Height="3">
             <LineBreak/>
@@ -136,11 +143,6 @@
         <Label Width="Auto">
             <Hyperlink NavigateUri="https://www.paypal.com/paypalme2/startgatesurvival" RequestNavigate="Hyperlink_RequestNavigate">
                 <Run Text="Like the plugin? You can donate here!"/>
-            </Hyperlink>
-        </Label>
-        <Label Width="Auto">
-            <Hyperlink NavigateUri="http://switchplugin.net" RequestNavigate="Hyperlink_RequestNavigate">
-                <Run Text="Click here to find out what features you unlock when you donate monthly"/>
             </Hyperlink>
         </Label>
         <Label Height="7">
