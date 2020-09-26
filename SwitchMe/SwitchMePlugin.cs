@@ -444,7 +444,10 @@ namespace SwitchMe {
                                     spawn_matrix = MatrixD.CreateWorld(spawn_vector_location);
                                     MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
                                 });
+
+                                CloseGates();
                                 await recovery(player_id, spawn_vector_location);
+                                OpenGates();
                                 MyAPIGateway.Utilities.InvokeOnGameThread(() => {
                                     var playerEndpoint = new Endpoint(steamid, 0);
                                     var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
@@ -801,6 +804,39 @@ namespace SwitchMe {
             return pagesource;
         }
 
+        public void OpenGates() {
+            int gates = 0;
+
+            IEnumerable<string> channelIds = Config.Gates;
+            string name = "";
+            string location = "";
+            foreach (string chId in channelIds) {
+                name = chId.Split('/')[0];
+                location = chId.Split('/')[1];
+                Vector3D.TryParse(location, out Vector3D gps);
+                var ob = new MyObjectBuilder_SafeZone();
+                ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
+                ob.PersistentFlags = MyPersistentEntityFlags2.InScene;
+                ob.Shape = MySafeZoneShape.Sphere;
+                ob.Radius = (float)50;
+                ob.Enabled = true;
+                ob.DisplayName = $"SM-{gps}";
+                ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
+                ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
+                ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;
+
+
+
+                ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
+                var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
+                gates++;
+                if (!zones.Contains(ob.DisplayName)) {
+                    zones.Add(ob.DisplayName);
+                }
+            }
+            Log.Info($"{gates} Jumpgates created!");
+        }
+
         private void SessionChanged(ITorchSession session, TorchSessionState state) {
 
             if (!Config.Enabled)
@@ -809,36 +845,11 @@ namespace SwitchMe {
             switch (state) {
 
                 case TorchSessionState.Loaded:
-                    //load
-                    int gates = 0;
                     MyVisualScriptLogicProvider.PlayerConnected += PlayerConnect;
                     LoadSEDB();
-                    IEnumerable<string> channelIds = Config.Gates;
-                    string name = "";
-                    string location = "";
-                    foreach (string chId in channelIds) {
-                        name = chId.Split('/')[0];
-                        location = chId.Split('/')[1];
-                        Vector3D.TryParse(location, out Vector3D gps);
-                        var ob = new MyObjectBuilder_SafeZone();
-                        ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
-                        ob.PersistentFlags = MyPersistentEntityFlags2.InScene;
-                        ob.Shape = MySafeZoneShape.Sphere;
-                        ob.Radius = (float)50;
-                        ob.Enabled = true;
-                        ob.DisplayName = $"SM-{gps}";
-                        ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
-                        ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
-                        ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;
-                        ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
-                        var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
-                        gates++;
-                        if (!zones.Contains(ob.DisplayName)) {
-                            zones.Add(ob.DisplayName);
-                        }
-                    }
-                    Log.Info($"{gates} Jumpgates created!");
-                        break;
+                    //load
+                    OpenGates();
+                    break;
 
                 case TorchSessionState.Unloaded:
                     //unload
@@ -848,22 +859,26 @@ namespace SwitchMe {
                     break;
 
                 case TorchSessionState.Unloading:
-                    int i = 0;
-                    foreach (var zone in zones) {
-                        foreach (var entity in MyEntities.GetEntities()) {
-                            if (entity?.DisplayName?.Contains(zone, StringComparison.CurrentCultureIgnoreCase) ?? false) {
-                                i++;
-                                entity.Close();
-                            }
-                        }
-                    }
-                    Log.Info($"{i} Jumpgates closed!");
+                    CloseGates();
                     break;
 
                 default:
                     // ignore
                     break;
             }
+        }
+
+        public void CloseGates() {
+            int i = 0;
+            foreach (var zone in zones) {
+                foreach (var entity in MyEntities.GetEntities()) {
+                    if (entity?.DisplayName?.Contains(zone, StringComparison.CurrentCultureIgnoreCase) ?? false) {
+                        i++;
+                        entity.Close();
+                    }
+                }
+            }
+            Log.Info($"{i} Jumpgates closed!");
         }
 
         public void StartTimer() {
