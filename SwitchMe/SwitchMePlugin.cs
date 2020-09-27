@@ -777,8 +777,6 @@ namespace SwitchMe {
             utils.webdata.Add("TARGETIP", targetIP);
             utils.webdata.Add("FUNCTION", MethodBase.GetCurrentMethod().Name);
             utils.webdata.Add("PLAYERCOUNT", MethodBase.GetCurrentMethod().Name);
-            utils.webdata.Add("maxplayers", maxPlayers);
-            utils.webdata.Add("currentplayers", currentPlayers);
 
             var api_response = await utils.SendAPIRequestAsync();
             return api_response["available"];
