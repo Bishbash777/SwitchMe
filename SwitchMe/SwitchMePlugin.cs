@@ -376,7 +376,7 @@ namespace SwitchMe {
                                     DisplayedMessage[player.SteamUserId] = true;
                                 }
 
-                                if (Config.Debug && tick % 64 == 0) {
+                                if (debug && tick % 64 == 0) {
                                     Log.Warn($"{player.DisplayName} is {closestDistance[player.SteamUserId]} away (meters squared)");
                                 }
 
@@ -884,8 +884,8 @@ namespace SwitchMe {
 
             try {
 
-                utils.webdata.Add("targetIP", target);
-                utils.webdata.Add("bindKey", Config.LocalKey);
+                utils.webdata.Add("TARGETIP", target);
+                utils.webdata.Add("BINDKEY", Config.LocalKey);
                 utils.webdata.Add("FUNCTION", MethodBase.GetCurrentMethod().Name);
 
 
