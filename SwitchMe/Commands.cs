@@ -76,6 +76,7 @@ namespace SwitchMe {
         [Permission(MyPromoteLevel.Admin)]
         public void debug(bool state) {
             Plugin.debug = state;
+            Context.Respond($"Debug mode set to {Plugin.debug} ");
         }
 
         [Command("all", "Automatically connects all players to your server of choice within this network. USAGE: !switch all <Insert Server name here>")]

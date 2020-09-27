@@ -24,7 +24,7 @@ using Torch.API;
 namespace SwitchMe {
 
     public class utils {
-        public static string API_URL = "http://switchplugin.net/api/index.php";
+        public static string API_URL = "http://switchplugin.net/api2/";
         public static ITorchBase Torch { get; }
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
         public static Dictionary<string, string> webdata = new Dictionary<string, string>();
@@ -199,20 +199,26 @@ namespace SwitchMe {
             return null;
         }
 
-        public static async Task<Dictionary<string,string>> SendAPIRequestAsync() {
-            using (HttpClient client = new HttpClient()) {
+        public static async Task<Dictionary<string,string>> SendAPIRequestAsync(bool debug) {
+            HttpResponseMessage response = null;
+            try {
+                using (HttpClient client = new HttpClient()) {
 
-                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>();
+                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>();
 
-                foreach(var kvp in webdata) {
-                    pairs.Add(new KeyValuePair<string, string>(kvp.Key, kvp.Value));
+                    foreach (var kvp in webdata) {
+                        pairs.Add(new KeyValuePair<string, string>(kvp.Key, kvp.Value));
+                    }
+
+                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                    response = await client.PostAsync(API_URL, content);
+                    webdata.Clear();
+                    return ParseQueryString(await response.Content.ReadAsStringAsync());
                 }
-
-                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                HttpResponseMessage response = await client.PostAsync(API_URL, content);
-                webdata.Clear();
-
-                return ParseQueryString(await response.Content.ReadAsStringAsync());
+            } catch(Exception e) {
+                Log.Fatal(e.ToString());
+                if (debug) { Log.Warn(response); }
+                return null;
             }
         }
     }

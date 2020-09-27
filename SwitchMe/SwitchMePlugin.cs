@@ -107,7 +107,7 @@ namespace SwitchMe {
         public void Save() => _config?.Save();
         MyPlayer player;
         public bool debug = false;
-        public string API_URL = "http://switchplugin.net/api/index.php";
+        public string API_URL = "http://switchplugin.net/api2/";
 
         public bool loadFailure = false;
 
@@ -153,7 +153,7 @@ namespace SwitchMe {
 
             utils.webdata.Add("existanceCheck", obj.SteamId.ToString());
             utils.webdata.Add("currentIP", currentIp); 
-            Dictionary<string,string> gridData = await utils.SendAPIRequestAsync();
+            Dictionary<string,string> gridData = await utils.SendAPIRequestAsync(debug);
 
             Directory.CreateDirectory("SwitchTemp");
             if (gridData["filename"] != "NULL") {
@@ -270,7 +270,7 @@ namespace SwitchMe {
         }
 
         public async Task<string> CheckExistance(string targetIP) {
-            var api_reponse = await utils.SendAPIRequestAsync();
+            var api_reponse = await utils.SendAPIRequestAsync(debug);
             return api_reponse["existance"];
         }
 
@@ -279,14 +279,14 @@ namespace SwitchMe {
             utils.webdata.Add("STEAMID", steamid);
             utils.webdata.Add("CURRRENTIP", currentIP());
             utils.webdata.Add("bindkey", Config.LocalKey);
-            utils.webdata.Add("FUNCTION", MethodBase.GetCurrentMethod().Name);
-            var api_response = await utils.SendAPIRequestAsync();
+            utils.webdata.Add("FUNCTION", "GetGateAsync");
+            var api_response = await utils.SendAPIRequestAsync(debug);
             return api_response["gate"];
         }
 
         public async Task<bool> CheckServer(IMyPlayer player, string servername, string target) {
 
-            bool paired = await CheckKeyAsync(target);                
+            bool paired = await CheckKeyAsync(target);
             if (target.Length < 1) {
             Log.Warn("Unknown Server. Please use '!switch list' to see a list of valid servers!");
                 utils.NotifyMessage("Unknown Server. Please use '!switch list' to see a list of valid servers!", player.SteamUserId);
@@ -371,7 +371,6 @@ namespace SwitchMe {
                                     port = chId.Split(':')[2];
                                 }
                                 string target = ip + ":" + port;
-                                ip += ":" + port;
                                 if (DisplayedMessage.ContainsKey(player.SteamUserId) && closestDistance[player.SteamUserId] > (Math.Pow(Config.GateSize, 2) + 500)) {
                                     DisplayedMessage[player.SteamUserId] = true;
                                 }
@@ -707,8 +706,8 @@ namespace SwitchMe {
             utils.webdata.Add("BINDKEY", Config.LocalKey);
             utils.webdata.Add("CURRENTIP", currentIP());
             utils.webdata.Add("STEAMID", player.ToString());
-            utils.webdata.Add("FUNCTION", MethodBase.GetCurrentMethod().Name);
-            await utils.SendAPIRequestAsync();
+            utils.webdata.Add("FUNCTION", "RemoveConnectionAsync");
+            await utils.SendAPIRequestAsync(debug);
         }
 
         public async Task<bool> CheckConnectionAsync(IPlayer player) {
@@ -716,11 +715,17 @@ namespace SwitchMe {
             utils.webdata.Add("BINDKEY", Config.LocalKey);
             utils.webdata.Add("CURRENTIP", currentIP());
             utils.webdata.Add("STEAMID", player.SteamId.ToString());
-            utils.webdata.Add("FUNCTION", player.SteamId.ToString());
-            var api_response = await utils.SendAPIRequestAsync();
+            utils.webdata.Add("FUNCTION", "CheckConnectionAsync");
+
+            var api_response = await utils.SendAPIRequestAsync(debug);
 
 
-            if (debug) {Log.Warn($"Is {player.Name} ({player.SteamId}) transferee: {api_response["connecting"]}");}
+            if (debug) {
+                Log.Warn($"{player.Name} ({player.SteamId}) transfer data:");
+                foreach (var kvp in api_response) {
+                    Log.Warn($"{kvp.Key}={kvp.Value}");
+                }
+            }
 
             return bool.Parse(api_response["connecting"]);
         }
@@ -775,10 +780,10 @@ namespace SwitchMe {
             string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
 
             utils.webdata.Add("TARGETIP", targetIP);
-            utils.webdata.Add("FUNCTION", MethodBase.GetCurrentMethod().Name);
-            utils.webdata.Add("PLAYERCOUNT", MethodBase.GetCurrentMethod().Name);
+            utils.webdata.Add("FUNCTION", "CheckSlotsAsync");
+            utils.webdata.Add("PLAYERCOUNT", NumberOfPlayers);
 
-            var api_response = await utils.SendAPIRequestAsync();
+            var api_response = await utils.SendAPIRequestAsync(debug);
             return api_response["available"];
         }
 
@@ -881,20 +886,23 @@ namespace SwitchMe {
         }
 
         public async Task<bool> CheckKeyAsync(string target) {
-
             try {
 
                 utils.webdata.Add("TARGETIP", target);
                 utils.webdata.Add("BINDKEY", Config.LocalKey);
-                utils.webdata.Add("FUNCTION", MethodBase.GetCurrentMethod().Name);
+                utils.webdata.Add("FUNCTION", "CheckKeyAsync");
+                var api_response = await utils.SendAPIRequestAsync(debug);
 
+                if (debug) {
+                    Log.Warn($"CheckKeyAsync data:");
+                    foreach (var kvp in api_response) {
+                        Log.Warn($"{kvp.Key}={kvp.Value}");
+                    }
+                }
 
-                //NEW API
-                var api_response = await utils.SendAPIRequestAsync();
                 return Config.LocalKey == api_response["key"];
                 
             } catch (Exception e) {
-                Log.Warn("Error communcating with API: " + e.ToString());
                 return false;
             }
         }
@@ -1057,7 +1065,7 @@ namespace SwitchMe {
 
             utils.webdata.Add("proccessed",steamid.ToString());
             utils.webdata.Add("currentIP", currentIP());
-            await utils.SendAPIRequestAsync();
+            await utils.SendAPIRequestAsync(debug);
 
         }
 

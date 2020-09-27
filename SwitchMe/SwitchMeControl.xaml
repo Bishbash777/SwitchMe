@@ -66,8 +66,8 @@
             <TextBox x:Name="txtTargetAlias" Width="169" Margin="35,3,0,3" HorizontalAlignment="Right" Height="20" />
         </StackPanel>
         <StackPanel Orientation="Horizontal">
-            <Button x:Name="btnAddGate" Width="100" Content="Add Server" Margin="3"  Height="22" Click="btnAddGate_Click" />
-            <Button x:Name="btnDelGate" Width="100" Content="Delete Server" Margin="3" Click="btnDelGate_Click" />
+            <Button x:Name="btnAddGate" Width="100" Content="Add Gate" Margin="3"  Height="22" Click="btnAddGate_Click" />
+            <Button x:Name="btnDelGate" Width="100" Content="Delete Gate" Margin="3" Click="btnDelGate_Click" />
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Height="93">
