@@ -277,7 +277,10 @@ namespace SwitchMe {
             string ip = "";
             string name = "";
             string port = "";
-            string existanceCheck = "";
+            int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+            if (type == "single") {
+                currentLocalPlayers = 1;
+            }
 
             int i = 0;
             IEnumerable<string> channelIds = Plugin.Config.Servers;
@@ -294,8 +297,7 @@ namespace SwitchMe {
 
                 string target = ip + ":" + port;
                 ip += ":" + port;
-                string slotinfo = await Plugin.CheckSlotsAsync(target);
-                existanceCheck = slotinfo.Split(';').Last();
+                bool slotsAvailable = bool.Parse(await Plugin.CheckSlotsAsync(target, currentLocalPlayers.ToString()));
                 bool paired = await Plugin.CheckKeyAsync(target);
 
                 if (ip == null || name == null || port == null) {
@@ -308,7 +310,7 @@ namespace SwitchMe {
                     return;
                 }
 
-                if (existanceCheck != "1") {
+                if (!bool.Parse(await Plugin.CheckExistance(target))) {
                     utils.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!", "Server", steamid);
                     return;
                 }
@@ -319,19 +321,8 @@ namespace SwitchMe {
                 }
 
                 ///   Slot checking
-                Log.Warn("Checking " + target);
-                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                Log.Warn("MAX: " + max);
-                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                if (type == "single") {
-                    currentLocalPlayers = 1;
-                }
-                int maxi = int.Parse(max);
-                int maxcheck = currentLocalPlayers + currentRemotePlayers;
                 utils.Respond("Slot Checking...", "Server", steamid);
-                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-                if (maxcheck > maxi && Context.Player.PromoteLevel != MyPromoteLevel.Admin) {
+                if (!slotsAvailable && Context.Player.PromoteLevel != MyPromoteLevel.Admin) {
                     return;
                 }
 
@@ -367,8 +358,7 @@ namespace SwitchMe {
 
                 string target = ip + ":" + port;
                 ip += ":" + port;
-                string slotinfo = await Plugin.CheckSlotsAsync(target);
-                existanceCheck = slotinfo.Split(';').Last();
+                bool slotsAvailable = bool.Parse(await Plugin.CheckSlotsAsync(target, currentLocalPlayers.ToString()));
                 bool paired = await Plugin.CheckKeyAsync(target);
 
                 if (ip == null || name == null || port == null) {
@@ -381,7 +371,7 @@ namespace SwitchMe {
                     return;
                 }
 
-                if (existanceCheck != "1") {
+                if (!bool.Parse(await Plugin.CheckExistance(target))) {
                     Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
                     return;
                 }
@@ -392,16 +382,7 @@ namespace SwitchMe {
                 }
 
                 ///     Slot checking
-                Log.Warn("Checking " + target);
-                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                Log.Warn("MAX: " + max);
-                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                int maxi = int.Parse(max);
-                int maxcheck = currentLocalPlayers + currentRemotePlayers;
-                Context.Respond("Slot Checking...");
-                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-                if (maxcheck > maxi) {
+                if (slotsAvailable) {
                     Context.Respond("Cannot switch, not enough slots available");
                     return;
                 }

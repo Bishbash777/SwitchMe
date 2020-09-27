@@ -45,11 +45,13 @@ using System.Collections.Concurrent;
 using Sandbox.Common.ObjectBuilders;
 using VRage;
 using Sandbox.Game.Screens.Helpers;
+using System.Reflection;
 
 namespace SwitchMe {
 
     public sealed class SwitchMePlugin : TorchPluginBase, IWpfPlugin {
 
+        public utils utils = new utils();
         public SwitchMeConfig Config => _config?.Data;
         private Persistent<SwitchMeConfig> _config;
 #pragma warning disable 649
@@ -139,21 +141,19 @@ namespace SwitchMe {
                 Log.Warn("Invalid GPS configuration - cancelling spawn operation");
                 return;
             }
-            bool SwitchConnection = await CheckConnection(obj);
+            bool SwitchConnection = await CheckConnectionAsync(obj);
             if (!SwitchConnection) {
                 return;
             }
            
-            HttpResponseMessage response;
             string filename = "";
             string targetFile = "";
             string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
-            var utils = new utils();
             utils.webdata.Add("existanceCheck", obj.SteamId.ToString());
             utils.webdata.Add("currentIP", currentIp); 
-            Dictionary<string,string> gridData = utils.ParseQueryString(await utils.SendAPIRequestAsync());
+            Dictionary<string,string> gridData = await utils.SendAPIRequestAsync();
 
             Directory.CreateDirectory("SwitchTemp");
             if (gridData["filename"] != "NULL") {
@@ -181,17 +181,15 @@ namespace SwitchMe {
             }
 
             string POS = "";
-            utils.webdata.Add("recover", obj.SteamId.ToString());
-            utils.webdata.Add("currentIP", currentIp);
-            utils.webdata.Add("bindkey", Config.LocalKey);
-            string api_response = await utils.SendAPIRequestAsync();
+            
+            string gateName = GetGateAsync(obj.SteamId.ToString()).ToString();
 
 
             //
             // DO THE RANDOMISER SHIT BISH
             //
             bool foundGate = false;
-            IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(api_response));
+            IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(gateName));
             foreach (string chId in channelIds) {
                 POS = chId.Split('/')[1];
                 foundGate = true;
@@ -209,7 +207,7 @@ namespace SwitchMe {
                 }
             }
             if (!Config.RandomisedExit) {
-                Log.Warn($"API: Gate elected = {api_response}");
+                Log.Warn($"API: Gate elected = {gateName}");
             }
             else {
                 Log.Warn("Using randomly selected gate as exit");
@@ -217,7 +215,7 @@ namespace SwitchMe {
 
             if (!foundGate) {
                 POS = "{X:" + Config.XCord + " Y:" + Config.YCord + " Z:" + Config.ZCord + "}";
-                Log.Error($"Target gate ({api_response}) does not exist... Using default");
+                Log.Error($"Target gate ({gateName}) does not exist... Using default");
             }
             /*
             else if (config.EnabledMirror)
@@ -271,21 +269,31 @@ namespace SwitchMe {
             }
         }
 
+        public async Task<string> CheckExistance(string targetIP) {
+            var api_reponse = await utils.SendAPIRequestAsync();
+            return api_reponse["existance"];
+        }
 
+
+        public async Task<string> GetGateAsync(string steamid) {
+            utils.webdata.Add("STEAMID", steamid);
+            utils.webdata.Add("CURRRENTIP", currentIP());
+            utils.webdata.Add("bindkey", Config.LocalKey);
+            utils.webdata.Add("FUNCTION", MethodBase.GetCurrentMethod().Name);
+            var api_response = await utils.SendAPIRequestAsync();
+            return api_response["gate"];
+        }
 
         public async Task<bool> CheckServer(IMyPlayer player, string servername, string target) {
-            string slotinfo = await CheckSlotsAsync(target);
-            string existanceCheck = slotinfo.Split(';').Last();
-            bool paired = await CheckKeyAsync(target);
 
-                
+            bool paired = await CheckKeyAsync(target);                
             if (target.Length < 1) {
             Log.Warn("Unknown Server. Please use '!switch list' to see a list of valid servers!");
                 utils.NotifyMessage("Unknown Server. Please use '!switch list' to see a list of valid servers!", player.SteamUserId);
                 return false;
             }
 
-            if (existanceCheck != "1") {
+            if (!bool.Parse(await CheckExistance(target))) {
             Log.Warn("Cannot communicate with target, please make sure SwitchMe is installed there!");
                 utils.NotifyMessage("Cannot communicate with target, please make sure SwitchMe is installed there!", player.SteamUserId);
                 return false;
@@ -298,14 +306,8 @@ namespace SwitchMe {
             }
 
             ///   Slot checking
-            Log.Warn("Checking " + target);
-            int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-            string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-            int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-            currentLocalPlayers = 1;
-            int maxi = int.Parse(max);
-            int maxcheck = currentLocalPlayers + currentRemotePlayers;
-            if (maxcheck > maxi && player.PromoteLevel != MyPromoteLevel.Admin) {
+            bool slotsAvailable = bool.Parse(await CheckSlotsAsync(target, "1"));
+            if (!slotsAvailable && player.PromoteLevel != MyPromoteLevel.Admin) {
                 utils.NotifyMessage("Not enough slots free to use gate!", player.SteamUserId);
                 return false;
             }
@@ -555,7 +557,7 @@ namespace SwitchMe {
                     string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
                     if (!failure) {
                         DeleteFromWeb(steamid);
-                        await RemoveConnection(steamid);
+                        await RemoveConnectionAsync(steamid);
                     }
 
                     return;
@@ -699,29 +701,28 @@ namespace SwitchMe {
 
             return currentIp;
         }
-        public async Task RemoveConnection(ulong player) {
+
+        public async Task RemoveConnectionAsync(ulong player) {
             Log.Warn("Removing conneciton flag for " + player);
-            utils.webdata.Add("BindKey", Config.LocalKey);
-            utils.webdata.Add("CurrnetIP", currentIP());
-            utils.webdata.Add("RemoveConnection", player.ToString());
+            utils.webdata.Add("BINDKEY", Config.LocalKey);
+            utils.webdata.Add("CURRENTIP", currentIP());
+            utils.webdata.Add("STEAMID", player.ToString());
+            utils.webdata.Add("FUNCTION", MethodBase.GetCurrentMethod().Name);
             await utils.SendAPIRequestAsync();
         }
-        public async Task<bool> CheckConnection(IPlayer player) {
-            
+
+        public async Task<bool> CheckConnectionAsync(IPlayer player) {
             Log.Warn("Checking inbound conneciton for " + player.SteamId);
+            utils.webdata.Add("BINDKEY", Config.LocalKey);
+            utils.webdata.Add("CURRENTIP", currentIP());
+            utils.webdata.Add("STEAMID", player.SteamId.ToString());
+            utils.webdata.Add("FUNCTION", player.SteamId.ToString());
+            var api_response = await utils.SendAPIRequestAsync();
 
 
-            utils.webdata.Add("BindKey", Config.LocalKey);
-            utils.webdata.Add("CurrentIP", currentIP());
-            utils.webdata.Add("ConnectionCheck", player.SteamId.ToString());
-            string text = await utils.SendAPIRequestAsync();
+            if (debug) {Log.Warn($"Is {player.Name} ({player.SteamId}) transferee: {api_response["connecting"]}");}
 
-
-            if (debug) {Log.Warn(text);}
-            if (text.Contains("connecting=false")) {
-                return false;
-            }
-            return true ;
+            return bool.Parse(api_response["connecting"]);
         }
 
         public void Delete(string entityName) {
@@ -768,33 +769,19 @@ namespace SwitchMe {
         }
 
 
-        public async Task<string> CheckSlotsAsync(string targetIP) {
+        public async Task<string> CheckSlotsAsync(string targetIP, string NumberOfPlayers) {
 
             string maxPlayers = MySession.Static.MaxPlayers.ToString();
             string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
-            string pagesource = "";
 
-            using (HttpClient client = new HttpClient()) {
+            utils.webdata.Add("TARGETIP", targetIP);
+            utils.webdata.Add("FUNCTION", MethodBase.GetCurrentMethod().Name);
+            utils.webdata.Add("PLAYERCOUNT", MethodBase.GetCurrentMethod().Name);
+            utils.webdata.Add("maxplayers", maxPlayers);
+            utils.webdata.Add("currentplayers", currentPlayers);
 
-                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                {
-                    new KeyValuePair<string, string>("currentplayers", currentPlayers ),
-                    new KeyValuePair<string, string>("maxplayers", maxPlayers),
-                    new KeyValuePair<string, string>("targetip", targetIP)
-                };
-
-                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-
-                HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/index.php", content);
-                HttpResponseMessage response = httpResponseMessage;
-                httpResponseMessage = null;
-
-                string text = await response.Content.ReadAsStringAsync();
-
-                pagesource = text;
-            }
-
-            return pagesource;
+            var api_response = await utils.SendAPIRequestAsync();
+            return api_response["available"];
         }
 
         private void SessionChanged(ITorchSession session, TorchSessionState state) {
@@ -897,30 +884,16 @@ namespace SwitchMe {
 
         public async Task<bool> CheckKeyAsync(string target) {
 
-            string pagesource;
-
             try {
 
-                using (HttpClient client = new HttpClient()) {
+                utils.webdata.Add("targetIP", target);
+                utils.webdata.Add("bindKey", Config.LocalKey);
+                utils.webdata.Add("FUNCTION", MethodBase.GetCurrentMethod().Name);
 
-                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                    {
-                        new KeyValuePair<string, string>("targetip", target),
-                        new KeyValuePair<string, string>("bindKey", Config.LocalKey),
-                        new KeyValuePair<string, string>("bindCheck", "1")
-                    };
 
-                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                    HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/index.php", content);
-                    HttpResponseMessage response = httpResponseMessage;
-                    httpResponseMessage = null;
-
-                    string text = await response.Content.ReadAsStringAsync();
-
-                    pagesource = text;
-                }
-
-                return pagesource == Config.LocalKey;
+                //NEW API
+                var api_response = await utils.SendAPIRequestAsync();
+                return Config.LocalKey == api_response["key"];
                 
             } catch (Exception e) {
                 Log.Warn("Error communcating with API: " + e.ToString());
@@ -1143,13 +1116,7 @@ namespace SwitchMe {
                         name = chId.Split('/')[0];
                         location = chId.Split('/')[1];
                         alias = chId.Split('/')[2];
-                        targetAlias = chId.Split('/')[3];
-                        //gateData.Add(name, location);
-                        //gate.Add(targetAlias,gateData);
-                        //gates.Add($"{alias}-{currentIp}", gate);
-                        //gate.Clear();
-                        //gateData.Clear();
-                        
+                        targetAlias = chId.Split('/')[3];                        
                     }
                     string json = JsonSerializer.Serialize(channelIds);
 

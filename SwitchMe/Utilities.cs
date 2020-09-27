@@ -199,7 +199,7 @@ namespace SwitchMe {
             return null;
         }
 
-        public static async Task<string> SendAPIRequestAsync() {
+        public static async Task<Dictionary<string,string>> SendAPIRequestAsync() {
             using (HttpClient client = new HttpClient()) {
 
                 List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>();
@@ -211,7 +211,8 @@ namespace SwitchMe {
                 FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
                 HttpResponseMessage response = await client.PostAsync(API_URL, content);
                 webdata.Clear();
-                return await response.Content.ReadAsStringAsync();
+
+                return ParseQueryString(await response.Content.ReadAsStringAsync());
             }
         }
     }
