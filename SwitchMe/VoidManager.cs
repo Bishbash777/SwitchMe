@@ -190,6 +190,18 @@ namespace SwitchMe {
             }
         }
 
+        public async Task AddTransferAsync(string steamid, string ip, string filename,string targetpos, string grid_target) {
+            utils.webdata.Add("STEAMID", steamid);
+            utils.webdata.Add("TARGETIP", ip);
+            utils.webdata.Add("FILENAME", steamid + "-" + grid_target);
+            utils.webdata.Add("BINDKEY", Plugin.Config.LocalKey);
+            utils.webdata.Add("TARGETPOS", targetpos);
+            utils.webdata.Add("GRIDNAME", grid_target);
+            utils.webdata.Add("CURRENTIP", Plugin.currentIP());
+            utils.webdata.Add("FUNCTION", "AddTransferAsync");
+            await utils.SendAPIRequestAsync(Plugin.debug);
+        }
+
         private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string playername, string ip, string currentIp, string path, string pos, string targetAlias) {
             var player = utils.GetPlayerByNameOrId(playername);
             /* DO we need a using here too? */
@@ -200,7 +212,6 @@ namespace SwitchMe {
 
                 byte[] result = Client.UploadFile("http://switchplugin.net/gridHandle.php", "POST", path);
                 Log.Fatal("Grid was uploaded to webserver!");
-
                 string s = System.Text.Encoding.UTF8.GetString(result, 0, result.Length);
 
                 if (s == "1") {
@@ -211,41 +222,16 @@ namespace SwitchMe {
 
                     ModCommunication.SendMessageTo(new JoinServerMessage(ip), player.SteamUserId);
 
-                    using (HttpClient clients = new HttpClient())
-                    {
-                        List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                        {
-                            new KeyValuePair<string, string>("steamID", player.SteamUserId.ToString()),
-                            new KeyValuePair<string, string>("targetIP", ip ),
-                            new KeyValuePair<string, string>("fileName", player.SteamUserId.ToString() + "-" + gridTarget ),
-                            new KeyValuePair<string, string>("bindKey", Plugin.Config.LocalKey ),
-                            new KeyValuePair<string, string>("targetPOS", pos ),
-                            new KeyValuePair<string, string>("gridName", gridTarget ),
-                            new KeyValuePair<string, string>("currentIP", currentIp)
-                        };
-                        FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                        HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/gridHandle.php", content);
-                        HttpResponseMessage response = httpResponseMessage;
-                        httpResponseMessage = null;
-                        string text = await response.Content.ReadAsStringAsync();
-                    }
-
-                    using (HttpClient client = new HttpClient()) {
-                        List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                        {
-                            new KeyValuePair<string, string>("BindKey", Plugin.Config.LocalKey),
-                            new KeyValuePair<string, string>("CurrentIP", currentIp),
-                            new KeyValuePair<string, string>("TargetIP", ip),
-                            new KeyValuePair<string, string>("TargetAlias", targetAlias),
-                            new KeyValuePair<string, string>("AddConnection",player.SteamUserId.ToString())
-                        };
-                        FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                        HttpResponseMessage httpResponseMessage = await client.PostAsync(Plugin.API_URL, content);
-                        HttpResponseMessage response = httpResponseMessage;
-                        httpResponseMessage = null;
-                        string text = await response.Content.ReadAsStringAsync();
-                        Log.Warn(text);
-                    }
+                    //Add entry into transfers table
+                    await AddTransferAsync(player.SteamUserId.ToString(),ip, player.SteamUserId.ToString() + "-" + gridTarget, pos, gridTarget);
+                    //Add user to transfer Queue (Active users)
+                    utils.webdata.Add("BINDKEY", Plugin.Config.LocalKey);
+                    utils.webdata.Add("CURRENTIP",Plugin.currentIP());
+                    utils.webdata.Add("TARGETIP", ip);
+                    utils.webdata.Add("TARGETALIAS", targetAlias);
+                    utils.webdata.Add("STEAMID", player.SteamUserId.ToString());
+                    utils.webdata.Add("FUNCION","AddConnectionAsync");
+                    await utils.SendAPIRequestAsync(Plugin.debug);
                     return true;
 
                 } else {
