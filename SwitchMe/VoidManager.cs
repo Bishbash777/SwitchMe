@@ -85,88 +85,64 @@ namespace SwitchMe {
             using (WebClient client = new WebClient()) {
 
                 Vector3D newPos;
-                string POSsource = "";
                 string filename;
                 string targetFile;
-                string source = "";
 
-                using (HttpClient clients = new HttpClient()) {
-                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                    {
-                    new KeyValuePair<string, string>("recover", steamid.ToString()),
-                    new KeyValuePair<string, string>("currentIP", currentIp),
-                    new KeyValuePair<string, string>("bindKey", Plugin.Config.LocalKey)
-                };
-                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                    HttpResponseMessage httpResponseMessage = await clients.PostAsync(Plugin.API_URL, content);
-                    var response = httpResponseMessage;
-                    httpResponseMessage = null;
-                    string texts = await response.Content.ReadAsStringAsync();
-                    POSsource = texts;
-                    //
-                    // DO THE RANDOMISER SHIT BISH
-                    //
-                    bool foundGate = false;
-                    IEnumerable<string> channelIds = Plugin.Config.Gates.Where(c => c.Split('/')[2].Equals(POSsource));
-                    foreach (string chId in channelIds) {
-                        POS = chId.Split('/')[1];
-                        foundGate = true;
+                string gatename = await Plugin.GetGateAsync(steamid.ToString());
+                //
+                // DO THE RANDOMISER SHIT BISH
+                //
+                bool foundGate = false;
+                IEnumerable<string> channelIds = Plugin.Config.Gates.Where(c => c.Split('/')[2].Equals(gatename));
+                foreach (string chId in channelIds) {
+                    POS = chId.Split('/')[1];
+                    foundGate = true;
+                }
+                if (Plugin.Config.RandomisedExit) {
+                    Dictionary<string, string> gateSelection = new Dictionary<string, string>();
+                    channelIds = Plugin.Config.Gates;
+                    int i = 0;
+                    foreach (string gate in channelIds) {
+                        i++;
+                        gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
                     }
-                    if (Plugin.Config.RandomisedExit) {
-                        Dictionary<string, string> gateSelection = new Dictionary<string, string>();
-                        channelIds = Plugin.Config.Gates;
-                        int i = 0;
-                        foreach (string gate in channelIds) {
-                            i++;
-                            gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
-                        }
-                        if (i != 0) {
-                            POS = utils.SelectRandomGate(gateSelection);
-                        }
+                    if (i != 0) {
+                        POS = utils.SelectRandomGate(gateSelection);
                     }
-                    if (!Plugin.Config.RandomisedExit) {
-                        Log.Warn($"API: Gate elected = {POSsource}");
-                    }
-                    else {
-                        Log.Warn("Using randomly selected gate as exit");
-                    }
-
-                    if (!foundGate) {
-                        POS = "{X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord + "}";
-                        Log.Error($"Target gate ({POSsource}) does not exist... Using default");
-                    }
-                    /*
-                    else if (config.EnabledMirror)
-                        POS = POSsource.Substring(0, POSsource.IndexOf("^"));
-                    */
-                    POS = POS.TrimStart('{').TrimEnd('}');
-                    Vector3D.TryParse(POS, out Vector3D gps);
-                    newPos = gps;
-                    Log.Info("Selected GPS: " + gps.ToString());
+                }
+                if (!Plugin.Config.RandomisedExit) {
+                    Log.Warn($"API: Gate elected = {gatename}");
+                }
+                else {
+                    Log.Warn("Using randomly selected gate as exit");
                 }
 
-
-
-                using (HttpClient clients = new HttpClient())
-                {
-                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                    {
-                        new KeyValuePair<string, string>("steamID", steamid.ToString()),
-                        new KeyValuePair<string, string>("currentIP", currentIp)
-                    };
-                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                    HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
-                    HttpResponseMessage response = httpResponseMessage;
-                    httpResponseMessage = null;
-                    string text = await response.Content.ReadAsStringAsync();
-                    source = text;
+                if (!foundGate) {
+                    POS = "{X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord + "}";
+                    Log.Error($"Target gate ({gatename}) does not exist... Using default");
                 }
-       
+                /*
+                else if (config.EnabledMirror)
+                    POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+                */
+                POS = POS.TrimStart('{').TrimEnd('}');
+                Vector3D.TryParse(POS, out Vector3D gps);
+                newPos = gps;
+                Log.Info("Selected GPS: " + gps.ToString());
+                
 
-                string existance = source.Substring(0, source.IndexOf(":"));
-                if (existance == "1") {
+                utils.webdata.Add("STEAMID", steamid.ToString());
+                utils.webdata.Add("CURRENTIP", Plugin.currentIP());
+                utils.webdata.Add("FUNCTION", "FindWebGridASync");
+                var api_response = await utils.SendAPIRequestAsync(Plugin.debug);
+                if (Plugin.debug) {
+                    foreach(var kvp in api_response) {
+                        Log.Warn($"{kvp.Key}=>{kvp.Value}");
+                    }
+                }
+                if (api_response["responseCode"] == "0") {
                     Log.Info("Grid found in database... attempting download!");
-                    filename = source.Split(':').Last() + ".xml";
+                    filename = api_response["filename"] + ".xml";
 
                     try {
 
@@ -202,19 +178,25 @@ namespace SwitchMe {
             await utils.SendAPIRequestAsync(Plugin.debug);
         }
 
-        private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string playername, string ip, string currentIp, string path, string pos, string targetAlias) {
-            var player = utils.GetPlayerByNameOrId(playername);
-            /* DO we need a using here too? */
+        private bool UploadGridFile(string path) {
             WebClient Client = new WebClient();
             Client.Headers.Add("Content-Type", "binary/octet-stream");
+            byte[] result = Client.UploadFile("http://switchplugin.net/api2/grid-upload.php", "POST", path);
+            Log.Fatal("Grid was uploaded to webserver!");
+            var api_response = utils.ParseQueryString(Encoding.UTF8.GetString(result, 0, result.Length));
+            if (api_response["responseCode"] != "0") {
+                if (Plugin.debug) { Log.Warn($"{api_response["responseMessage"]}"); }
+                return false;
+            }
+            return true;
+        }
+
+        private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string playername, string ip, string currentIp, string path, string pos, string targetAlias) {
+            var player = utils.GetPlayerByNameOrId(playername);
+
 
             try {
-
-                byte[] result = Client.UploadFile("http://switchplugin.net/gridHandle.php", "POST", path);
-                Log.Fatal("Grid was uploaded to webserver!");
-                string s = System.Text.Encoding.UTF8.GetString(result, 0, result.Length);
-
-                if (s == "1") {
+                if (UploadGridFile(path)) {
 
                     utils.NotifyMessage("Grid has been sent to the void! - Good luck!", player.SteamUserId);
 

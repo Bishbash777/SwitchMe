@@ -908,61 +908,28 @@ namespace SwitchMe {
         }
 
         public async Task<bool> CheckInboundAsync(string target) {
-
-            string pagesource;
-
             try {
-
-                using (HttpClient client = new HttpClient()) {
-
-                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                    {
-                        new KeyValuePair<string, string>("targetip", target),
-                    };
-
-                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                    HttpResponseMessage httpResponseMessage = await client.PostAsync("http://switchplugin.net/endpoint.php", content);
-                    HttpResponseMessage response = httpResponseMessage;
-                    httpResponseMessage = null;
-
-                    string text = await response.Content.ReadAsStringAsync();
-
-                    pagesource = text;
-                }
-
-                return pagesource == "Y";
+                utils.webdata.Add("TARGETIP", target);
+                utils.webdata.Add("FUNCTION", "CheckInboundAsync");
+                var api_response = await utils.SendAPIRequestAsync(debug);
+                return api_response["allow"] == "Y" ;
 
             } catch (Exception e) {
-                Log.Warn("Error communcating with API: " + e.ToString());
+                Log.Warn("Error: " + e.ToString());
                 return false;
             }
         }
 
-        public bool CheckStatus(string target) {
-
-            string pagesource;
-
+        public async Task<bool> CheckStatusAsync(string target) {
             try {
-
-                using (WebClient client = new WebClient()) {
-
-                    NameValueCollection postData = new NameValueCollection()
-                    {
-                        //order: {"parameter name", "parameter value"}
-                        {"targetip", target},
-                    };
-
-                    pagesource = Encoding.UTF8.GetString(client.UploadValues("http://switchplugin.net/status.php", postData));
-
-                    if (pagesource == "ONLINE") {
-                        return true;
-                    }
-                }
+                utils.webdata.Add("TARGETIP", target);
+                utils.webdata.Add("FUNCTION", "CheckStatusAsync");
+                var api_response = await utils.SendAPIRequestAsync(debug);
+                return bool.Parse(api_response["online"]);
 
             } catch {
-                Log.Warn("http connection error: Please check you can connect to 'http://switchplugin.net/index.php'");
+                Log.Warn($"http connection error: Please check you can connect to '{API_URL}'");
             }
-
             return false;
         }
 
