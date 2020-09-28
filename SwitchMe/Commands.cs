@@ -181,7 +181,7 @@ namespace SwitchMe {
                     Plugin.DeleteFromWeb(Context.Player.SteamUserId);
                 }
             });
-            await RemoveConnection(Context.Player.SteamUserId);
+            await Plugin.RemoveConnectionAsync(Context.Player.SteamUserId);
             var playerEndpoint = new Endpoint(Context.Player.SteamUserId, 0);
             var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
             var clientDataDict = _clientStates.Invoke(replicationServer);
@@ -203,39 +203,6 @@ namespace SwitchMe {
 
                 _removeForClient.Invoke(replicationServer, replicable, clientData, true);
                 _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
-            }
-        }
-
-        public async Task RemoveConnection(ulong player) {;
-            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-            if (!externalIP.Contains("0.0")
-                || !externalIP.Contains("127.0")
-                || !externalIP.Contains("192.168")) {
-                externalIP = Plugin.Config.LocalIP;
-            }
-
-            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-            Log.Warn("Removing conneciton flag for " + player);
-
-            Dictionary<string, string> webData = new Dictionary<string, string>();
-
-            webData.Add("BindKey", Plugin.Config.LocalKey);
-            webData.Add("CurrentIP", currentIp);
-            webData.Add("RemoveConnection", player.ToString());
-
-            using (HttpClient client = new HttpClient()) {
-
-                List<KeyValuePair<string, string>> test = new List<KeyValuePair<string, string>>();
-                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                {
-                    new KeyValuePair<string, string>("BindKey", Plugin.Config.LocalKey),
-                    new KeyValuePair<string, string>("CurrentIP", currentIp ),
-                    new KeyValuePair<string, string>("RemoveConnection", player.ToString())
-                };
-
-                test.Add(new KeyValuePair<string, string>("BindKey",Plugin.Config.LocalKey));
-                FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                await client.PostAsync(Plugin.API_URL, content);
             }
         }
 

@@ -278,7 +278,7 @@ namespace SwitchMe {
         public async Task<string> GetGateAsync(string steamid) {
             utils.webdata.Add("STEAMID", steamid);
             utils.webdata.Add("CURRRENTIP", currentIP());
-            utils.webdata.Add("bindkey", Config.LocalKey);
+            utils.webdata.Add("BINDKEY", Config.LocalKey);
             utils.webdata.Add("FUNCTION", "GetGateAsync");
             var api_response = await utils.SendAPIRequestAsync(debug);
             return api_response["gate"];

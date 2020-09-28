@@ -233,14 +233,6 @@ namespace SwitchMe {
                     }
                     FormUrlEncodedContent content = new FormUrlEncodedContent(postData);
                     HttpResponseMessage response = await client.PostAsync(API_URL, content);
-                    if(debug) {
-
-                        Log.Warn(response.Content.ReadAsStringAsync());
-
-                        foreach (var value in webdata) {
-                            Log.Warn($"{value.Key}=>'{value.Value}'");
-                        }
-                    }
                     webdata.Clear();
                 }
             }

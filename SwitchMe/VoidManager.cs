@@ -133,7 +133,7 @@ namespace SwitchMe {
 
                 utils.webdata.Add("STEAMID", steamid.ToString());
                 utils.webdata.Add("CURRENTIP", Plugin.currentIP());
-                utils.webdata.Add("FUNCTION", "FindWebGridASync");
+                utils.webdata.Add("FUNCTION", "FindWebGridAsync");
                 var api_response = await utils.SendAPIRequestAsync(Plugin.debug);
                 if (Plugin.debug) {
                     foreach(var kvp in api_response) {
