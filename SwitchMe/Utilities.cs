@@ -224,17 +224,21 @@ namespace SwitchMe {
             }
         }
 
-        public static void SendAPIData(bool debug) {
+        public static async void SendAPIData(bool debug) {
             try {
-                using (WebClient client = new WebClient()) {
-                    NameValueCollection postData = new NameValueCollection();
+                using (HttpClient client = new HttpClient()) {
+                    List<KeyValuePair<string, string>> postData = new List<KeyValuePair<string, string>>();
                     foreach (var kvp in webdata) {
-                        postData.Add(kvp.Key, kvp.Value);
+                        postData.Add(new KeyValuePair<string, string> (kvp.Key, kvp.Value));
                     }
-                    client.UploadValues(API_URL, postData);
+                    FormUrlEncodedContent content = new FormUrlEncodedContent(postData);
+                    HttpResponseMessage response = await client.PostAsync(API_URL, content);
                     if(debug) {
+
+                        Log.Warn(response.Content.ReadAsStringAsync());
+
                         foreach (var value in webdata) {
-                            Log.Warn($"{value.Key}=>'{value}'");
+                            Log.Warn($"{value.Key}=>'{value.Value}'");
                         }
                     }
                     webdata.Clear();
