@@ -20,6 +20,8 @@ using VRage.Groups;
 using VRageMath;
 using Torch;
 using Torch.API;
+using System.Net;
+using System.Collections.Specialized;
 
 namespace SwitchMe {
 
@@ -221,5 +223,27 @@ namespace SwitchMe {
                 return null;
             }
         }
+
+        public static void SendAPIData(bool debug) {
+            try {
+                using (WebClient client = new WebClient()) {
+                    NameValueCollection postData = new NameValueCollection();
+                    foreach (var kvp in webdata) {
+                        postData.Add(kvp.Key, kvp.Value);
+                    }
+                    client.UploadValues(API_URL, postData);
+                    if(debug) {
+                        foreach (var value in webdata) {
+                            Log.Warn($"{value.Key}=>'{value}'");
+                        }
+                    }
+                    webdata.Clear();
+                }
+            }
+            catch (Exception e) {
+                Log.Fatal(e.ToString());
+            }
+        }
+
     }
 }

@@ -1098,24 +1098,18 @@ namespace SwitchMe {
                         if (Config.InboundTransfersState)
                             Inbound = "Y";
                         try {
-                            using (WebClient client = new WebClient()) {
+                            utils.webdata.Add("CURRENTPLAYERS", currentPlayers);
+                            utils.webdata.Add("MAXPLAYERS", maxPlayers);
+                            utils.webdata.Add("CURRENTIP", currentIp);
+                            utils.webdata.Add("VERSION", "2.0.0");
+                            utils.webdata.Add("BINDKEY", Config.LocalKey);
+                            utils.webdata.Add("ALLOWINBOUND", Inbound);
+                            utils.webdata.Add("NAME", Sandbox.MySandboxGame.ConfigDedicated.ServerName);
+                            utils.webdata.Add("CONFIG", xml);
+                            utils.webdata.Add("GATEDATA", json);
+                            utils.webdata.Add("FUNCTION", "UpdateServerData");
+                            utils.SendAPIData(debug);
 
-                                NameValueCollection postData = new NameValueCollection()
-                                {
-                                    //order: {"parameter name", "parameter value"}
-                                    { "currentplayers", currentPlayers },
-                                    { "maxplayers", maxPlayers },
-                                    { "serverip", currentIp},
-                                    { "verion", "1.6.02"},
-                                    { "bindKey", Config.LocalKey},
-                                    { "inbound", Inbound },
-                                    { "name", Sandbox.MySandboxGame.ConfigDedicated.ServerName },
-                                    { "config", xml },
-                                    { "gates", json }
-                                };
-
-                                client.UploadValues("http://switchplugin.net/index.php", postData);
-                            }
                         }
                         catch (Exception es) {
                             Log.Warn("Data error: " + es.ToString());
