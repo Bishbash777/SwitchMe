@@ -86,8 +86,6 @@ namespace SwitchMe {
         private Dictionary<ulong, bool> DisplayedMessage = new Dictionary<ulong, bool>();
         public MyPlayer closestPlayer = null;
         private int _timerSpawn = 0;
-        Dictionary<double, MyPlayer> distanceData = new Dictionary<double, MyPlayer>();
-        private Dictionary<ulong,double> distance = new Dictionary<ulong, double>();
         private Dictionary<ulong,double> closestDistance = new Dictionary<ulong, double>();
         private Dictionary<ulong, bool> SafetyNet = new Dictionary<ulong, bool>();
         private Dictionary<ulong, bool> PlayerSending = new Dictionary<ulong, bool>();
@@ -243,9 +241,6 @@ namespace SwitchMe {
         }
 
         private void Multibase_PlayerLeft(IPlayer obj) {
-            if (distance.ContainsKey(obj.SteamId)) {
-                distance.Remove(obj.SteamId);
-            }
             if (closestDistance.ContainsKey(obj.SteamId)) {
                 closestDistance.Remove(obj.SteamId);
             }
@@ -321,6 +316,7 @@ namespace SwitchMe {
                 string name = "";
                 string location = "";
                 string port = "";
+                string TargetAlias = string.Empty;
 
                 //Enter jumpgate logic.
                 if (Config.EnabledJumpgate) {
@@ -331,56 +327,45 @@ namespace SwitchMe {
                                 if (!PlayerSending.ContainsKey(player.SteamUserId)) {
                                     PlayerSending.Add(player.SteamUserId, true);
                                 }
-                                IEnumerable<string> channelIds = Config.Gates;
-                                bool firstcheck = true;
-                                string Alias = "";
-                                string TargetAlias = "";
-                                distance.Clear();
-                                closestDistance.Clear();
-                                ClosestGate.Clear();
-                                foreach (string chId in channelIds) {
 
-                                    name = chId.Split('/')[0];
-                                    location = chId.Split('/')[1];
-                                    Alias = chId.Split('/')[2];
-                                    TargetAlias = chId.Split('/')[3];
+                                //Find Closest gate
+                                IEnumerable<string> Gates = Config.Gates;
+                                Dictionary<string, double> GateDistances = new Dictionary<string, double>();
+                                foreach (string gateId in Gates) {
+                                    name = gateId.Split('/')[0];
+                                    location = gateId.Split('/')[1];
+                                    TargetAlias = gateId.Split('/')[3];
                                     location = location.TrimStart('{').TrimEnd('}');
-                                    Vector3D.TryParse(location, out Vector3D gps);
-                                    if (firstcheck) {
-                                        closestDistance.Add(player.SteamUserId, Vector3D.DistanceSquared(player.GetPosition(), gps));
-                                        ClosestGate.Add(player.SteamUserId, name);
-                                    }
-                                    if (!firstcheck) {
-                                        double value1 = Vector3D.DistanceSquared(player.GetPosition(), gps);
-                                        double value2 = closestDistance[player.SteamUserId];
-                                        if (Vector3D.DistanceSquared(player.GetPosition(), gps) < closestDistance[player.SteamUserId]) {
-                                            closestDistance[player.SteamUserId] = Vector3D.DistanceSquared(player.GetPosition(), gps);
-                                            ClosestGate[player.SteamUserId] = name;
-                                            #pragma warning disable CS1717
-                                            TargetAlias = TargetAlias;
-                                            #pragma warning restore CS1717
-                                        }
-                                    }
-                                    firstcheck = false;
-                                }
-                                channelIds = Config.Servers.Where(c => c.Split(':')[0].Equals(ClosestGate[player.SteamUserId]));
 
+                                    Vector3D.TryParse(location, out Vector3D gps);
+                                    GateDistances.Add(name, Vector3D.DistanceSquared(player.GetPosition(), gps));
+                                }
+
+                                GateDistances = GateDistances.OrderBy(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
+                                string closest_gate = GateDistances.FirstOrDefault().Key;
+                                IEnumerable<string> SpecficGate = Config.Gates.Where(c => c.Split('/')[0].Equals(closest_gate));
+                                foreach (string bit in SpecficGate) {
+                                    TargetAlias = bit.Split('/')[3];
+                                }
+
+                                //Find Server of that closest gate
+                                IEnumerable<string> channelIds = Config.Servers.Where(c => c.Split(':')[0].Equals(closest_gate));
                                 foreach (string chId in channelIds) {
                                     ip = chId.Split(':')[1];
                                     name = chId.Split(':')[0];
                                     port = chId.Split(':')[2];
                                 }
                                 string target = ip + ":" + port;
-                                if (DisplayedMessage.ContainsKey(player.SteamUserId) && closestDistance[player.SteamUserId] > (Math.Pow(Config.GateSize, 2) + 500)) {
+                                if (DisplayedMessage.ContainsKey(player.SteamUserId) && GateDistances.FirstOrDefault().Value > (Math.Pow(Config.GateSize, 2) + 500)) {
                                     DisplayedMessage[player.SteamUserId] = true;
                                 }
 
                                 if (debug && tick % 64 == 0) {
-                                    Log.Warn($"{player.DisplayName} is {closestDistance[player.SteamUserId]} away (meters squared)");
+                                    Log.Warn($"{player.DisplayName} is {GateDistances.FirstOrDefault().Value} away (meters squared)");
                                 }
 
-                                if (closestDistance[player.SteamUserId] < (Math.Pow(Config.GateSize,2) * 4) /* 4x gate size away from jumpCentre */) {
-                                    if (closestDistance[player.SteamUserId] > (Math.Pow(Config.GateSize,2) + 1000)) {
+                                if (GateDistances.FirstOrDefault().Value < (Math.Pow(Config.GateSize,2) * 4) /* 4x gate size away from jumpCentre */) {
+                                    if (GateDistances.FirstOrDefault().Value > (Math.Pow(Config.GateSize,2) + 1000)) {
                                         if (JumpProtect.ContainsKey(player.SteamUserId)) {
                                             JumpProtect[player.SteamUserId] = false;
                                         }
@@ -390,26 +375,21 @@ namespace SwitchMe {
                                     }
 
                                     if (!DisplayedMessage[player.SteamUserId]) {
-                                        if (!await CheckServer(player, name, target)) {
-                                            return;
-                                        }
                                         utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
                                         DisplayedMessage[player.SteamUserId] = true;
                                     }
-                                    if (closestDistance[player.SteamUserId] <= Math.Pow(Config.GateSize, 2)) {
+                                    if (GateDistances.FirstOrDefault().Value <= Math.Pow(Config.GateSize, 2)) {
                                         /* If he is online we check if he is currently seated. If he is - get the grid name */
                                         if (player?.Controller.ControlledEntity is MyCockpit controller) {
                                             string gridname = controller.Parent.DisplayName;
-                                            //Log.Error("Player seated in: " + gridname);
                                             try {
                                                 if (!inZone.ContainsKey(player.SteamUserId)) {
                                                     inZone.Add(player.SteamUserId, false);
                                                 }
-                                                if (inZone[player.SteamUserId] == false) {
+                                                if (inZone[player.SteamUserId] == false && await CheckServer(player, name, target)) {
                                                     inZone[player.SteamUserId] = true;
-
                                                     VoidManager voidm = new VoidManager(this);
-                                                    await voidm.SendGrid(gridname, ClosestGate[player.SteamUserId], player.DisplayName, player.IdentityId, ip, TargetAlias);
+                                                    await voidm.SendGrid(gridname, closest_gate, player.DisplayName, player.IdentityId, ip, TargetAlias);
                                                     inZone[player.SteamUserId] = false;
                                                 }
                                             }
@@ -428,7 +408,6 @@ namespace SwitchMe {
                                 if (SafetyNet.ContainsKey(player.SteamUserId)) {
                                     SafetyNet[player.SteamUserId] = false;
                                 }
-                                firstcheck = true;
                             }
                         }
                         ClosestGate.Clear();
@@ -797,6 +776,7 @@ namespace SwitchMe {
                 case TorchSessionState.Loaded:
                     //load
                     MyVisualScriptLogicProvider.PlayerConnected += PlayerConnect;
+                    OpenGates();
                     LoadSEDB();
                     break;
 
@@ -804,7 +784,7 @@ namespace SwitchMe {
                     //unload
                     MyVisualScriptLogicProvider.PlayerConnected -= PlayerConnect;
                     timerStart = new DateTime(0);
-                    UnloadSEDB();
+                    Dispose();
                     break;
 
                 case TorchSessionState.Unloading:
@@ -881,9 +861,6 @@ namespace SwitchMe {
             }
         }
 
-        public void UnloadSEDB() {
-            Dispose();
-        }
 
         public async Task<bool> CheckKeyAsync(string target) {
             try {

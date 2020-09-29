@@ -105,8 +105,6 @@ namespace SwitchMe {
 
                         /* Is the player ID the biggest owner? */
                         if (gridOwner == playerId) {
-
-                            Log.Fatal("checking was completed");
                             groupFound = true;
                             break;
 
