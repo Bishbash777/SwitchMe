@@ -90,6 +90,7 @@ namespace SwitchMe {
         [Command("list", "Displays a list of Valid Server names for the '!switch me <servername>' command. ")]
         [Permission(MyPromoteLevel.None)]
         public async Task SwitchListAsync() {
+            APIMethods API = new APIMethods(Plugin);
 
             if (!Plugin.Config.Enabled) {
                 Context.Respond("Switching is not enabled!");
@@ -107,7 +108,7 @@ namespace SwitchMe {
                 string ip = chId.Split(':')[1];
                 string port = chId.Split(':')[2];
                 string target = ip + ":" + port;
-                bool paired = await Plugin.CheckKeyAsync(target);
+                bool paired = await API.CheckKeyAsync(target);
 
                 if (paired == true) 
                     sb.Append("'" + name + "' ");
@@ -158,6 +159,7 @@ namespace SwitchMe {
                 Context.Respond("Command cannot be ran from console");
                 return;
             }
+            APIMethods API = new APIMethods(Plugin);
 
             string externalIP = utils.CreateExternalIP(Plugin.Config);
             string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
@@ -181,7 +183,7 @@ namespace SwitchMe {
                     Plugin.DeleteFromWeb(Context.Player.SteamUserId);
                 }
             });
-            await Plugin.RemoveConnectionAsync(Context.Player.SteamUserId);
+            await API.RemoveConnectionAsync(Context.Player.SteamUserId);
             var playerEndpoint = new Endpoint(Context.Player.SteamUserId, 0);
             var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
             var clientDataDict = _clientStates.Invoke(replicationServer);

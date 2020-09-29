@@ -115,7 +115,7 @@ namespace SwitchMe {
             }
         }
         private async void Multibase_PlayerJoined(IPlayer obj) {
-
+             APIMethods API = new APIMethods(this);
             if (debug) { Log.Info(obj.SteamId.ToString() + " connected - Starting SwitchMe process"); }
             DisplayedMessage.Add(obj.SteamId, false);
             inZone.Add(obj.SteamId, false);
@@ -123,30 +123,27 @@ namespace SwitchMe {
             if (!Config.Enabled) 
                 return;
             if (Config.XCord == null || Config.YCord == null || Config.ZCord == null) {
-                Log.Warn("Invalid GPS configuration - cancelling spawn operation");
+                if (debug) { Log.Warn("Invalid GPS configuration - cancelling spawn operation"); }
                 return;
             }
-            bool SwitchConnection = await CheckConnectionAsync(obj);
+            bool SwitchConnection = await API.CheckConnectionAsync(obj);
             if (!SwitchConnection) {
                 return;
             }
            
             string filename = "";
             string targetFile = "";
-            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
-            utils.webdata.Add("existanceCheck", obj.SteamId.ToString());
-            utils.webdata.Add("currentIP", currentIp); 
-            Dictionary<string,string> gridData = await utils.SendAPIRequestAsync(debug);
 
-            Directory.CreateDirectory("SwitchTemp");
-            if (gridData["filename"] != "NULL") {
-                filename = gridData["filename"] + ".xml";
+            var api_response = await API.FindWebGridAsync(obj.SteamId);
+
+            if (api_response["responseCode"] == "0") {
+                Log.Info("Grid found in database... attempting download!");
+                filename = api_response["filename"] + ".xml";
                 try {
                     string remoteUri = "http://www.switchplugin.net/transportedGrids/" + filename;
                     targetFile = "SwitchTemp\\" + filename;
-                    Log.Info("Downloading " + targetFile);
+                    if (debug) { Log.Info("Downloading " + targetFile); }
                     WebClient myWebClient = new WebClient();
                     myWebClient.DownloadFile(remoteUri, targetFile);
                     if (!target_file_list.ContainsKey(obj.SteamId)) {
@@ -160,19 +157,13 @@ namespace SwitchMe {
                 }
             }
             else {
-                Log.Info("Player has no grid in transit");
+                if (debug) { Log.Info("Player has no grid in transit"); }
                 targetFile = null;
                 return;
             }
 
             string POS = "";
-            
-            string gateName = GetGateAsync(obj.SteamId.ToString()).ToString();
-
-
-            //
-            // DO THE RANDOMISER SHIT BISH
-            //
+            string gateName = API.GetGateAsync(obj.SteamId.ToString()).ToString();
             bool foundGate = false;
             IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(gateName));
             foreach (string chId in channelIds) {
@@ -192,24 +183,21 @@ namespace SwitchMe {
                 }
             }
             if (!Config.RandomisedExit) {
-                Log.Warn($"API: Gate elected = {gateName}");
+                if (debug) { Log.Warn($"API: Gate elected = {gateName}"); }
             }
             else {
-                Log.Warn("Using randomly selected gate as exit");
+                if (debug) { Log.Warn("Using randomly selected gate as exit"); }
             }
 
             if (!foundGate) {
                 POS = "{X:" + Config.XCord + " Y:" + Config.YCord + " Z:" + Config.ZCord + "}";
-                Log.Error($"Target gate ({gateName}) does not exist... Using default");
+                if (debug) { Log.Error($"Target gate ({gateName}) does not exist... Using default"); }
             }
-            /*
-            else if (config.EnabledMirror)
-                POS = POSsource.Substring(0, POSsource.IndexOf("^"));
-            */
+
             POS = POS.TrimStart('{').TrimEnd('}');
             Vector3D.TryParse(POS, out Vector3D gps);
             spawn_vector_location = gps;
-            Log.Info("Selected GPS: " + gps.ToString());
+            if (debug) { Log.Info("Selected GPS: " + gps.ToString()); }
             
             if (!connecting.ContainsKey(obj.SteamId)) {
                 connecting.Add(obj.SteamId, true);
@@ -222,7 +210,7 @@ namespace SwitchMe {
         private void PlayerConnect(long playerId) {
             ulong steamid = MySession.Static.Players.TryGetSteamId(playerId);
             if (!player_ids_to_spawn.Contains(playerId) && connecting.ContainsKey(steamid)) {
-                Log.Info("Spawning player");
+                if (debug) { Log.Info("Spawning player"); }
                 player_ids_to_spawn.Add(playerId);
             }
         }
@@ -248,50 +236,9 @@ namespace SwitchMe {
             }
         }
 
-        public async Task<string> CheckExistance(string targetIP) {
-            var api_reponse = await utils.SendAPIRequestAsync(debug);
-            return api_reponse["existance"];
-        }
+        
 
-
-        public async Task<string> GetGateAsync(string steamid) {
-            utils.webdata.Add("STEAMID", steamid);
-            utils.webdata.Add("CURRRENTIP", currentIP());
-            utils.webdata.Add("BINDKEY", Config.LocalKey);
-            utils.webdata.Add("FUNCTION", "GetGateAsync");
-            var api_response = await utils.SendAPIRequestAsync(debug);
-            return api_response["gate"];
-        }
-
-        public async Task<bool> CheckServer(IMyPlayer player, string servername, string target) {
-
-            bool paired = await CheckKeyAsync(target);
-            if (target.Length < 1) {
-            Log.Warn("Unknown Server. Please use '!switch list' to see a list of valid servers!");
-                utils.NotifyMessage("Unknown Server. Please use '!switch list' to see a list of valid servers!", player.SteamUserId);
-                return false;
-            }
-
-            if (!bool.Parse(await CheckExistance(target))) {
-            Log.Warn("Cannot communicate with target, please make sure SwitchMe is installed there!");
-                utils.NotifyMessage("Cannot communicate with target, please make sure SwitchMe is installed there!", player.SteamUserId);
-                return false;
-            }
-
-            if (paired != true) {
-            Log.Warn("Unauthorised Switch! Please make sure the servers have the same Bind Key!");
-                utils.NotifyMessage("Unauthorised Switch! Please make sure the servers have the same Bind Key!", player.SteamUserId);
-                return false;
-            }
-
-            ///   Slot checking
-            bool slotsAvailable = bool.Parse(await CheckSlotsAsync(target, "1"));
-            if (!slotsAvailable && player.PromoteLevel != MyPromoteLevel.Admin) {
-                utils.NotifyMessage("Not enough slots free to use gate!", player.SteamUserId);
-                return false;
-            }
-            return true;
-        }
+        
 
 
         public override async void Update() {
@@ -346,6 +293,7 @@ namespace SwitchMe {
         }
 
         private async Task recovery(long playerid, Vector3D spawn_vector_location) {
+            APIMethods API = new APIMethods(this);
             ulong steamid = MySession.Static.Players.TryGetSteamId(playerid);
             connecting.Remove(steamid);
 
@@ -398,7 +346,7 @@ namespace SwitchMe {
                     string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
                     if (!failure) {
                         DeleteFromWeb(steamid);
-                        await RemoveConnectionAsync(steamid);
+                        await API.RemoveConnectionAsync(steamid);
                     }
 
                     return;
@@ -543,34 +491,7 @@ namespace SwitchMe {
             return currentIp;
         }
 
-        public async Task RemoveConnectionAsync(ulong player) {
-            Log.Warn("Removing conneciton flag for " + player);
-            utils.webdata.Add("BINDKEY", Config.LocalKey);
-            utils.webdata.Add("CURRENTIP", currentIP());
-            utils.webdata.Add("STEAMID", player.ToString());
-            utils.webdata.Add("FUNCTION", "RemoveConnectionAsync");
-            await utils.SendAPIRequestAsync(debug);
-        }
-
-        public async Task<bool> CheckConnectionAsync(IPlayer player) {
-            Log.Warn("Checking inbound conneciton for " + player.SteamId);
-            utils.webdata.Add("BINDKEY", Config.LocalKey);
-            utils.webdata.Add("CURRENTIP", currentIP());
-            utils.webdata.Add("STEAMID", player.SteamId.ToString());
-            utils.webdata.Add("FUNCTION", "CheckConnectionAsync");
-
-            var api_response = await utils.SendAPIRequestAsync(debug);
-
-
-            if (debug) {
-                Log.Warn($"{player.Name} ({player.SteamId}) transfer data:");
-                foreach (var kvp in api_response) {
-                    Log.Warn($"{kvp.Key}={kvp.Value}");
-                }
-            }
-
-            return bool.Parse(api_response["connecting"]);
-        }
+        
 
         public void Delete(string entityName) {
             try {
@@ -596,8 +517,8 @@ namespace SwitchMe {
             }
         }
 
-
         public async void Scan() {
+            APIMethods API = new APIMethods(this);
             tick++;
             string name = "";
             string location = "";
@@ -671,7 +592,7 @@ namespace SwitchMe {
                                     if (player?.Controller.ControlledEntity is MyCockpit controller) {
                                         try {
 
-                                            if (!inZone[player.SteamUserId] && await CheckServer(player, name, target)) {
+                                            if (!inZone[player.SteamUserId] && await API.CheckServer(player, name, target)) {
                                                 inZone[player.SteamUserId] = true;
                                                 VoidManager voidm = new VoidManager(this);
                                                 await voidm.SendGrid(controller.Parent.DisplayName, closest_gate, player.DisplayName, player.IdentityId, ip, TargetAlias);
@@ -697,19 +618,6 @@ namespace SwitchMe {
             }
         }
 
-
-        public async Task<string> CheckSlotsAsync(string targetIP, string NumberOfPlayers) {
-
-            string maxPlayers = MySession.Static.MaxPlayers.ToString();
-            string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
-
-            utils.webdata.Add("TARGETIP", targetIP);
-            utils.webdata.Add("FUNCTION", "CheckSlotsAsync");
-            utils.webdata.Add("PLAYERCOUNT", NumberOfPlayers);
-
-            var api_response = await utils.SendAPIRequestAsync(debug);
-            return api_response["available"];
-        }
 
         private void SessionChanged(ITorchSession session, TorchSessionState state) {
 
@@ -804,55 +712,6 @@ namespace SwitchMe {
                 _timer.Dispose();
                 _timer = null;
             }
-        }
-
-
-        public async Task<bool> CheckKeyAsync(string target) {
-            try {
-
-                utils.webdata.Add("TARGETIP", target);
-                utils.webdata.Add("BINDKEY", Config.LocalKey);
-                utils.webdata.Add("FUNCTION", "CheckKeyAsync");
-                var api_response = await utils.SendAPIRequestAsync(debug);
-
-                if (debug) {
-                    Log.Warn($"CheckKeyAsync data:");
-                    foreach (var kvp in api_response) {
-                        Log.Warn($"{kvp.Key}={kvp.Value}");
-                    }
-                }
-
-                return Config.LocalKey == api_response["key"];
-                
-            } catch (Exception e) {
-                return false;
-            }
-        }
-
-        public async Task<bool> CheckInboundAsync(string target) {
-            try {
-                utils.webdata.Add("TARGETIP", target);
-                utils.webdata.Add("FUNCTION", "CheckInboundAsync");
-                var api_response = await utils.SendAPIRequestAsync(debug);
-                return api_response["allow"] == "Y" ;
-
-            } catch (Exception e) {
-                Log.Warn("Error: " + e.ToString());
-                return false;
-            }
-        }
-
-        public async Task<bool> CheckStatusAsync(string target) {
-            try {
-                utils.webdata.Add("TARGETIP", target);
-                utils.webdata.Add("FUNCTION", "CheckStatusAsync");
-                var api_response = await utils.SendAPIRequestAsync(debug);
-                return bool.Parse(api_response["online"]);
-
-            } catch {
-                Log.Warn($"http connection error: Please check you can connect to '{API_URL}'");
-            }
-            return false;
         }
 
         public void LoadSEDB() {

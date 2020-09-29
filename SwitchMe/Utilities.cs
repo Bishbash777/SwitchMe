@@ -187,7 +187,7 @@ namespace SwitchMe {
             if (manager == null) {
                 return;
             }
-            manager.SendMessageAsOther(sender, message, font, steamid);
+            manager.SendMessageAsOther(sender, message, default, steamid, "White");
         }
 
         public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> FindGridGroup(string gridName) {

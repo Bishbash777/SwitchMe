@@ -80,6 +80,7 @@ namespace SwitchMe {
         }
 
         public async Task<Tuple<string, string, Vector3D>> DownloadGridAsync(string currentIp, ulong steamid, string POS) {
+            APIMethods API = new APIMethods(Plugin);
 
             Directory.CreateDirectory("SwitchTemp");
             using (WebClient client = new WebClient()) {
@@ -88,7 +89,7 @@ namespace SwitchMe {
                 string filename;
                 string targetFile;
 
-                string gatename = await Plugin.GetGateAsync(steamid.ToString());
+                string gatename = await API.GetGateAsync(steamid.ToString());
                 //
                 // DO THE RANDOMISER SHIT BISH
                 //
@@ -129,17 +130,9 @@ namespace SwitchMe {
                 Vector3D.TryParse(POS, out Vector3D gps);
                 newPos = gps;
                 Log.Info("Selected GPS: " + gps.ToString());
-                
 
-                utils.webdata.Add("STEAMID", steamid.ToString());
-                utils.webdata.Add("CURRENTIP", Plugin.currentIP());
-                utils.webdata.Add("FUNCTION", "FindWebGridAsync");
-                var api_response = await utils.SendAPIRequestAsync(Plugin.debug);
-                if (Plugin.debug) {
-                    foreach(var kvp in api_response) {
-                        Log.Warn($"{kvp.Key}=>{kvp.Value}");
-                    }
-                }
+
+                var api_response = await API.FindWebGridAsync(steamid);
                 if (api_response["responseCode"] == "0") {
                     Log.Info("Grid found in database... attempting download!");
                     filename = api_response["filename"] + ".xml";
@@ -242,6 +235,7 @@ namespace SwitchMe {
         }
 
         public async Task PlayerTransfer(string type, ulong steamid) {
+            APIMethods API = new APIMethods(Plugin);
             string ip = "";
             string name = "";
             string port = "";
@@ -265,8 +259,8 @@ namespace SwitchMe {
 
                 string target = ip + ":" + port;
                 ip += ":" + port;
-                bool slotsAvailable = bool.Parse(await Plugin.CheckSlotsAsync(target, currentLocalPlayers.ToString()));
-                bool paired = await Plugin.CheckKeyAsync(target);
+                bool slotsAvailable = bool.Parse(await API.CheckSlotsAsync(target, currentLocalPlayers.ToString()));
+                bool paired = await API.CheckKeyAsync(target);
 
                 if (ip == null || name == null || port == null) {
                     utils.Respond("Invalid Configuration!", "Server" , steamid);
@@ -278,7 +272,7 @@ namespace SwitchMe {
                     return;
                 }
 
-                if (!bool.Parse(await Plugin.CheckExistance(target))) {
+                if (!bool.Parse(await API.CheckExistance(target))) {
                     utils.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!", "Server", steamid);
                     return;
                 }
@@ -326,8 +320,8 @@ namespace SwitchMe {
 
                 string target = ip + ":" + port;
                 ip += ":" + port;
-                bool slotsAvailable = bool.Parse(await Plugin.CheckSlotsAsync(target, currentLocalPlayers.ToString()));
-                bool paired = await Plugin.CheckKeyAsync(target);
+                bool slotsAvailable = bool.Parse(await API.CheckSlotsAsync(target, currentLocalPlayers.ToString()));
+                bool paired = await API.CheckKeyAsync(target);
 
                 if (ip == null || name == null || port == null) {
                     Context.Respond("Invalid Configuration!");
@@ -339,7 +333,7 @@ namespace SwitchMe {
                     return;
                 }
 
-                if (!bool.Parse(await Plugin.CheckExistance(target))) {
+                if (!bool.Parse(await API.CheckExistance(target))) {
                     Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
                     return;
                 }
