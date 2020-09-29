@@ -54,21 +54,10 @@ namespace SwitchMe {
         public utils utils = new utils();
         public SwitchMeConfig Config => _config?.Data;
         private Persistent<SwitchMeConfig> _config;
-#pragma warning disable 649
-        [ReflectedGetter(Name = "m_clientStates")]
-        private static Func<MyReplicationServer, IDictionary> _clientStates;
-        private const string CLIENT_DATA_TYPE_NAME = "VRage.Network.MyClient, VRage";
-        [ReflectedGetter(TypeName = CLIENT_DATA_TYPE_NAME, Name = "Replicables")]
-        private static Func<object, MyConcurrentDictionary<IMyReplicable, MyReplicableClientData>> _replicables;
-        [ReflectedMethod(Name = "RemoveForClient", OverrideTypeNames = new[] { null, CLIENT_DATA_TYPE_NAME, null })]
-        private static Action<MyReplicationServer, IMyReplicable, object, bool> _removeForClient;
-        [ReflectedMethod(Name = "ForceReplicable")]
-        private static Action<MyReplicationServer, IMyReplicable, Endpoint> _forceReplicable;
-#pragma warning restore 649
+
         private UserControl _control;
         public static string ip;
         private Timer _timer;
-        private Vector3D JumpPos = Vector3D.One;
         private DateTime timerStart = new DateTime(0);
         private TorchSessionManager _sessionManager;
         private IMultiplayerManagerBase _multibase;
@@ -82,13 +71,10 @@ namespace SwitchMe {
         private readonly List<long> clear_ids = new List<long>();
         private static Vector3D spawn_vector_location = Vector3D.One;
         private MatrixD spawn_matrix = MatrixD.Identity;
-        private Dictionary<ulong, string> ClosestGate = new Dictionary<ulong, string>();
         private Dictionary<ulong, bool> DisplayedMessage = new Dictionary<ulong, bool>();
-        public MyPlayer closestPlayer = null;
         private int _timerSpawn = 0;
         private Dictionary<ulong,double> closestDistance = new Dictionary<ulong, double>();
         private Dictionary<ulong, bool> SafetyNet = new Dictionary<ulong, bool>();
-        private Dictionary<ulong, bool> PlayerSending = new Dictionary<ulong, bool>();
         private Dictionary<ulong, bool> inZone = new Dictionary<ulong, bool>();
         private Dictionary<ulong, bool> JumpProtect = new Dictionary<ulong, bool>();
         private Dictionary<long, string> Factions = new Dictionary<long, string>();
@@ -106,7 +92,6 @@ namespace SwitchMe {
         MyPlayer player;
         public bool debug = false;
         public string API_URL = "http://switchplugin.net/api2/";
-
         public bool loadFailure = false;
 
 
@@ -131,7 +116,9 @@ namespace SwitchMe {
         }
         private async void Multibase_PlayerJoined(IPlayer obj) {
 
-            Log.Info( obj.SteamId.ToString() + " connected - Starting SwitchMe handle");
+            if (debug) { Log.Info(obj.SteamId.ToString() + " connected - Starting SwitchMe process"); }
+            DisplayedMessage.Add(obj.SteamId, false);
+            inZone.Add(obj.SteamId, false);
             CurrentCooldown cooldown = new CurrentCooldown(this);
             if (!Config.Enabled) 
                 return;
@@ -244,12 +231,6 @@ namespace SwitchMe {
             if (closestDistance.ContainsKey(obj.SteamId)) {
                 closestDistance.Remove(obj.SteamId);
             }
-            if (ClosestGate.ContainsKey(obj.SteamId)) {
-                ClosestGate.Remove(obj.SteamId);
-            }
-            if (PlayerSending.ContainsKey(obj.SteamId)) {
-                PlayerSending.Remove(obj.SteamId);
-            }
             if (SafetyNet.ContainsKey(obj.SteamId)) {
                 SafetyNet.Remove(obj.SteamId);
             }
@@ -261,6 +242,9 @@ namespace SwitchMe {
             }
             if (inZone.ContainsKey(obj.SteamId)) {
                 inZone.Remove(obj.SteamId);
+            }
+            if (DisplayedMessage.ContainsKey(obj.SteamId)) {
+                DisplayedMessage.Remove(obj.SteamId);
             }
         }
 
@@ -312,110 +296,10 @@ namespace SwitchMe {
 
         public override async void Update() {
             try {
-                tick++;
-                string name = "";
-                string location = "";
-                string port = "";
-                string TargetAlias = string.Empty;
+                //Scan for players near/inside jump areas
+                Scan();
 
-                //Enter jumpgate logic.
-                if (Config.EnabledJumpgate) {
-                    if (tick % 16 == 0) {
-                        foreach (var playerOnline in MySession.Static.Players.GetOnlinePlayers()) {
-                            var player = utils.GetPlayerByNameOrId(playerOnline.DisplayName);
-                            if (player.Character != null) {
-                                if (!PlayerSending.ContainsKey(player.SteamUserId)) {
-                                    PlayerSending.Add(player.SteamUserId, true);
-                                }
-
-                                //Find Closest gate
-                                IEnumerable<string> Gates = Config.Gates;
-                                Dictionary<string, double> GateDistances = new Dictionary<string, double>();
-                                foreach (string gateId in Gates) {
-                                    name = gateId.Split('/')[0];
-                                    location = gateId.Split('/')[1];
-                                    TargetAlias = gateId.Split('/')[3];
-                                    location = location.TrimStart('{').TrimEnd('}');
-
-                                    Vector3D.TryParse(location, out Vector3D gps);
-                                    GateDistances.Add(name, Vector3D.DistanceSquared(player.GetPosition(), gps));
-                                }
-
-                                GateDistances = GateDistances.OrderBy(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
-                                string closest_gate = GateDistances.FirstOrDefault().Key;
-                                IEnumerable<string> SpecficGate = Config.Gates.Where(c => c.Split('/')[0].Equals(closest_gate));
-                                foreach (string bit in SpecficGate) {
-                                    TargetAlias = bit.Split('/')[3];
-                                }
-
-                                //Find Server of that closest gate
-                                IEnumerable<string> channelIds = Config.Servers.Where(c => c.Split(':')[0].Equals(closest_gate));
-                                foreach (string chId in channelIds) {
-                                    ip = chId.Split(':')[1];
-                                    name = chId.Split(':')[0];
-                                    port = chId.Split(':')[2];
-                                }
-                                string target = ip + ":" + port;
-                                if (DisplayedMessage.ContainsKey(player.SteamUserId) && GateDistances.FirstOrDefault().Value > (Math.Pow(Config.GateSize, 2) + 500)) {
-                                    DisplayedMessage[player.SteamUserId] = true;
-                                }
-
-                                if (debug && tick % 64 == 0) {
-                                    Log.Warn($"{player.DisplayName} is {GateDistances.FirstOrDefault().Value} away (meters squared)");
-                                }
-
-                                if (GateDistances.FirstOrDefault().Value < (Math.Pow(Config.GateSize,2) * 4) /* 4x gate size away from jumpCentre */) {
-                                    if (GateDistances.FirstOrDefault().Value > (Math.Pow(Config.GateSize,2) + 1000)) {
-                                        if (JumpProtect.ContainsKey(player.SteamUserId)) {
-                                            JumpProtect[player.SteamUserId] = false;
-                                        }
-                                    }
-                                    if (!DisplayedMessage.ContainsKey(player.SteamUserId)) {
-                                        DisplayedMessage.Add(player.SteamUserId, false);
-                                    }
-
-                                    if (!DisplayedMessage[player.SteamUserId]) {
-                                        utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
-                                        DisplayedMessage[player.SteamUserId] = true;
-                                    }
-                                    if (GateDistances.FirstOrDefault().Value <= Math.Pow(Config.GateSize, 2)) {
-                                        /* If he is online we check if he is currently seated. If he is - get the grid name */
-                                        if (player?.Controller.ControlledEntity is MyCockpit controller) {
-                                            string gridname = controller.Parent.DisplayName;
-                                            try {
-                                                if (!inZone.ContainsKey(player.SteamUserId)) {
-                                                    inZone.Add(player.SteamUserId, false);
-                                                }
-                                                if (inZone[player.SteamUserId] == false && await CheckServer(player, name, target)) {
-                                                    inZone[player.SteamUserId] = true;
-                                                    VoidManager voidm = new VoidManager(this);
-                                                    await voidm.SendGrid(gridname, closest_gate, player.DisplayName, player.IdentityId, ip, TargetAlias);
-                                                    inZone[player.SteamUserId] = false;
-                                                }
-                                            }
-                                            catch (Exception e) {
-                                                PlayerSending[player.SteamUserId] = true;
-                                                Log.Warn(e.ToString());
-                                            }
-                                        }
-                                    }
-                                }
-                                else {
-                                    if (DisplayedMessage.ContainsKey(player.SteamUserId)) {
-                                        DisplayedMessage[player.SteamUserId] = false;
-                                    }
-                                }
-                                if (SafetyNet.ContainsKey(player.SteamUserId)) {
-                                    SafetyNet[player.SteamUserId] = false;
-                                }
-                            }
-                        }
-                        ClosestGate.Clear();
-
-                    }
-                }
-
-
+                //Check for players that need to be spawned
                 _timerSpawn += 1;
                 if (_timerSpawn % 60 == 0) {
 
@@ -440,34 +324,13 @@ namespace SwitchMe {
                             ulong steamid = MySession.Static.Players.TryGetSteamId(player_id);
                             var player = utils.GetPlayerByNameOrId(player_id.ToString());
                             if (connecting[steamid] == true) {
+                                CloseGates();
                                 MyAPIGateway.Utilities.InvokeOnGameThread(() => {
                                     spawn_matrix = MatrixD.CreateWorld(spawn_vector_location);
                                     MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
                                 });
-
-                                CloseGates();
                                 await recovery(player_id, spawn_vector_location);
-                                MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-                                    var playerEndpoint = new Endpoint(steamid, 0);
-                                    var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
-                                    var clientDataDict = _clientStates.Invoke(replicationServer);
-                                    object clientData;
-                                    try {
-                                        clientData = clientDataDict[playerEndpoint];
-                                    }
-                                    catch {
-                                        return;
-                                    }
-                                    var clientReplicables = _replicables.Invoke(clientData);
-                                    var replicableList = new List<IMyReplicable>(clientReplicables.Count);
-                                    foreach (var pair in clientReplicables)
-                                        replicableList.Add(pair.Key);
-                                    foreach (var replicable in replicableList) {
-                                        _removeForClient.Invoke(replicationServer, replicable, clientData, true);
-                                        _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
-
-                                    }
-                                });
+                                utils.RefreshPlayer(steamid);
                             }
                             clear_ids.Add(player_id);
                         }
@@ -717,7 +580,7 @@ namespace SwitchMe {
                     if (string.IsNullOrEmpty(name))
                         return;
 
-                    if (!TryGetEntityByNameOrId(name, out IMyEntity entity))
+                    if (!utils.TryGetEntityByNameOrId(name, out IMyEntity entity))
                         return;
 
                     if (entity is IMyCharacter)
@@ -734,22 +597,104 @@ namespace SwitchMe {
         }
 
 
-        public static IMyPlayer GetPlayerByNameOrId(string nameOrPlayerId) {
-            if (!long.TryParse(nameOrPlayerId, out long id)) {
-                foreach (var identity in MySession.Static.Players.GetAllIdentities()) {
-                    if (identity.DisplayName == nameOrPlayerId) {
-                        id = identity.IdentityId;
+        public async void Scan() {
+            tick++;
+            string name = "";
+            string location = "";
+            string port = "";
+            string TargetAlias = string.Empty;
+
+            //Enter jumpgate logic.
+            if (Config.EnabledJumpgate) {
+                if (tick % 16 == 0) {
+                    foreach (var playerOnline in MySession.Static.Players.GetOnlinePlayers()) {
+                        var player = utils.GetPlayerByNameOrId(playerOnline.DisplayName);
+                        if (player.Character != null) {
+
+                            //Find Closest gate
+                            IEnumerable<string> Gates = Config.Gates;
+                            Dictionary<string, double> GateDistances = new Dictionary<string, double>();
+                            foreach (string gateId in Gates) {
+                                name = gateId.Split('/')[0];
+                                location = gateId.Split('/')[1];
+                                TargetAlias = gateId.Split('/')[3];
+                                location = location.TrimStart('{').TrimEnd('}');
+                                Vector3D.TryParse(location, out Vector3D gps);
+                                //At each pass, add the gate name and the distance of the player from that gate
+                                GateDistances.Add(name, Vector3D.DistanceSquared(player.GetPosition(), gps));
+                            }
+                            //Sort the gates by double (value not key) and take the first entry (Meaning the one closest to the player)
+                            //And then get the name of that gate
+                            GateDistances = GateDistances.OrderBy(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
+                            string closest_gate = GateDistances.FirstOrDefault().Key;
+                            //Grab the Target alias of the closest gate
+                            IEnumerable<string> SpecficGate = Config.Gates.Where(c => c.Split('/')[0].Equals(closest_gate));
+                            foreach (string bit in SpecficGate) {
+                                TargetAlias = bit.Split('/')[3];
+                            }
+
+
+                            if (debug && tick % 64 == 0) {
+                                Log.Warn($"{player.DisplayName} is {GateDistances.FirstOrDefault().Value} away (meters squared)");
+                            }
+
+                            //Find Server details of that closest gate
+                            IEnumerable<string> channelIds = Config.Servers.Where(c => c.Split(':')[0].Equals(closest_gate));
+                            foreach (string chId in channelIds) {
+                                ip = chId.Split(':')[1];
+                                name = chId.Split(':')[0];
+                                port = chId.Split(':')[2];
+                            }
+                            string target = ip + ":" + port;
+                            if (DisplayedMessage.ContainsKey(player.SteamUserId) && GateDistances.FirstOrDefault().Value > (Math.Pow(Config.GateSize, 2) + 500)) {
+                                DisplayedMessage[player.SteamUserId] = false;
+                            }
+
+
+                            //Player is within the jump warning radius
+                            if (GateDistances.FirstOrDefault().Value < (Math.Pow(Config.GateSize, 2) * 4) /* 4x gate size away from jumpCentre */) {
+
+                                if (GateDistances.FirstOrDefault().Value > (Math.Pow(Config.GateSize, 2) + 1000)) {
+                                    if (JumpProtect.ContainsKey(player.SteamUserId)) {
+                                        JumpProtect[player.SteamUserId] = false;
+                                    }
+                                }
+
+                                if (!DisplayedMessage[player.SteamUserId]) {
+                                    utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
+                                    DisplayedMessage[player.SteamUserId] = true;
+                                }
+
+                                //Is player within of gate
+                                if (GateDistances.FirstOrDefault().Value <= Math.Pow(Config.GateSize, 2)) {
+                                    /* If he is online we check if he is currently seated. If he is - get the grid name */
+                                    if (player?.Controller.ControlledEntity is MyCockpit controller) {
+                                        try {
+
+                                            if (!inZone[player.SteamUserId] && await CheckServer(player, name, target)) {
+                                                inZone[player.SteamUserId] = true;
+                                                VoidManager voidm = new VoidManager(this);
+                                                await voidm.SendGrid(controller.Parent.DisplayName, closest_gate, player.DisplayName, player.IdentityId, ip, TargetAlias);
+                                            }
+                                        }
+                                        catch (Exception e) {
+                                            Log.Warn(e.ToString());
+                                        }
+                                    }
+                                }
+                            }
+                            else {
+                                if (DisplayedMessage.ContainsKey(player.SteamUserId)) {
+                                    DisplayedMessage[player.SteamUserId] = false;
+                                }
+                            }
+                            if (SafetyNet.ContainsKey(player.SteamUserId)) {
+                                SafetyNet[player.SteamUserId] = false;
+                            }
+                        }
                     }
                 }
             }
-
-            if (MySession.Static.Players.TryGetPlayerId(id, out MyPlayer.PlayerId playerId)) {
-                if (MySession.Static.Players.TryGetPlayerById(playerId, out MyPlayer player)) {
-                    return player;
-                }
-            }
-
-            return null;
         }
 
 
@@ -952,36 +897,6 @@ namespace SwitchMe {
             StopTimer();
         }
 
-        public static bool TryGetEntityByNameOrId(string nameOrId, out IMyEntity entity) {
-
-            if (long.TryParse(nameOrId, out long id))
-                return MyAPIGateway.Entities.TryGetEntityById(id, out entity);
-
-            foreach (var ent in MyEntities.GetEntities()) {
-
-                if (ent.DisplayName == nameOrId) {
-                    entity = ent;
-                    return true;
-                }
-            }
-
-            entity = null;
-
-            return false;
-        }
-
-
-        public static MyIdentity GetIdentityByName(string playerName) {
-
-            foreach (var identity in MySession.Static.Players.GetAllIdentities())
-                if (identity.DisplayName == playerName)
-                    return identity;
-
-            return null;
-        }
-
-        int i = 0;
-
         private void InitPost() {
             StartTimer();
         }
@@ -1046,8 +961,7 @@ namespace SwitchMe {
                     || externalIP.Contains("192.168")
                     || externalIP.Contains("0.0")
                     || externalIP.Contains("10.0")) {
-                        i++;
-                        if (i == 300) { Log.Warn("Please have your public ip set in the SwitchMe or Torch Config. Search 'Whats my ip?' on google if you are not sure how to find this."); i = 0; }
+                        if (debug) { Log.Warn("Please have your public ip set in the SwitchMe or Torch Config. Search 'Whats my ip?' on google if you are not sure how to find this.");}
                     }
 
                 }

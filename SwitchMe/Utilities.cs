@@ -16,12 +16,20 @@ using System.Web;
 using Torch.Mod.Messages;
 using VRage.Game;
 using VRage.Game.ModAPI;
+using Sandbox.ModAPI;
 using VRage.Groups;
 using VRageMath;
 using Torch;
 using Torch.API;
 using System.Net;
 using System.Collections.Specialized;
+using VRage.Network;
+using Sandbox.Engine.Multiplayer;
+using Torch.Utils;
+using VRage.Collections;
+using VRage.Replication;
+using System.Collections;
+using VRage.ModAPI;
 
 namespace SwitchMe {
 
@@ -30,6 +38,17 @@ namespace SwitchMe {
         public static ITorchBase Torch { get; }
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
         public static Dictionary<string, string> webdata = new Dictionary<string, string>();
+        #pragma warning disable 649
+        [ReflectedGetter(Name = "m_clientStates")]
+        private static Func<MyReplicationServer, IDictionary> _clientStates;
+        private const string CLIENT_DATA_TYPE_NAME = "VRage.Network.MyClient, VRage";
+        [ReflectedGetter(TypeName = CLIENT_DATA_TYPE_NAME, Name = "Replicables")]
+        private static Func<object, MyConcurrentDictionary<IMyReplicable, MyReplicableClientData>> _replicables;
+        [ReflectedMethod(Name = "RemoveForClient", OverrideTypeNames = new[] { null, CLIENT_DATA_TYPE_NAME, null })]
+        private static Action<MyReplicationServer, IMyReplicable, object, bool> _removeForClient;
+        [ReflectedMethod(Name = "ForceReplicable")]
+        private static Action<MyReplicationServer, IMyReplicable, Endpoint> _forceReplicable;
+        #pragma warning restore 649
         public static string CreateExternalIP(SwitchMeConfig Config) {
 
             if (MySandboxGame.ConfigDedicated.IP.Contains("0.0") || MySandboxGame.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
@@ -136,6 +155,29 @@ namespace SwitchMe {
             ModCommunication.SendMessageTo(new NotificationMessage(message, 15000, "Blue"), steamid);
         }
 
+
+        public static void RefreshPlayer(ulong steamid) {
+            MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                var playerEndpoint = new Endpoint(steamid, 0);
+                var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
+                var clientDataDict = _clientStates.Invoke(replicationServer);
+                object clientData;
+                try {
+                    clientData = clientDataDict[playerEndpoint];
+                }
+                catch { return; }
+                var clientReplicables = _replicables.Invoke(clientData);
+                var replicableList = new List<IMyReplicable>(clientReplicables.Count);
+                foreach (var pair in clientReplicables)
+                    replicableList.Add(pair.Key);
+                foreach (var replicable in replicableList) {
+                    _removeForClient.Invoke(replicationServer, replicable, clientData, true);
+                    _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
+
+                }
+            });
+        }
+
         public static void Respond(string message, string sender = null, ulong steamid = 0, string font = null) {
             if (sender == "Server") {
                 sender = null;
@@ -179,6 +221,29 @@ namespace SwitchMe {
                 Log.Info("No grid found...");
 
             return groups;
+        }
+
+         public static bool TryGetEntityByNameOrId(string nameOrId, out IMyEntity entity) {
+            if (long.TryParse(nameOrId, out long id))
+                return MyAPIGateway.Entities.TryGetEntityById(id, out entity);
+
+            foreach (var ent in MyEntities.GetEntities()) {
+                if (ent.DisplayName == nameOrId) {
+                    entity = ent;
+                    return true;
+                }
+            }
+            entity = null;
+            return false;
+        }
+
+        public static MyIdentity GetIdentityByName(string playerName) {
+
+            foreach (var identity in MySession.Static.Players.GetAllIdentities())
+                if (identity.DisplayName == playerName)
+                    return identity;
+
+            return null;
         }
 
         public static IMyPlayer GetPlayerByNameOrId(string nameOrPlayerId) {
