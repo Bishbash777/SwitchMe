@@ -562,7 +562,7 @@ namespace SwitchMe {
                                 }
 
                                 if (!DisplayedMessage[player.SteamUserId]) {
-                                    utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
+                                    utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId, );
                                     DisplayedMessage[player.SteamUserId] = true;
                                 }
 
@@ -571,17 +571,21 @@ namespace SwitchMe {
                                     /* If he is online we check if he is currently seated. If he is - get the grid name */
                                     if (player?.Controller.ControlledEntity is MyCockpit controller) {
                                         try {
-
-                                            if (!inZone[player.SteamUserId] && await API.CheckServer(player, name, target) && (!utils.ReservedDicts.Contains("CheckServer"))) {
+                                            if (!inZone[player.SteamUserId]) {
                                                 inZone[player.SteamUserId] = true;
-                                                VoidManager voidm = new VoidManager(this);
-                                                await voidm.SendGrid(controller.Parent.DisplayName, closest_gate, player.DisplayName, player.IdentityId, ip, TargetAlias);
+                                                if (await API.CheckServer(player, name, target) && (!utils.ReservedDicts.Contains("CheckServer"))) {
+                                                    VoidManager voidm = new VoidManager(this);
+                                                    await voidm.SendGrid(controller.Parent.DisplayName, closest_gate, player.DisplayName, player.IdentityId, ip, TargetAlias);
+                                                }
                                             }
                                         }
                                         catch (Exception e) {
                                             Log.Warn(e.ToString());
                                         }
                                     }
+                                }
+                                else {
+                                    inZone[player.SteamUserId] = false;
                                 }
                             }
                             else {

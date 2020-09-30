@@ -153,8 +153,8 @@ namespace SwitchMe {
         }
 
 
-        public static void NotifyMessage(string message, ulong steamid) {
-            ModCommunication.SendMessageTo(new NotificationMessage(message, 15000, "Blue"), steamid);
+        public static void NotifyMessage(string message, ulong steamid, string colour = "Blue") {
+            ModCommunication.SendMessageTo(new NotificationMessage(message, 15000, colour), steamid);
         }
 
 
