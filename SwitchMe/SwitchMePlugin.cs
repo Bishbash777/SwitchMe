@@ -77,6 +77,9 @@ namespace SwitchMe {
         private Dictionary<ulong, bool> inZone = new Dictionary<ulong, bool>();
         private Dictionary<ulong, bool> JumpProtect = new Dictionary<ulong, bool>();
         private Dictionary<long, string> Factions = new Dictionary<long, string>();
+
+        public bool use_online_config = false;
+
         private Dictionary<long, Dictionary<long, bool>> FMembers = new Dictionary<long, Dictionary<long, bool>>();
         private int tick = 0;
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
@@ -229,56 +232,55 @@ namespace SwitchMe {
             }
         }
 
-        
+        public async Task ScanSpawnablePlayers() {
+            _timerSpawn += 1;
+            if (_timerSpawn % 60 == 0) {
 
-        
+                all_players.Clear();
+                current_player_ids.Clear();
 
+                MyAPIGateway.Multiplayer.Players.GetPlayers(all_players);
+                foreach (var player in all_players)
+                    current_player_ids.Add(player.IdentityId, player); //Refresh player list every second
+                clear_ids.Clear();
+                foreach (var player_id in player_ids_to_spawn) {
+                    if (!current_player_ids.ContainsKey(player_id))
+                        continue;
+
+                    if (current_player_ids[player_id].Character != null && current_player_ids[player_id].Controller?.ControlledEntity?.Entity != null) {
+                        clear_ids.Add(player_id); //Avoids spawning people who are in grids / Character already exists
+
+                    }
+                    else {
+                        string externalIP = utils.CreateExternalIP(Config);
+                        string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
+                        ulong steamid = MySession.Static.Players.TryGetSteamId(player_id);
+                        var player = utils.GetPlayerByNameOrId(player_id.ToString());
+                        if (connecting[steamid] == true) {
+                            CloseGates();
+                            MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                                spawn_matrix = MatrixD.CreateWorld(spawn_vector_location);
+                                MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
+                            });
+                            await recovery(player_id, spawn_vector_location);
+                            utils.RefreshPlayer(steamid);
+                        }
+                        clear_ids.Add(player_id);
+                    }
+                }
+                foreach (var clear_id in clear_ids) {
+                    player_ids_to_spawn.Remove(clear_id); //Cleanup
+                }
+            }
+        }
 
         public override async void Update() {
             try {
                 //Scan for players near/inside jump areas
-                Scan();
+                await Scan();
 
                 //Check for players that need to be spawned
-                _timerSpawn += 1;
-                if (_timerSpawn % 60 == 0) {
-
-                    all_players.Clear();
-                    current_player_ids.Clear();
-
-                    MyAPIGateway.Multiplayer.Players.GetPlayers(all_players);
-                    foreach (var player in all_players)
-                        current_player_ids.Add(player.IdentityId, player); //Refresh player list every second
-                    clear_ids.Clear();
-                    foreach (var player_id in player_ids_to_spawn) {
-                        if (!current_player_ids.ContainsKey(player_id))
-                            continue;
-
-                        if (current_player_ids[player_id].Character != null && current_player_ids[player_id].Controller?.ControlledEntity?.Entity != null) {
-                            clear_ids.Add(player_id); //Avoids spawning people who are in grids / Character already exists
-
-                        }
-                        else {
-                            string externalIP = utils.CreateExternalIP(Config);
-                            string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
-                            ulong steamid = MySession.Static.Players.TryGetSteamId(player_id);
-                            var player = utils.GetPlayerByNameOrId(player_id.ToString());
-                            if (connecting[steamid] == true) {
-                                CloseGates();
-                                MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-                                    spawn_matrix = MatrixD.CreateWorld(spawn_vector_location);
-                                    MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
-                                });
-                                await recovery(player_id, spawn_vector_location);
-                                utils.RefreshPlayer(steamid);
-                            }
-                            clear_ids.Add(player_id);
-                        }
-                    }
-                    foreach (var clear_id in clear_ids) {
-                        player_ids_to_spawn.Remove(clear_id); //Cleanup
-                    }
-                }
+                await ScanSpawnablePlayers();
             }
             catch (Exception e) {
                 Log.Error(e.ToString());
@@ -331,12 +333,11 @@ namespace SwitchMe {
 
                         }
                     });
-                    Log.Info("Grid has been pulled from the void!");
-                    string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-                    string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
+                    
                     if (!failure) {
                         await API.MarkCompleteAsync(steamid);
                         await API.RemoveConnectionAsync(steamid);
+                        if (debug) { Log.Info("Grid has been pulled from the void!"); }
                     }
 
                     return;
@@ -495,7 +496,7 @@ namespace SwitchMe {
             return currentIp;
         }
 
-        public async void Scan() {
+        public async Task Scan() {
             APIMethods API = new APIMethods(this);
             tick++;
             string name = "";
@@ -546,18 +547,15 @@ namespace SwitchMe {
                             }
                             string target = ip + ":" + port;
 
-
-
-
-                            if (DisplayedMessage.ContainsKey(player.SteamUserId) && GateDistances.FirstOrDefault().Value > (Math.Pow(Config.GateSize, 2) + 500)) {
+                            if (DisplayedMessage.ContainsKey(player.SteamUserId) && GateDistances.FirstOrDefault().Value > (Math.Pow((Config.GateSize * 10), 2))) {
                                 DisplayedMessage[player.SteamUserId] = false;
                             }
 
 
                             //Player is within the jump warning radius
-                            if (GateDistances.FirstOrDefault().Value < (Math.Pow(Config.GateSize, 2) * 4) /* 4x gate size away from jumpCentre */) {
+                            if (GateDistances.FirstOrDefault().Value < (Math.Pow((Config.GateSize * 10), 2)) /* 4x gate size away from jumpCentre */) {
 
-                                if (GateDistances.FirstOrDefault().Value > (Math.Pow(Config.GateSize, 2) + 1000)) {
+                                if (GateDistances.FirstOrDefault().Value > (Math.Pow((Config.GateSize * 4), 2))) {
                                     if (JumpProtect.ContainsKey(player.SteamUserId)) {
                                         JumpProtect[player.SteamUserId] = false;
                                     }
@@ -574,7 +572,7 @@ namespace SwitchMe {
                                     if (player?.Controller.ControlledEntity is MyCockpit controller) {
                                         try {
 
-                                            if (!inZone[player.SteamUserId] && await API.CheckServer(player, name, target)) {
+                                            if (!inZone[player.SteamUserId] && await API.CheckServer(player, name, target) && (!utils.ReservedDicts.Contains("CheckServer"))) {
                                                 inZone[player.SteamUserId] = true;
                                                 VoidManager voidm = new VoidManager(this);
                                                 await voidm.SendGrid(controller.Parent.DisplayName, closest_gate, player.DisplayName, player.IdentityId, ip, TargetAlias);
@@ -637,7 +635,7 @@ namespace SwitchMe {
             string location = "";
             foreach (string chId in channelIds) {
                 name = chId.Split('/')[0];
-                location = chId.Split('/')[1];
+                location = chId.Split('/')[1].TrimStart('{').TrimEnd('}');
                 Vector3D.TryParse(location, out Vector3D gps);
                 var ob = new MyObjectBuilder_SafeZone();
                 ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);

@@ -254,7 +254,7 @@ namespace SwitchMe {
                     return;
                 }
 
-                if (!bool.Parse(await API.CheckExistance(target))) {
+                if (!await API.CheckExistance(target)) {
                     utils.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!", "Server", steamid);
                     return;
                 }
@@ -315,7 +315,7 @@ namespace SwitchMe {
                     return;
                 }
 
-                if (!bool.Parse(await API.CheckExistance(target))) {
+                if (!await API.CheckExistance(target)) {
                     Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
                     return;
                 }
