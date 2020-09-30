@@ -78,6 +78,13 @@ namespace SwitchMe {
             Plugin.debug = state;
             Context.Respond($"Debug mode set to {Plugin.debug} ");
         }
+        
+        [Command("update-debug")]
+        [Permission(MyPromoteLevel.Admin)]
+        public void Updatedebug(bool state) {
+            Plugin.update_debug = state;
+            Context.Respond($"Debug mode set to {Plugin.update_debug} ");
+        }
 
         [Command("all", "Automatically connects all players to your server of choice within this network. USAGE: !switch all <Insert Server name here>")]
         [Permission(MyPromoteLevel.Admin)]
@@ -131,12 +138,7 @@ namespace SwitchMe {
             Context.Respond("`!switch gates` Displayes the GPS locations of valid jump gates.");
         }
 
-        [Command("verify", "Verify gate configuration")]
-        [Permission(MyPromoteLevel.Admin)]
-        public async void verify() {
-
-        }
-
+ 
         [Command("gates","Get the gps locations of jump gates in this server")]
         [Permission(MyPromoteLevel.None)]
         public void GetGates() {
@@ -180,32 +182,11 @@ namespace SwitchMe {
                 if (gridManager.DeserializeGridFromPath(targetFile, Context.Player.DisplayName, newPos))
                 {
                     File.Delete(targetFile);
-                    Plugin.DeleteFromWeb(Context.Player.SteamUserId);
                 }
             });
+            await API.MarkCompleteAsync(Context.Player.SteamUserId);
             await API.RemoveConnectionAsync(Context.Player.SteamUserId);
-            var playerEndpoint = new Endpoint(Context.Player.SteamUserId, 0);
-            var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
-            var clientDataDict = _clientStates.Invoke(replicationServer);
-            object clientData;
-
-            try {
-                clientData = clientDataDict[playerEndpoint];
-            } catch {
-                return;
-            }
-
-            var clientReplicables = _replicables.Invoke(clientData);
-
-            var replicableList = new List<IMyReplicable>(clientReplicables.Count);
-            foreach (var pair in clientReplicables)
-                replicableList.Add(pair.Key);
-
-            foreach (var replicable in replicableList) {
-
-                _removeForClient.Invoke(replicationServer, replicable, clientData, true);
-                _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
-            }
+            utils.RefreshPlayer(Context.Player.SteamUserId);
         }
 
         [Command("restore", "Completes the transfer of one grid from one server to another")]

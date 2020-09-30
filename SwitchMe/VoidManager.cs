@@ -63,7 +63,7 @@ namespace SwitchMe {
                     return false;
                 }
 
-                if (await UploadGridAsync(serverTarget, gridTarget, player.DisplayName, ip, currentIp, path, pos, targetAlias)) {
+                if (await UploadGridAsync(serverTarget, gridTarget, player.DisplayName, ip, path, pos, targetAlias)) {
                     /* Upload successful close the grids */
                     DeleteUploadedGrids(relevantGroup);
 
@@ -159,18 +159,6 @@ namespace SwitchMe {
             }
         }
 
-        public async Task AddTransferAsync(string steamid, string ip, string filename,string targetpos, string grid_target) {
-            utils.webdata.Add("STEAMID", steamid);
-            utils.webdata.Add("TARGETIP", ip);
-            utils.webdata.Add("FILENAME", steamid + "-" + grid_target);
-            utils.webdata.Add("BINDKEY", Plugin.Config.LocalKey);
-            utils.webdata.Add("TARGETPOS", targetpos);
-            utils.webdata.Add("GRIDNAME", grid_target);
-            utils.webdata.Add("CURRENTIP", Plugin.currentIP());
-            utils.webdata.Add("FUNCTION", "AddTransferAsync");
-            await utils.SendAPIRequestAsync(Plugin.debug);
-        }
-
         private bool UploadGridFile(string path) {
             WebClient Client = new WebClient();
             Client.Headers.Add("Content-Type", "binary/octet-stream");
@@ -184,9 +172,9 @@ namespace SwitchMe {
             return true;
         }
 
-        private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string playername, string ip, string currentIp, string path, string pos, string targetAlias) {
+        private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string playername, string ip, string path, string pos, string targetAlias) {
             var player = utils.GetPlayerByNameOrId(playername);
-
+            APIMethods API = new APIMethods(Plugin);
 
             try {
                 if (UploadGridFile(path)) {
@@ -198,15 +186,9 @@ namespace SwitchMe {
                     ModCommunication.SendMessageTo(new JoinServerMessage(ip), player.SteamUserId);
 
                     //Add entry into transfers table
-                    await AddTransferAsync(player.SteamUserId.ToString(),ip, player.SteamUserId.ToString() + "-" + gridTarget, pos, gridTarget);
+                    await API.AddTransferAsync(player.SteamUserId.ToString(),ip, player.SteamUserId.ToString() + "-" + gridTarget, pos, gridTarget);
                     //Add user to transfer Queue (Active users)
-                    utils.webdata.Add("BINDKEY", Plugin.Config.LocalKey);
-                    utils.webdata.Add("CURRENTIP",Plugin.currentIP());
-                    utils.webdata.Add("TARGETIP", ip);
-                    utils.webdata.Add("TARGETALIAS", targetAlias);
-                    utils.webdata.Add("STEAMID", player.SteamUserId.ToString());
-                    utils.webdata.Add("FUNCION","AddConnectionAsync");
-                    await utils.SendAPIRequestAsync(Plugin.debug);
+                    await API.AddConnectionAsync(player.SteamUserId, ip, targetAlias);
                     return true;
 
                 } else {

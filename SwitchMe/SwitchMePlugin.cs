@@ -71,10 +71,9 @@ namespace SwitchMe {
         private readonly List<long> clear_ids = new List<long>();
         private static Vector3D spawn_vector_location = Vector3D.One;
         private MatrixD spawn_matrix = MatrixD.Identity;
+        public bool update_debug = false;
         private Dictionary<ulong, bool> DisplayedMessage = new Dictionary<ulong, bool>();
         private int _timerSpawn = 0;
-        private Dictionary<ulong,double> closestDistance = new Dictionary<ulong, double>();
-        private Dictionary<ulong, bool> SafetyNet = new Dictionary<ulong, bool>();
         private Dictionary<ulong, bool> inZone = new Dictionary<ulong, bool>();
         private Dictionary<ulong, bool> JumpProtect = new Dictionary<ulong, bool>();
         private Dictionary<long, string> Factions = new Dictionary<long, string>();
@@ -101,7 +100,7 @@ namespace SwitchMe {
             base.Init(torch);
             var configFile = Path.Combine(StoragePath, "SwitchMe.cfg");
             try {
-                LoadSEDB();
+                Load();
                 StartTimer();
                 _config = Persistent<SwitchMeConfig>.Load(configFile);
                 timerStart = new DateTime(0);
@@ -216,12 +215,6 @@ namespace SwitchMe {
         }
 
         private void Multibase_PlayerLeft(IPlayer obj) {
-            if (closestDistance.ContainsKey(obj.SteamId)) {
-                closestDistance.Remove(obj.SteamId);
-            }
-            if (SafetyNet.ContainsKey(obj.SteamId)) {
-                SafetyNet.Remove(obj.SteamId);
-            }
             if (target_file_list.ContainsKey(obj.SteamId)) {
                 target_file_list.Remove(obj.SteamId);
             }
@@ -304,9 +297,6 @@ namespace SwitchMe {
                     MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 
                         Log.Info($"Importing grid from {target_file_list[steamid]}");
-                        if (!SafetyNet.ContainsKey(steamid)) {
-                            SafetyNet.Add(steamid, true);
-                        }
 
                         var prefabs = myObjectBuilder_Definitions.Prefabs;
 
@@ -345,7 +335,7 @@ namespace SwitchMe {
                     string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
                     string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
                     if (!failure) {
-                        DeleteFromWeb(steamid);
+                        await API.MarkCompleteAsync(steamid);
                         await API.RemoveConnectionAsync(steamid);
                     }
 
@@ -479,42 +469,30 @@ namespace SwitchMe {
         }
 
         public string currentIP() {
-            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-            if (externalIP.Contains("0.0")
-                || externalIP.Contains("127.0")
-                || externalIP.Contains("192.168")) {
+            string externalIP;
+
+            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0")
+                || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0")
+                || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168")
+                || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("10.0")) {
+
                 externalIP = Config.LocalIP;
+
+                if (externalIP.Contains("127.0")
+                || externalIP.Contains("192.168")
+                || externalIP.Contains("0.0")
+                || externalIP.Contains("10.0")) {
+                    if (debug) { Log.Warn("Please have your public ip set in the SwitchMe or Torch Config. Search 'Whats my ip?' on google if you are not sure how to find this."); }
+                }
+
+            }
+            else {
+                externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
             }
 
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
             return currentIp;
-        }
-
-        
-
-        public void Delete(string entityName) {
-            try {
-                MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-                    var name = entityName;
-
-                    if (string.IsNullOrEmpty(name))
-                        return;
-
-                    if (!utils.TryGetEntityByNameOrId(name, out IMyEntity entity))
-                        return;
-
-                    if (entity is IMyCharacter)
-                        return;
-
-                    entity.Close();
-
-                    Log.Warn("Entitiy deleted.");
-                });
-            }
-            catch (Exception e) {
-                Log.Error(e.ToString());
-            }
         }
 
         public async void Scan() {
@@ -567,6 +545,10 @@ namespace SwitchMe {
                                 port = chId.Split(':')[2];
                             }
                             string target = ip + ":" + port;
+
+
+
+
                             if (DisplayedMessage.ContainsKey(player.SteamUserId) && GateDistances.FirstOrDefault().Value > (Math.Pow(Config.GateSize, 2) + 500)) {
                                 DisplayedMessage[player.SteamUserId] = false;
                             }
@@ -609,9 +591,6 @@ namespace SwitchMe {
                                     DisplayedMessage[player.SteamUserId] = false;
                                 }
                             }
-                            if (SafetyNet.ContainsKey(player.SteamUserId)) {
-                                SafetyNet[player.SteamUserId] = false;
-                            }
                         }
                     }
                 }
@@ -630,7 +609,7 @@ namespace SwitchMe {
                     //load
                     MyVisualScriptLogicProvider.PlayerConnected += PlayerConnect;
                     OpenGates();
-                    LoadSEDB();
+                    Load();
                     break;
 
                 case TorchSessionState.Unloaded:
@@ -714,7 +693,7 @@ namespace SwitchMe {
             }
         }
 
-        public void LoadSEDB() {
+        public void Load() {
 
             if (_sessionManager == null) {
 
@@ -737,7 +716,7 @@ namespace SwitchMe {
                         _multibase.PlayerLeft += Multibase_PlayerLeft;
                     }
                 }
-                InitPost();
+                StartTimer();
             }
         }
 
@@ -756,76 +735,23 @@ namespace SwitchMe {
             StopTimer();
         }
 
-        private void InitPost() {
-            StartTimer();
-        }
-
-        public async void DeleteFromWeb(ulong steamid) {
-            string externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
-            if (externalIP.Contains("0.0")
-                || externalIP.Contains("127.0")
-                || externalIP.Contains("192.168")) {
-                externalIP = Config.LocalIP;
-            }
-
-            string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
-            using (WebClient client = new WebClient()) {
-
-
-                NameValueCollection postData = new NameValueCollection()
-                {
-                    { "processed", steamid.ToString() },
-                    { "currentIP", currentIp}
-                };
-
-                client.UploadValues(API_URL, postData);
-            }
-
-            utils.webdata.Add("proccessed",steamid.ToString());
-            utils.webdata.Add("currentIP", currentIP());
-            await utils.SendAPIRequestAsync(debug);
-
-        }
-
         private void _timer_Elapsed(object sender, ElapsedEventArgs e) {
             try {
                 string xml = "";
                 string name = "";
                 string location = "";
                 string alias = "";
+                string Inbound = "N";
                 Dictionary<string, string> gateData = new Dictionary<string,string>();string targetAlias = "";
                 Dictionary<string, Dictionary<string, string>> gate = new Dictionary<string, Dictionary<string, string>>();
                 Dictionary<string, Dictionary<string, Dictionary<string, string>>> gates = new Dictionary<string, Dictionary<string, Dictionary<string, string>>>();
 
                 IEnumerable<string> channelIds = Config.Gates;
                 try {
-                xml = File.ReadAllText(Path.Combine(StoragePath, "SwitchMe.cfg"));
+                    xml = File.ReadAllText(Path.Combine(StoragePath, "SwitchMe.cfg"));
                 }
                 catch {
                     xml = File.ReadAllText("SwitchMe.cfg");
-                }
-
-
-                string externalIP;
-                string Inbound = "N";
-
-                if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0")
-                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0")
-                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168")
-                    || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("10.0")) {
-
-                    externalIP = Config.LocalIP;
-
-                    if (externalIP.Contains("127.0")
-                    || externalIP.Contains("192.168")
-                    || externalIP.Contains("0.0")
-                    || externalIP.Contains("10.0")) {
-                        if (debug) { Log.Warn("Please have your public ip set in the SwitchMe or Torch Config. Search 'Whats my ip?' on google if you are not sure how to find this.");}
-                    }
-
-                }
-                else {
-                    externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
                 }
 
                 if (timerStart.Ticks == 0) timerStart = e.SignalTime;
@@ -833,7 +759,6 @@ namespace SwitchMe {
                 if (Torch.CurrentSession?.State == TorchSessionState.Loaded) {
                     string maxPlayers = MySession.Static.MaxPlayers.ToString();
                     string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
-                    string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
 
                     foreach (string chId in channelIds) {
                         name = chId.Split('/')[0];
@@ -841,24 +766,28 @@ namespace SwitchMe {
                         alias = chId.Split('/')[2];
                         targetAlias = chId.Split('/')[3];                        
                     }
-                    string json = JsonSerializer.Serialize(channelIds);
 
-                    if (Torch.CurrentSession != null && currentIp.Length > 1) {
+                    if (Torch.CurrentSession != null && currentIP().Length > 1) {
 
                         if (Config.InboundTransfersState)
                             Inbound = "Y";
                         try {
-                            utils.webdata.Add("CURRENTPLAYERS", currentPlayers);
-                            utils.webdata.Add("MAXPLAYERS", maxPlayers);
-                            utils.webdata.Add("CURRENTIP", currentIp);
-                            utils.webdata.Add("VERSION", "2.0.0");
-                            utils.webdata.Add("BINDKEY", Config.LocalKey);
-                            utils.webdata.Add("ALLOWINBOUND", Inbound);
-                            utils.webdata.Add("NAME", Sandbox.MySandboxGame.ConfigDedicated.ServerName);
-                            utils.webdata.Add("CONFIG", xml);
-                            utils.webdata.Add("GATEDATA", json);
-                            utils.webdata.Add("FUNCTION", "UpdateServerData");
-                            utils.SendAPIData(debug);
+                            if (!utils.ReservedDicts.Contains("UpdateData")) {
+
+                                utils.ReservedDicts.Add("UpdateData");
+                                utils.UpdateData.Add("CURRENTPLAYERS", currentPlayers);
+                                utils.UpdateData.Add("MAXPLAYERS", maxPlayers);
+                                utils.UpdateData.Add("CURRENTIP", currentIP());
+                                utils.UpdateData.Add("VERSION", "2.0.0");
+                                utils.UpdateData.Add("BINDKEY", Config.LocalKey);
+                                utils.UpdateData.Add("ALLOWINBOUND", Inbound);
+                                utils.UpdateData.Add("NAME", Sandbox.MySandboxGame.ConfigDedicated.ServerName);
+                                utils.UpdateData.Add("CONFIG", xml);
+                                utils.UpdateData.Add("GATEDATA", JsonSerializer.Serialize(channelIds));
+                                utils.UpdateData.Add("FUNCTION", "UpdateServerData");
+                                utils.SendAPIData(update_debug);
+                                utils.ReservedDicts.Remove("UpdateData");
+                            }
 
                         }
                         catch (Exception es) {

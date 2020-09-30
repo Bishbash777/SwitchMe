@@ -38,6 +38,8 @@ namespace SwitchMe {
         public static ITorchBase Torch { get; }
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
         public static Dictionary<string, string> webdata = new Dictionary<string, string>();
+        public static Dictionary<string, string> UpdateData = new Dictionary<string, string>();
+        public static List<string> ReservedDicts = new List<string>();
         #pragma warning disable 649
         [ReflectedGetter(Name = "m_clientStates")]
         private static Func<MyReplicationServer, IDictionary> _clientStates;
@@ -190,6 +192,30 @@ namespace SwitchMe {
             manager.SendMessageAsOther(sender, message, default, steamid, "White");
         }
 
+        public static void Delete(string entityName) {
+            try {
+                MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                    var name = entityName;
+
+                    if (string.IsNullOrEmpty(name))
+                        return;
+
+                    if (!utils.TryGetEntityByNameOrId(name, out IMyEntity entity))
+                        return;
+
+                    if (entity is IMyCharacter)
+                        return;
+
+                    entity.Close();
+
+                    Log.Warn("Entitiy deleted.");
+                });
+            }
+            catch (Exception e) {
+                Log.Error(e.ToString());
+            }
+        }
+
         public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> FindGridGroup(string gridName) {
 
             int i = 0;
@@ -287,16 +313,17 @@ namespace SwitchMe {
             }
         }
 
-        public static async void SendAPIData(bool debug) {
+        public static async void SendAPIData(bool UpdateDebug = false) {
             try {
                 using (HttpClient client = new HttpClient()) {
                     List<KeyValuePair<string, string>> postData = new List<KeyValuePair<string, string>>();
-                    foreach (var kvp in webdata) {
+                    foreach (var kvp in UpdateData) {
                         postData.Add(new KeyValuePair<string, string> (kvp.Key, kvp.Value));
                     }
                     FormUrlEncodedContent content = new FormUrlEncodedContent(postData);
                     HttpResponseMessage response = await client.PostAsync(API_URL, content);
-                    webdata.Clear();
+                    if (UpdateDebug) { Log.Warn(await response.Content.ReadAsStringAsync()); }
+                    UpdateData.Clear();
                 }
             }
             catch (Exception e) {
