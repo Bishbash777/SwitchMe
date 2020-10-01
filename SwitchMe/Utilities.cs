@@ -292,19 +292,29 @@ namespace SwitchMe {
 
         public static async Task<Dictionary<string,string>> SendAPIRequestAsync(bool debug) {
             HttpResponseMessage response = null;
+            string function = string.Empty;
             try {
                 using (HttpClient client = new HttpClient()) {
 
                     List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>();
 
                     foreach (var kvp in webdata) {
+                        if (kvp.Key == "FUNCTION") { function = kvp.Value; }
                         pairs.Add(new KeyValuePair<string, string>(kvp.Key, kvp.Value));
                     }
 
                     FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
                     response = await client.PostAsync(API_URL, content);
+                    
+                    var api_response = ParseQueryString(await response.Content.ReadAsStringAsync());
                     webdata.Clear();
-                    return ParseQueryString(await response.Content.ReadAsStringAsync());
+                    if (debug) {
+                        Log.Warn($"{function} response data:");
+                        foreach (var kvp in api_response) {
+                            Log.Warn($"{kvp.Key}={kvp.Value}");
+                        }
+                    }
+                    return api_response;
                 }
             } catch(Exception e) {
                 Log.Fatal(e.ToString());

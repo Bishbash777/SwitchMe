@@ -125,7 +125,7 @@ namespace SwitchMe {
             if (!Config.Enabled) 
                 return;
             if (Config.XCord == null || Config.YCord == null || Config.ZCord == null) {
-                if (debug) { Log.Warn("Invalid GPS configuration - cancelling spawn operation"); }
+                if (debug) { Log.Error("Invalid GPS configuration - cancelling spawn operation"); }
                 return;
             }
             bool SwitchConnection = await API.CheckConnectionAsync(obj);
@@ -159,13 +159,13 @@ namespace SwitchMe {
                 }
             }
             else {
-                if (debug) { Log.Info("Player has no grid in transit"); }
+                if (debug) { Log.Error("Player has no grid in transit"); }
                 targetFile = null;
                 return;
             }
 
             string POS = "";
-            string gateName = API.GetGateAsync(obj.SteamId.ToString()).ToString();
+            string gateName = await API.GetGateAsync(obj.SteamId.ToString());
             bool foundGate = false;
             IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(gateName));
             foreach (string chId in channelIds) {
@@ -185,15 +185,15 @@ namespace SwitchMe {
                 }
             }
             if (!Config.RandomisedExit) {
-                if (debug) { Log.Warn($"API: Gate elected = {gateName}"); }
+                if (debug) { Log.Info($"API: Gate elected = {gateName}"); }
             }
             else {
-                if (debug) { Log.Warn("Using randomly selected gate as exit"); }
+                if (debug) { Log.Info("Using randomly selected gate as exit"); }
             }
 
             if (!foundGate) {
                 POS = "{X:" + Config.XCord + " Y:" + Config.YCord + " Z:" + Config.ZCord + "}";
-                if (debug) { Log.Error($"Target gate ({gateName}) does not exist... Using default"); }
+                if (debug) { Log.Info($"Target gate ({gateName}) does not exist... Using default"); }
             }
 
             POS = POS.TrimStart('{').TrimEnd('}');
@@ -249,13 +249,14 @@ namespace SwitchMe {
 
                     if (current_player_ids[player_id].Character != null && current_player_ids[player_id].Controller?.ControlledEntity?.Entity != null) {
                         clear_ids.Add(player_id); //Avoids spawning people who are in grids / Character already exists
-
+                        if (debug) { Log.Info("Character exists! Preventing recovery"); }
                     }
                     else {
                         string externalIP = utils.CreateExternalIP(Config);
                         string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
                         ulong steamid = MySession.Static.Players.TryGetSteamId(player_id);
                         var player = utils.GetPlayerByNameOrId(player_id.ToString());
+                        if (debug) { Log.Info("Starting recovery process"); }
                         if (connecting[steamid] == true) {
                             CloseGates();
                             MyAPIGateway.Utilities.InvokeOnGameThread(() => {
@@ -264,6 +265,7 @@ namespace SwitchMe {
                             });
                             await recovery(player_id, spawn_vector_location);
                             utils.RefreshPlayer(steamid);
+                            OpenGates();
                         }
                         clear_ids.Add(player_id);
                     }
@@ -303,7 +305,7 @@ namespace SwitchMe {
                         var prefabs = myObjectBuilder_Definitions.Prefabs;
 
                         if (prefabs == null || prefabs.Length != 1) {
-                            Log.Info($"Grid has unsupported format!");
+                            Log.Error($"Grid has unsupported format!");
                             failure = true;
                             return;
                         }
@@ -312,7 +314,7 @@ namespace SwitchMe {
                         /* Where do we want to paste the grids? Lets find out. */
                         var pos = FindPastePosition(grids, spawn_vector_location);
                         if (pos == null) {
-                            Log.Info("No free place.");
+                            Log.Error("No free place.");
                             failure = true;
                             return;
                         }
@@ -444,7 +446,7 @@ namespace SwitchMe {
             foreach (var grid in grids) {
                 var position = grid.PositionAndOrientation;
                 if (position == null) {
-                    Log.Info($"Grid is missing location Information!");
+                    Log.Error($"Grid is missing location Information!");
                     return false;
                 }
                 var realPosition = position.Value;
@@ -535,7 +537,7 @@ namespace SwitchMe {
 
 
                             if (debug && tick % 64 == 0) {
-                                Log.Warn($"{player.DisplayName} is {GateDistances.FirstOrDefault().Value} away (meters squared)");
+                                Log.Info($"{player.DisplayName} is {GateDistances.FirstOrDefault().Value} away (meters squared)");
                             }
 
                             //Find Server details of that closest gate
@@ -562,7 +564,7 @@ namespace SwitchMe {
                                 }
 
                                 if (!DisplayedMessage[player.SteamUserId]) {
-                                    utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId, );
+                                    utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
                                     DisplayedMessage[player.SteamUserId] = true;
                                 }
 
@@ -580,7 +582,7 @@ namespace SwitchMe {
                                             }
                                         }
                                         catch (Exception e) {
-                                            Log.Warn(e.ToString());
+                                            Log.Error(e.ToString());
                                         }
                                     }
                                 }
@@ -793,7 +795,7 @@ namespace SwitchMe {
 
                         }
                         catch (Exception es) {
-                            Log.Warn("Data error: " + es.ToString());
+                            Log.Error("Data error: " + es.ToString());
                         }
                     }
                 }
