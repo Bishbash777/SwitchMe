@@ -507,94 +507,120 @@ namespace SwitchMe {
             string TargetAlias = string.Empty;
 
             //Enter jumpgate logic.
-            if (Config.EnabledJumpgate) {
-                if (tick % 16 == 0) {
-                    foreach (var playerOnline in MySession.Static.Players.GetOnlinePlayers()) {
-                        var player = utils.GetPlayerByNameOrId(playerOnline.DisplayName);
-                        if (player.Character != null) {
+            if (Config.EnabledJumpgate && tick % 16 == 0) {
+                foreach (var playerOnline in MySession.Static.Players.GetOnlinePlayers()) {
+                    var player = utils.GetPlayerByNameOrId(playerOnline.DisplayName);
+                    if (player.Character == null) { continue; }
 
-                            //Find Closest gate
-                            IEnumerable<string> Gates = Config.Gates;
-                            Dictionary<string, double> GateDistances = new Dictionary<string, double>();
-                            foreach (string gateId in Gates) {
-                                name = gateId.Split('/')[0];
-                                location = gateId.Split('/')[1];
-                                TargetAlias = gateId.Split('/')[3];
-                                location = location.TrimStart('{').TrimEnd('}');
-                                Vector3D.TryParse(location, out Vector3D gps);
-                                //At each pass, add the gate name and the distance of the player from that gate
-                                GateDistances.Add(name, Vector3D.DistanceSquared(player.GetPosition(), gps));
+                    /*
+                    * Loop over each gate, find how far
+                    * away the player is and then add
+                    * the name of that gate as they key
+                    * and then the distance squared as the value
+                    * to a Dictionary type variable
+                    */
+                    IEnumerable<string> Gates = Config.Gates;
+                    Dictionary<string, double> GateDistances = new Dictionary<string, double>();
+                    foreach (string gateId in Gates) {
+                        name = gateId.Split('/')[0];
+                        location = gateId.Split('/')[1];
+                        TargetAlias = gateId.Split('/')[3];
+                        location = location.TrimStart('{').TrimEnd('}');
+                        Vector3D.TryParse(location, out Vector3D gps);
+                        GateDistances.Add(name, Vector3D.DistanceSquared(player.GetPosition(), gps));
+                    }
+
+                    /*
+                    * Sort the gates by double (value not key) ascending
+                    * and take the first entry (Meaning the one closest to the player) 
+                    * and then get the name of that gate (which is stored as the key).
+                    * After that, temporarily store the 'TargetAlias' for use in the next
+                    * section of code to start the transfer process
+                    */
+                    GateDistances = GateDistances.OrderBy(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
+                    string closest_gate = GateDistances.FirstOrDefault().Key;
+                    IEnumerable<string> SpecficGate = Config.Gates.Where(c => c.Split('/')[0].Equals(closest_gate));
+                    foreach (string bit in SpecficGate) {
+                        TargetAlias = bit.Split('/')[3];
+                    }
+
+                    /*
+                    * Use the name of the closest gate (relative to current player)
+                    * to find the server details of where the gate has been setup to 
+                    * direct the players to.
+                    */
+                    IEnumerable<string> channelIds = Config.Servers.Where(c => c.Split(':')[0].Equals(closest_gate));
+                    foreach (string chId in channelIds) {
+                        ip = chId.Split(':')[1];
+                        name = chId.Split(':')[0];
+                        port = chId.Split(':')[2];
+                    }
+                    string target = ip + ":" + port;
+
+
+                    /*
+                    * Where is the player?
+                    */
+                    if (debug && tick % 64 == 0) {
+                        Log.Info($"{player.DisplayName} is {GateDistances.FirstOrDefault().Value} away (meters squared)");
+                    }
+
+                    /*
+                    * Check to see if player is outside radius
+                    * of outer ring and set their displayedMessage
+                    * flag to 'false' if so so that the plugin can
+                    * then display a message again when they fall
+                    * inside the second ring radius
+                    */
+                    if (DisplayedMessage.ContainsKey(player.SteamUserId) && GateDistances.FirstOrDefault().Value > (Math.Pow((Config.GateSize * 10), 2))) {
+                        DisplayedMessage[player.SteamUserId] = false;
+                    }
+
+                    /*
+                    * Check to see if the player is within
+                    * the warning radius for the gate...
+                    * The 'Outer Ring' if you will
+                    * (10x the radius of the gate)
+                    */
+                    if (GateDistances.FirstOrDefault().Value < (Math.Pow((Config.GateSize * 10), 2))) {
+
+                        if (GateDistances.FirstOrDefault().Value > (Math.Pow((Config.GateSize * 4), 2))) {
+                            if (JumpProtect.ContainsKey(player.SteamUserId)) {
+                                JumpProtect[player.SteamUserId] = false;
                             }
-                            //Sort the gates by double (value not key) and take the first entry (Meaning the one closest to the player)
-                            //And then get the name of that gate
-                            GateDistances = GateDistances.OrderBy(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
-                            string closest_gate = GateDistances.FirstOrDefault().Key;
-                            //Grab the Target alias of the closest gate
-                            IEnumerable<string> SpecficGate = Config.Gates.Where(c => c.Split('/')[0].Equals(closest_gate));
-                            foreach (string bit in SpecficGate) {
-                                TargetAlias = bit.Split('/')[3];
-                            }
+                        }
 
+                        if (!DisplayedMessage[player.SteamUserId]) {
+                            utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
+                            DisplayedMessage[player.SteamUserId] = true;
+                        }
 
-                            if (debug && tick % 64 == 0) {
-                                Log.Info($"{player.DisplayName} is {GateDistances.FirstOrDefault().Value} away (meters squared)");
-                            }
-
-                            //Find Server details of that closest gate
-                            IEnumerable<string> channelIds = Config.Servers.Where(c => c.Split(':')[0].Equals(closest_gate));
-                            foreach (string chId in channelIds) {
-                                ip = chId.Split(':')[1];
-                                name = chId.Split(':')[0];
-                                port = chId.Split(':')[2];
-                            }
-                            string target = ip + ":" + port;
-
-                            if (DisplayedMessage.ContainsKey(player.SteamUserId) && GateDistances.FirstOrDefault().Value > (Math.Pow((Config.GateSize * 10), 2))) {
-                                DisplayedMessage[player.SteamUserId] = false;
-                            }
-
-
-                            //Player is within the jump warning radius
-                            if (GateDistances.FirstOrDefault().Value < (Math.Pow((Config.GateSize * 10), 2)) /* 4x gate size away from jumpCentre */) {
-
-                                if (GateDistances.FirstOrDefault().Value > (Math.Pow((Config.GateSize * 4), 2))) {
-                                    if (JumpProtect.ContainsKey(player.SteamUserId)) {
-                                        JumpProtect[player.SteamUserId] = false;
+                        /* 
+                        * Check to see if the player is Within the bounds
+                        * of the jump area, if he is a valid player (online)
+                        * and then check to see if he is seated in a controller
+                        */
+                        if ((GateDistances.FirstOrDefault().Value <= Math.Pow(Config.GateSize, 2)) && player?.Controller.ControlledEntity is MyCockpit controller) {
+                            try {
+                                if (!inZone[player.SteamUserId]) {
+                                    inZone[player.SteamUserId] = true;
+                                    if (await API.CheckServer(player, name, target) && (!utils.ReservedDicts.Contains("CheckServer"))) {
+                                        VoidManager voidm = new VoidManager(this);
+                                        await voidm.SendGrid(controller.Parent.DisplayName, closest_gate, player.DisplayName, player.IdentityId, ip, TargetAlias);
                                     }
                                 }
-
-                                if (!DisplayedMessage[player.SteamUserId]) {
-                                    utils.NotifyMessage($"You are approaching the Jumpgate for {name}... Proceed with Caution", player.SteamUserId);
-                                    DisplayedMessage[player.SteamUserId] = true;
-                                }
-
-                                //Is player within of gate
-                                if (GateDistances.FirstOrDefault().Value <= Math.Pow(Config.GateSize, 2)) {
-                                    /* If he is online we check if he is currently seated. If he is - get the grid name */
-                                    if (player?.Controller.ControlledEntity is MyCockpit controller) {
-                                        try {
-                                            if (!inZone[player.SteamUserId]) {
-                                                inZone[player.SteamUserId] = true;
-                                                if (await API.CheckServer(player, name, target) && (!utils.ReservedDicts.Contains("CheckServer"))) {
-                                                    VoidManager voidm = new VoidManager(this);
-                                                    await voidm.SendGrid(controller.Parent.DisplayName, closest_gate, player.DisplayName, player.IdentityId, ip, TargetAlias);
-                                                }
-                                            }
-                                        }
-                                        catch (Exception e) {
-                                            Log.Error(e.ToString());
-                                        }
-                                    }
-                                }
-                                else {
-                                    inZone[player.SteamUserId] = false;
-                                }
                             }
-                            else {
-                                if (DisplayedMessage.ContainsKey(player.SteamUserId)) {
-                                    DisplayedMessage[player.SteamUserId] = false;
-                                }
+                            catch (Exception e) {
+                                Log.Error(e.ToString());
                             }
+                        }
+                        else {
+                            inZone[player.SteamUserId] = false;
+                        }
+                    }
+                    else {
+                        if (DisplayedMessage.ContainsKey(player.SteamUserId)) {
+                            DisplayedMessage[player.SteamUserId] = false;
                         }
                     }
                 }
