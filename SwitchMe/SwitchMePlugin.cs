@@ -113,6 +113,10 @@ namespace SwitchMe {
             if (_config?.Data == null) {
                 Log.Info("Creating default confuration file, because none was found!");
                 _config = new Persistent<SwitchMeConfig>(configFile, new SwitchMeConfig());
+
+                if (use_online_config) {
+                    //_config = download online config and load it.
+                }
                 Save();
             }
         }
