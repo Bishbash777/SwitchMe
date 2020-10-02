@@ -263,9 +263,8 @@ namespace SwitchMe {
                                 spawn_matrix = MatrixD.CreateWorld(spawn_vector_location);
                                 MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
                             });
-                            await recovery(player_id, spawn_vector_location);
-                            utils.RefreshPlayer(steamid);
-                            OpenGates();
+                            await Recovery(player_id, spawn_vector_location);
+                            //utils.RefreshPlayer(steamid);
                         }
                         clear_ids.Add(player_id);
                     }
@@ -289,16 +288,16 @@ namespace SwitchMe {
             }
         }
 
-        private async Task recovery(long playerid, Vector3D spawn_vector_location) {
+        private async Task Recovery(long playerid, Vector3D spawn_vector_location) {
             APIMethods API = new APIMethods(this);
             ulong steamid = MySession.Static.Players.TryGetSteamId(playerid);
             connecting.Remove(steamid);
 
 
             if (MyObjectBuilderSerializer.DeserializeXML(target_file_list[steamid], out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) {
-                bool failure = false;
+                bool pass = true;
                 try {
-                    MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                    MyAPIGateway.Utilities.InvokeOnGameThread(async () => {
 
                         Log.Info($"Importing grid from {target_file_list[steamid]}");
 
@@ -306,7 +305,7 @@ namespace SwitchMe {
 
                         if (prefabs == null || prefabs.Length != 1) {
                             Log.Error($"Grid has unsupported format!");
-                            failure = true;
+                            pass = false;
                             return;
                         }
                         var prefab = prefabs[0];
@@ -315,14 +314,16 @@ namespace SwitchMe {
                         var pos = FindPastePosition(grids, spawn_vector_location);
                         if (pos == null) {
                             Log.Error("No free place.");
-                            failure = true;
+                            pass = false;
+                            OpenGates();
                             return;
                         }
 
                         /* Update GridsPosition if that doesnt work get out of here. */
                         if (!UpdateGridsPosition(grids, (Vector3D)pos)) {
                             Log.Error("Failed to find update the grids position");
-                            failure = true;
+                            pass = false;
+                            OpenGates();
                             return;
                         }
 
@@ -334,20 +335,24 @@ namespace SwitchMe {
                                 FixOwnerAndAuthorShip(cubeGrid, playerid);
 
                         }
+                        OpenGates();
+                        if (pass) {
+                            await API.MarkCompleteAsync(steamid);
+                            await API.RemoveConnectionAsync(steamid);
+                            if (debug) { Log.Info("Grid has been pulled from the void!"); }
+                        }
+                        return;
                     });
-                    
-                    if (!failure) {
-                        await API.MarkCompleteAsync(steamid);
-                        await API.RemoveConnectionAsync(steamid);
-                        if (debug) { Log.Info("Grid has been pulled from the void!"); }
-                    }
-
+                    //ran checks
+                    if(debug) { Log.Warn(""); }
                     return;
                 }
                 catch (Exception error) {
                     Log.Error(error.ToString());
+                    return;
                 }
             }
+            return;
         }
 
         private void FixOwnerAndAuthorShip(MyCubeGrid myCubeGrid, long playerId) {
