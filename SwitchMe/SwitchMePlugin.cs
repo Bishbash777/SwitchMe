@@ -101,6 +101,7 @@ namespace SwitchMe {
 
         public override void Init(ITorchBase torch) {
             base.Init(torch);
+            APIMethods API = new APIMethods(this);
             var configFile = Path.Combine(StoragePath, "SwitchMe.cfg");
             try {
                 Load();
@@ -247,27 +248,23 @@ namespace SwitchMe {
                     if (!current_player_ids.ContainsKey(player_id))
                         continue;
 
-                    if (current_player_ids[player_id].Character != null && current_player_ids[player_id].Controller?.ControlledEntity?.Entity != null) {
-                        clear_ids.Add(player_id); //Avoids spawning people who are in grids / Character already exists
-                        if (debug) { Log.Info("Character exists! Preventing recovery"); }
-                    }
-                    else {
-                        string externalIP = utils.CreateExternalIP(Config);
-                        string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
-                        ulong steamid = MySession.Static.Players.TryGetSteamId(player_id);
-                        var player = utils.GetPlayerByNameOrId(player_id.ToString());
-                        if (debug) { Log.Info("Starting recovery process"); }
-                        if (connecting[steamid] == true) {
-                            CloseGates();
+                    string externalIP = utils.CreateExternalIP(Config);
+                    string currentIp = externalIP + ":" + MySandboxGame.ConfigDedicated.ServerPort;
+                    ulong steamid = MySession.Static.Players.TryGetSteamId(player_id);
+                    var player = utils.GetPlayerByNameOrId(player_id.ToString());
+                    if (debug) { Log.Info("Starting recovery process"); }
+                    if (connecting[steamid] == true) {
+                        CloseGates();
+                        if (current_player_ids[player_id].Character == null && current_player_ids[player_id].Controller?.ControlledEntity?.Entity == null) {
                             MyAPIGateway.Utilities.InvokeOnGameThread(() => {
                                 spawn_matrix = MatrixD.CreateWorld(spawn_vector_location);
                                 MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
                             });
-                            await Recovery(player_id, spawn_vector_location);
-                            //utils.RefreshPlayer(steamid);
                         }
-                        clear_ids.Add(player_id);
+                        await Recovery(player_id, spawn_vector_location);
+                        //utils.RefreshPlayer(steamid);
                     }
+                    clear_ids.Add(player_id);
                 }
                 foreach (var clear_id in clear_ids) {
                     player_ids_to_spawn.Remove(clear_id); //Cleanup
@@ -344,7 +341,7 @@ namespace SwitchMe {
                         return;
                     });
                     //ran checks
-                    if(debug) { Log.Warn(""); }
+                    if(debug) { Log.Warn("Ran checks"); }
                     return;
                 }
                 catch (Exception error) {
