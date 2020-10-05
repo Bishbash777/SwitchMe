@@ -7,6 +7,9 @@ namespace SwitchMe {
         private bool _enabled = false;
         public bool Enabled { get => _enabled; set => SetValue(ref _enabled, value); }
 
+        private bool _useOnlineConfig = false;
+        public bool UseOnlineConfig { get => _useOnlineConfig; set => SetValue(ref _useOnlineConfig, value); }
+
         private bool _debug = false;
         public bool Debug { get => _debug; set => SetValue(ref _debug, value); }
 

@@ -77,10 +77,6 @@ namespace SwitchMe {
         private Dictionary<ulong, bool> inZone = new Dictionary<ulong, bool>();
         private Dictionary<ulong, bool> JumpProtect = new Dictionary<ulong, bool>();
         private Dictionary<long, string> Factions = new Dictionary<long, string>();
-
-        public bool use_online_config = false;
-
-        private Dictionary<long, Dictionary<long, bool>> FMembers = new Dictionary<long, Dictionary<long, bool>>();
         private int tick = 0;
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
         public Dictionary<ulong, CurrentCooldown> CurrentCooldownMapCommand { get; } = new Dictionary<ulong, CurrentCooldown>();
@@ -99,7 +95,7 @@ namespace SwitchMe {
 
 
 
-        public override void Init(ITorchBase torch) {
+        public async override void Init(ITorchBase torch) {
             base.Init(torch);
             APIMethods API = new APIMethods(this);
             var configFile = Path.Combine(StoragePath, "SwitchMe.cfg");
@@ -115,11 +111,12 @@ namespace SwitchMe {
                 Log.Info("Creating default confuration file, because none was found!");
                 _config = new Persistent<SwitchMeConfig>(configFile, new SwitchMeConfig());
 
-                if (use_online_config) {
+                if (Config.UseOnlineConfig) {
                     //_config = download online config and load it.
                 }
                 Save();
             }
+            
         }
         private async void Multibase_PlayerJoined(IPlayer obj) {
              APIMethods API = new APIMethods(this);
@@ -478,12 +475,10 @@ namespace SwitchMe {
         }
 
         public string currentIP() {
-            string externalIP;
+            string externalIP = MySandboxExternal.ConfigDedicated.IP;
 
-            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0")
-                || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0")
-                || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168")
-                || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("10.0")) {
+            if (Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("0.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("127.0") 
+                || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("10.0")) {
 
                 externalIP = Config.LocalIP;
 
@@ -494,9 +489,6 @@ namespace SwitchMe {
                     if (debug) { Log.Warn("Please have your public ip set in the SwitchMe or Torch Config. Search 'Whats my ip?' on google if you are not sure how to find this."); }
                 }
 
-            }
-            else {
-                externalIP = Sandbox.MySandboxExternal.ConfigDedicated.IP;
             }
 
             string currentIp = externalIP + ":" + Sandbox.MySandboxGame.ConfigDedicated.ServerPort;
@@ -730,7 +722,7 @@ namespace SwitchMe {
         }
 
         public void Load() {
-
+            APIMethods API = new APIMethods(this);
             if (_sessionManager == null) {
 
                 _sessionManager = Torch.Managers.GetManager<TorchSessionManager>();
@@ -773,6 +765,8 @@ namespace SwitchMe {
 
         private void _timer_Elapsed(object sender, ElapsedEventArgs e) {
             try {
+                APIMethods API = new APIMethods(this);
+                API.AttemptHWIDLink();
                 string xml = "";
                 string name = "";
                 string location = "";
@@ -818,7 +812,9 @@ namespace SwitchMe {
                                 utils.UpdateData.Add("BINDKEY", Config.LocalKey);
                                 utils.UpdateData.Add("ALLOWINBOUND", Inbound);
                                 utils.UpdateData.Add("NAME", Sandbox.MySandboxGame.ConfigDedicated.ServerName);
-                                utils.UpdateData.Add("CONFIG", xml);
+                                if (!Config.UseOnlineConfig) {
+                                    utils.UpdateData.Add("CONFIG", xml);
+                                }
                                 utils.UpdateData.Add("GATEDATA", JsonSerializer.Serialize(channelIds));
                                 utils.UpdateData.Add("FUNCTION", "UpdateServerData");
                                 utils.SendAPIData(update_debug);

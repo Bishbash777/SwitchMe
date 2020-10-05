@@ -16,6 +16,7 @@ using System.Web;
 using Torch.Mod.Messages;
 using VRage.Game;
 using VRage.Game.ModAPI;
+using System.Management;
 using Sandbox.ModAPI;
 using VRage.Groups;
 using VRageMath;
@@ -30,6 +31,7 @@ using VRage.Collections;
 using VRage.Replication;
 using System.Collections;
 using VRage.ModAPI;
+using Microsoft.Win32;
 
 namespace SwitchMe {
 
@@ -72,6 +74,18 @@ namespace SwitchMe {
             Random rand = new Random();
             var k = dictionary.Keys.ToList()[rand.Next(dictionary.Count)];
             return dictionary[k];
+        }
+
+        public static string GetMachineId() {
+            ManagementObjectCollection mbsList = null;
+            ManagementObjectSearcher mbs = new ManagementObjectSearcher("Select * From Win32_processor");
+            mbsList = mbs.Get();
+            string id = "";
+            foreach (ManagementObject mo in mbsList) {
+                id = mo["ProcessorID"].ToString();
+            }
+
+            return id;
         }
 
         public static MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group FindRelevantGroup(
