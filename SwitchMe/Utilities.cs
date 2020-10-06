@@ -41,6 +41,7 @@ namespace SwitchMe {
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
         public static Dictionary<string, string> webdata = new Dictionary<string, string>();
         public static Dictionary<string, string> UpdateData = new Dictionary<string, string>();
+        public static Dictionary<string, string> HWIDData = new Dictionary<string, string>();
         public static List<string> ReservedDicts = new List<string>();
         #pragma warning disable 649
         [ReflectedGetter(Name = "m_clientStates")]
@@ -348,6 +349,24 @@ namespace SwitchMe {
                     HttpResponseMessage response = await client.PostAsync(API_URL, content);
                     if (UpdateDebug) { Log.Warn(await response.Content.ReadAsStringAsync()); }
                     UpdateData.Clear();
+                }
+            }
+            catch (Exception e) {
+                Log.Fatal(e.ToString());
+            }
+        }
+
+        public static async void SendHWIDData(bool UpdateDebug = false) {
+            try {
+                using (HttpClient client = new HttpClient()) {
+                    List<KeyValuePair<string, string>> postData = new List<KeyValuePair<string, string>>();
+                    foreach (var kvp in HWIDData) {
+                        postData.Add(new KeyValuePair<string, string>(kvp.Key, kvp.Value));
+                    }
+                    FormUrlEncodedContent content = new FormUrlEncodedContent(postData);
+                    HttpResponseMessage response = await client.PostAsync(API_URL, content);
+                    if (UpdateDebug) { Log.Warn(await response.Content.ReadAsStringAsync()); }
+                    HWIDData.Clear();
                 }
             }
             catch (Exception e) {
