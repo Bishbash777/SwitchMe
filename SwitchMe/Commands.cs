@@ -30,6 +30,7 @@ using Sandbox.Game;
 using Sandbox.Common.ObjectBuilders;
 using VRage;
 using VRage.ObjectBuilders;
+using Torch;
 
 namespace SwitchMe {
 
@@ -195,28 +196,29 @@ namespace SwitchMe {
             Recover();
         }
 
+        [Command("info", "Completes the transfer of one grid from one server to another")]
+        [Permission(MyPromoteLevel.None)]
+        public void Info() {
+            Context.Respond($"Binding key is {Plugin.Config.LocalKey}");
+            Context.Respond($"Gate Range is {Plugin.Config.GateSize}");
+        }
+
         [Command("reload", "Reload and refresh jumpgates with debug options")]
         [Permission(MyPromoteLevel.Admin)]
-        public void reload() {
-            var player = Context.Player;
+        public async void reload() {
+            APIMethods API = new APIMethods(Plugin);
+            if (Plugin.Config.UseOnlineConfig) {
+                Context.Respond("Online config mode enabled! Reloading online config");
+                string path = await API.LoadOnlineConfig();
+                WebClient myWebClient = new WebClient();
+                myWebClient.DownloadFile($"{Plugin.API_URL + path}", Path.Combine(Plugin.StoragePath, "SwitchMeOnline.cfg"));
+                Plugin._config = Persistent<SwitchMeConfig>.Load(Path.Combine(Plugin.StoragePath, "SwitchMeOnline.cfg"));
+                Plugin.Save();
+            }
             Plugin.CloseGates();
             Plugin.OpenGates();
-            if (player == null) {
-                Context.Respond($"Jumpgates created!");
-            }
-            else {
-                utils.NotifyMessage($"Jumpgates created!", Context.Player.SteamUserId);
-            }
+            Context.Respond("Plugin reloaded!");
         }
-
-
-        /*[Command("link")]
-        [Permission(MyPromoteLevel.Admin)]
-        public void Link(string target) {
-            Vector3D Linkpos = Context.Player.GetPosition();
-            Plugin.Config.Gates.Add(txtServerName.Text + ":" + txtServerIP.Text + ":" + txtServerPort.Text);
-        }
-        */
     }
 }
 

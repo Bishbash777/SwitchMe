@@ -32,6 +32,7 @@ using VRage.Replication;
 using System.Collections;
 using VRage.ModAPI;
 using Microsoft.Win32;
+using System.Net.NetworkInformation;
 
 namespace SwitchMe {
 
@@ -78,15 +79,13 @@ namespace SwitchMe {
         }
 
         public static string GetMachineId() {
-            ManagementObjectCollection mbsList = null;
-            ManagementObjectSearcher mbs = new ManagementObjectSearcher("Select * From Win32_processor");
-            mbsList = mbs.Get();
-            string id = "";
-            foreach (ManagementObject mo in mbsList) {
-                id = mo["ProcessorID"].ToString();
-            }
+            string firstMacAddress = NetworkInterface
+                .GetAllNetworkInterfaces()
+                .Where(nic => nic.OperationalStatus == OperationalStatus.Up && nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                .Select(nic => nic.GetPhysicalAddress().ToString())
+                .FirstOrDefault();
 
-            return id;
+            return firstMacAddress;
         }
 
         public static MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group FindRelevantGroup(

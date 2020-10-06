@@ -53,7 +53,7 @@ namespace SwitchMe {
 
         public utils utils = new utils();
         public SwitchMeConfig Config => _config?.Data;
-        private Persistent<SwitchMeConfig> _config;
+        public Persistent<SwitchMeConfig> _config;
 
         private UserControl _control;
         public static string ip;
@@ -91,6 +91,7 @@ namespace SwitchMe {
         public bool debug = false;
         public string API_URL = "http://switchplugin.net/api2/";
         public bool loadFailure = false;
+        public bool downloaded_config = false;
 
 
 
@@ -110,10 +111,6 @@ namespace SwitchMe {
             if (_config?.Data == null) {
                 Log.Info("Creating default confuration file, because none was found!");
                 _config = new Persistent<SwitchMeConfig>(configFile, new SwitchMeConfig());
-
-                if (Config.UseOnlineConfig) {
-                    //_config = download online config and load it.
-                }
                 Save();
             }
             
@@ -767,6 +764,19 @@ namespace SwitchMe {
             try {
                 APIMethods API = new APIMethods(this);
                 API.AttemptHWIDLink();
+
+                if (!downloaded_config && Config.UseOnlineConfig) {
+                    //_config = download online config and load it.
+                    Log.Info("Online config mode enabled! Downloading and saving config from database");
+                    downloaded_config = true;
+                    string path = Task.Run(async () => await API.LoadOnlineConfig()).Result;
+                    WebClient myWebClient = new WebClient();
+                    myWebClient.DownloadFile($"{API_URL + path}", Path.Combine(StoragePath, "SwitchMeOnline.cfg"));
+                    _config = Persistent<SwitchMeConfig>.Load(Path.Combine(StoragePath, "SwitchMeOnline.cfg"));
+                    Log.Info("Saving and updated to online config!");
+                    Save();
+                }
+
                 string xml = "";
                 string name = "";
                 string location = "";
