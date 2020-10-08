@@ -37,21 +37,6 @@ namespace SwitchMe {
     [Category("switch")]
     public class Commands : CommandModule {
 
-        #pragma warning disable 649
-        [ReflectedGetter(Name = "m_clientStates")]
-        private static Func<MyReplicationServer, IDictionary> _clientStates;
-
-        private const string CLIENT_DATA_TYPE_NAME = "VRage.Network.MyClient, VRage";
-        [ReflectedGetter(TypeName = CLIENT_DATA_TYPE_NAME, Name = "Replicables")]
-        private static Func<object, MyConcurrentDictionary<IMyReplicable, MyReplicableClientData>> _replicables;
-
-        [ReflectedMethod(Name = "RemoveForClient", OverrideTypeNames = new[] { null, CLIENT_DATA_TYPE_NAME, null })]
-        private static Action<MyReplicationServer, IMyReplicable, object, bool> _removeForClient;
-
-        [ReflectedMethod(Name = "ForceReplicable")]
-        private static Action<MyReplicationServer, IMyReplicable, Endpoint> _forceReplicable;
-        #pragma warning restore 649
-
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         public SwitchMePlugin Plugin => (SwitchMePlugin) Context.Plugin;
@@ -196,28 +181,30 @@ namespace SwitchMe {
             Recover();
         }
 
-        [Command("info", "Completes the transfer of one grid from one server to another")]
-        [Permission(MyPromoteLevel.None)]
-        public void Info() {
-            Context.Respond($"Binding key is {Plugin.Config.LocalKey}");
-            Context.Respond($"Gate Range is {Plugin.Config.GateSize}");
-        }
-
         [Command("reload", "Reload and refresh jumpgates with debug options")]
         [Permission(MyPromoteLevel.Admin)]
-        public async void reload() {
+        public async void Reload() {
             APIMethods API = new APIMethods(Plugin);
             if (Plugin.Config.UseOnlineConfig) {
                 Context.Respond("Online config mode enabled! Reloading online config");
-                string path = await API.LoadOnlineConfig();
-                WebClient myWebClient = new WebClient();
-                myWebClient.DownloadFile($"{Plugin.API_URL + path}", Path.Combine(Plugin.StoragePath, "SwitchMeOnline.cfg"));
-                Plugin._config = Persistent<SwitchMeConfig>.Load(Path.Combine(Plugin.StoragePath, "SwitchMeOnline.cfg"));
-                Plugin.Save();
+                var api_response = await API.LoadOnlineConfig();
+                if (api_response["responseCode"] == "0") {
+                    WebClient myWebClient = new WebClient();
+                    myWebClient.DownloadFile($"{Plugin.API_URL + api_response["path"]}", Path.Combine(Plugin.StoragePath, "SwitchMeOnline.cfg"));
+                    Plugin._config = Persistent<SwitchMeConfig>.Load(Path.Combine(Plugin.StoragePath, "SwitchMeOnline.cfg"));
+                    Plugin.Save();
+                }
             }
             Plugin.CloseGates();
             Plugin.OpenGates();
             Context.Respond("Plugin reloaded!");
+        }
+
+        [Command("password", "Completes the transfer of one grid from one server to another")]
+        [Permission(MyPromoteLevel.Owner)]
+        public void Password() {
+            Context.Respond($"Your online config password is: {utils.GetMachineId()}");
+            Log.Info($"Config panel password: {utils.GetMachineId()}");
         }
     }
 }

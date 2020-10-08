@@ -29,7 +29,9 @@ namespace SwitchMe {
 
             Plugin = plugin;
             DataContext = plugin.Config;
-
+            if (plugin.Config.UseOnlineConfig) {
+                control.IsEnabled = false;
+            }
             UpdateDataGrid();
         }
 

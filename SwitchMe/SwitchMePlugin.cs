@@ -767,14 +767,16 @@ namespace SwitchMe {
 
                 if (!downloaded_config && Config.UseOnlineConfig) {
                     //_config = download online config and load it.
-                    Log.Info("Online config mode enabled! Downloading and saving config from database");
                     downloaded_config = true;
-                    string path = Task.Run(async () => await API.LoadOnlineConfig()).Result;
-                    WebClient myWebClient = new WebClient();
-                    myWebClient.DownloadFile($"{API_URL + path}", Path.Combine(StoragePath, "SwitchMeOnline.cfg"));
-                    _config = Persistent<SwitchMeConfig>.Load(Path.Combine(StoragePath, "SwitchMeOnline.cfg"));
-                    Log.Info("Saving and updated to online config!");
-                    Save();
+                    var api_response = Task.Run(async () => await API.LoadOnlineConfig()).Result;
+                    if (api_response["responseCode"] == "0") {
+                        Log.Info("Online config mode enabled! Downloading and saving config from database");
+                        WebClient myWebClient = new WebClient();
+                        myWebClient.DownloadFile($"{API_URL + api_response["path"]}", Path.Combine(StoragePath, "SwitchMeOnline.cfg"));
+                        _config = Persistent<SwitchMeConfig>.Load(Path.Combine(StoragePath, "SwitchMeOnline.cfg"));
+                        Log.Info("Saving and updated to online config!");
+                        Save();
+                    }
                 }
 
                 string xml = "";
@@ -812,25 +814,19 @@ namespace SwitchMe {
                         if (Config.InboundTransfersState)
                             Inbound = "Y";
                         try {
-                            if (!utils.ReservedDicts.Contains("UpdateData")) {
-
-                                utils.ReservedDicts.Add("UpdateData");
-                                utils.UpdateData.Add("CURRENTPLAYERS", currentPlayers);
-                                utils.UpdateData.Add("MAXPLAYERS", maxPlayers);
-                                utils.UpdateData.Add("CURRENTIP", currentIP());
-                                utils.UpdateData.Add("VERSION", "2.0.0");
-                                utils.UpdateData.Add("BINDKEY", Config.LocalKey);
-                                utils.UpdateData.Add("ALLOWINBOUND", Inbound);
-                                utils.UpdateData.Add("NAME", Sandbox.MySandboxGame.ConfigDedicated.ServerName);
-                                if (!Config.UseOnlineConfig) {
-                                    utils.UpdateData.Add("CONFIG", xml);
-                                }
-                                utils.UpdateData.Add("GATEDATA", JsonSerializer.Serialize(channelIds));
-                                utils.UpdateData.Add("FUNCTION", "UpdateServerData");
-                                utils.SendAPIData(update_debug);
-                                utils.ReservedDicts.Remove("UpdateData");
+                            utils.UpdateData.Add("CURRENTPLAYERS", currentPlayers);
+                            utils.UpdateData.Add("MAXPLAYERS", maxPlayers);
+                            utils.UpdateData.Add("CURRENTIP", currentIP());
+                            utils.UpdateData.Add("VERSION", "2.0.0");
+                            utils.UpdateData.Add("BINDKEY", Config.LocalKey);
+                            utils.UpdateData.Add("ALLOWINBOUND", Inbound);
+                            utils.UpdateData.Add("NAME", Sandbox.MySandboxGame.ConfigDedicated.ServerName);
+                            if (!Config.UseOnlineConfig) {
+                                utils.UpdateData.Add("CONFIG", xml);
                             }
-
+                            utils.UpdateData.Add("GATEDATA", JsonSerializer.Serialize(channelIds));
+                            utils.UpdateData.Add("FUNCTION", "UpdateServerData");
+                            utils.SendAPIData(update_debug);
                         }
                         catch (Exception es) {
                             Log.Error("Data error: " + es.ToString());
