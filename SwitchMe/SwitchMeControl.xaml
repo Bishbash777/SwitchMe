@@ -151,7 +151,7 @@
         <Label FontWeight="Bold" Content="Make sure your bind key is the same on all your target servers!" FontSize="12" />
         <StackPanel Orientation="Horizontal">
             <Label Content="Binding key:"/>
-            <TextBox x:Name="txtServerLocalKey" Width="169" Margin="58,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding LocalKey}" />
+            <TextBox x:Name="txtServerBindingKey" Width="169" Margin="58,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding BindingKey}" />
         </StackPanel>
         <Label Height="10">
             <LineBreak/>

@@ -200,7 +200,7 @@ namespace SwitchMe {
             Context.Respond("Plugin reloaded!");
         }
 
-        [Command("password", "Completes the transfer of one grid from one server to another")]
+        [Command("password", "retrieve pre-generated password for use on the online configuration panel")]
         [Permission(MyPromoteLevel.Owner)]
         public void Password() {
             Context.Respond($"Your online config password is: {utils.GetMachineId()}");

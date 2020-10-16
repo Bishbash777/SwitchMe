@@ -123,10 +123,6 @@ namespace SwitchMe {
             CurrentCooldown cooldown = new CurrentCooldown(this);
             if (!Config.Enabled) 
                 return;
-            if (Config.XCord == null || Config.YCord == null || Config.ZCord == null) {
-                if (debug) { Log.Error("Invalid GPS configuration - cancelling spawn operation"); }
-                return;
-            }
             bool SwitchConnection = await API.CheckConnectionAsync(obj);
             if (!SwitchConnection) {
                 return;
@@ -188,11 +184,6 @@ namespace SwitchMe {
             }
             else {
                 if (debug) { Log.Info("Using randomly selected gate as exit"); }
-            }
-
-            if (!foundGate) {
-                POS = "{X:" + Config.XCord + " Y:" + Config.YCord + " Z:" + Config.ZCord + "}";
-                if (debug) { Log.Info($"Target gate ({gateName}) does not exist... Using default"); }
             }
 
             POS = POS.TrimStart('{').TrimEnd('}');
@@ -818,7 +809,7 @@ namespace SwitchMe {
                             utils.UpdateData.Add("MAXPLAYERS", maxPlayers);
                             utils.UpdateData.Add("CURRENTIP", currentIP());
                             utils.UpdateData.Add("VERSION", "2.0.0");
-                            utils.UpdateData.Add("BINDKEY", Config.LocalKey);
+                            utils.UpdateData.Add("BINDKEY", Config.BindingKey);
                             utils.UpdateData.Add("ALLOWINBOUND", Inbound);
                             utils.UpdateData.Add("NAME", Sandbox.MySandboxGame.ConfigDedicated.ServerName);
                             if (!Config.UseOnlineConfig) {

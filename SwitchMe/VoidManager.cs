@@ -118,10 +118,6 @@ namespace SwitchMe {
                     Log.Warn("Using randomly selected gate as exit");
                 }
 
-                if (!foundGate) {
-                    POS = "{X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord + "}";
-                    Log.Error($"Target gate ({gatename}) does not exist... Using default");
-                }
                 /*
                 else if (config.EnabledMirror)
                     POS = POSsource.Substring(0, POSsource.IndexOf("^"));

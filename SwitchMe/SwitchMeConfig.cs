@@ -28,15 +28,6 @@ namespace SwitchMe {
         private bool _inboundTransfersState = false;
         public bool InboundTransfersState { get => _inboundTransfersState; set => SetValue(ref _inboundTransfersState, value); }
 
-        private string _Xcord = "";
-        public string XCord { get => _Xcord; set => SetValue(ref _Xcord, value); }
-
-        private string _ycord = "";
-        public string YCord { get => _ycord; set => SetValue(ref _ycord, value); }
-
-        private string _zcord = "";
-        public string ZCord { get => _zcord; set => SetValue(ref _zcord, value); }
-
         private string _localIP = "";
         public string LocalIP { get => _localIP; set => SetValue(ref _localIP, value); }
 
@@ -45,8 +36,8 @@ namespace SwitchMe {
         public string ActivationKey { get => _ActivationKey; set => SetValue(ref _ActivationKey, value); }
         */
 
-        private string _localKey = "";
-        public string LocalKey { get => _localKey; set => SetValue(ref _localKey, value); }
+        private string _BindingKey = "";
+        public string BindingKey { get => _BindingKey; set => SetValue(ref _BindingKey, value); }
 
         /*
         private bool _econEnabled = false;
