@@ -157,6 +157,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="APIMethods.cs" />
+    <Compile Include="ConfigObjects.cs" />
     <Compile Include="CurrentCooldown.cs" />
     <Compile Include="GridImporter.cs" />
     <Compile Include="Commands.cs" />

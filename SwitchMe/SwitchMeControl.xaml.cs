@@ -19,7 +19,7 @@ namespace SwitchMe {
     /// </summary>
     public partial class SwitchMeControl : UserControl {
         public SwitchMePlugin Plugin { get; }
-
+        public ConfigObjects ConfigObjects = new ConfigObjects();
         public SwitchMeControl() {
 
             InitializeComponent();
@@ -37,11 +37,11 @@ namespace SwitchMe {
 
         private void UpdateDataGrid() {
 
-            var servers = from f in Plugin.Config.Servers select new { SERVER = f.Split(':')[0], IP = f.Split(':')[1], PORT = f.Split(':')[2] };
+            var servers = from f in Plugin.Config.Servers select new { SERVER = f.ServerName, IP = f.ServerIP, PORT = f.ServerPort };
 
             dgServerList.ItemsSource = servers;
             try {
-                var gates = from f in Plugin.Config.Gates select new { GateTarget = f.Split('/')[0], GPS = f.Split('/')[1], Alias = f.Split('/')[2], TargetAlias = f.Split('/')[3] };
+                var gates = from f in Plugin.Config.Gates select new { GateTarget = f.TargetServerName, GPS = ConfigObjects.ParseConvertXYZObject(f.GateLocation) , Alias = f.GateName, TargetAlias = f.TargetGate, Enabled = f.Enabled.ToString() };
                 dgServerGates.ItemsSource = gates;
             }
             catch (System.IndexOutOfRangeException) {
@@ -62,14 +62,18 @@ namespace SwitchMe {
 
         private void BtnAddServer_Click(object sender, RoutedEventArgs e) {
 
-            if (txtServerName.Text.Length > 0 && txtServerIP.Text.Length > 0 && txtServerPort.Text.Length > 0) {
+            ConfigObjects.Server server = new ConfigObjects.Server();
 
-                Plugin.Config.Servers.Add(txtServerName.Text + ":" + txtServerIP.Text + ":" + txtServerPort.Text);
+            server.ServerName = txtServerName.Text;
+            server.ServerIP = txtServerIP.Text;
+            server.ServerPort = int.Parse(txtServerPort.Text);
 
-                UpdateDataGrid();
 
-                dgServerList.Items.MoveCurrentToLast();
-            }
+            Plugin.Config.Servers.Add(server);
+
+            UpdateDataGrid();
+
+            dgServerList.Items.MoveCurrentToLast();
         }
 
         private void NumberValidationTextBox(object sender, TextCompositionEventArgs e) {
@@ -83,7 +87,10 @@ namespace SwitchMe {
 
                 dynamic dataRow = dgServerList.SelectedItem;
 
-                Plugin.Config.Servers.Remove(dataRow.SERVER + ":" + dataRow.IP + ":" + dataRow.PORT);
+                var server = Plugin.Config.Servers.SingleOrDefault(c => c.ServerName == dataRow.SERVER);
+                if (server != null)
+
+                    Plugin.Config.Servers.Remove(server);
 
                 UpdateDataGrid();
             }
@@ -101,28 +108,34 @@ namespace SwitchMe {
             }
         }
 
-        private void CheckBox_Checked(object sender, RoutedEventArgs e) {
-
-        }
-
         private void btnAddGate_Click(object sender, RoutedEventArgs e) {
-            string POS = "{X:" + XCordGate.Text + " Y:" + YCordGate.Text + " Z:" + ZCordGate.Text + "}";
-            if (POS.Length > 0) {
+            ConfigObjects.Gate newGate = new ConfigObjects.Gate();
+            newGate.TargetServerName = txtGateTarget.Text;
+            newGate.GateName = txtGateAlias.Text;
+            newGate.TargetGate = txtTargetAlias.Text;
+            newGate.GateLocation.X = XCordGate.Text;
+            newGate.GateLocation.Y = YCordGate.Text;
+            newGate.GateLocation.Z = ZCordGate.Text;
 
-                Plugin.Config.Gates.Add($"{txtGateTarget.Text}/{POS}/{txtGateAlias.Text}/{txtTargetAlias.Text}");
-
-                UpdateDataGrid();
-
-                dgServerGates.Items.MoveCurrentToLast();
+            var comboBoxItem = CbxGateEnabled.Items[CbxGateEnabled.SelectedIndex] as ComboBoxItem;
+            if (comboBoxItem != null) {
+                newGate.Enabled = bool.Parse(comboBoxItem.Content.ToString());
             }
+            Plugin.Config.Gates.Add(newGate);
+
+            UpdateDataGrid();
+
+            dgServerGates.Items.MoveCurrentToLast();
         }
 
         private void btnDelGate_Click(object sender, RoutedEventArgs e) {
             if (dgServerGates.SelectedIndex >= 0) {
 
                 dynamic dataRowGate = dgServerGates.SelectedItem;
-
-                Plugin.Config.Gates.Remove($"{dataRowGate.GateTarget}/{dataRowGate.GPS}/{dataRowGate.Alias}/{dataRowGate.TargetAlias}");
+                var gate = Plugin.Config.Gates.SingleOrDefault(c => c.GateName == dataRowGate.GateTarget);
+                if (gate != null)
+                    Plugin.Config.Gates.Remove(gate);
+                
 
                 UpdateDataGrid();
             }

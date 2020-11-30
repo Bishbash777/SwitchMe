@@ -66,6 +66,13 @@
             <TextBox x:Name="txtTargetAlias" Width="169" Margin="35,3,0,3" HorizontalAlignment="Right" Height="20" />
         </StackPanel>
         <StackPanel Orientation="Horizontal">
+            <Label Content="Target Gate Alias:"/>
+            <ComboBox x:Name="CbxGateEnabled" SelectedIndex="0" Width="169" Margin="35,3,0,3" HorizontalAlignment="Right" Height="20" >
+                <ComboBoxItem Content="true" />
+                <ComboBoxItem Content="false"/>
+            </ComboBox>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
             <Button x:Name="btnAddGate" Width="100" Content="Add Gate" Margin="3"  Height="22" Click="btnAddGate_Click" />
             <Button x:Name="btnDelGate" Width="100" Content="Delete Gate" Margin="3" Click="btnDelGate_Click" />
         </StackPanel>
@@ -75,8 +82,9 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Binding="{Binding GateTarget}" Header="Target Server"/>
                     <DataGridTextColumn Binding="{Binding GPS}" Header="GPS"/>
-                    <DataGridTextColumn Binding="{Binding Alias}" Header="Gate Alias"/>
-                    <DataGridTextColumn Binding="{Binding TargetAlias}" Header="Target Gate Alias"/>
+                    <DataGridTextColumn Binding="{Binding Alias}" Header="Gate Name"/>
+                    <DataGridTextColumn Binding="{Binding TargetAlias}" Header="Target Gate Name"/>
+                    <DataGridTextColumn Binding="{Binding Enabled}" Header="Enabled"/>
                 </DataGrid.Columns>
             </DataGrid>
         </StackPanel>

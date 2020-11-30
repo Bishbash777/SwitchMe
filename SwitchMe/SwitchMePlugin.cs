@@ -54,6 +54,7 @@ namespace SwitchMe {
         public utils utils = new utils();
         public SwitchMeConfig Config => _config?.Data;
         public Persistent<SwitchMeConfig> _config;
+        public ConfigObjects ConfigObjects = new ConfigObjects();
 
         private UserControl _control;
         public static string ip;
@@ -161,30 +162,12 @@ namespace SwitchMe {
 
             string POS = "";
             string gateName = await API.GetGateAsync(obj.SteamId.ToString());
-            bool foundGate = false;
-            IEnumerable<string> channelIds = Config.Gates.Where(c => c.Split('/')[2].Equals(gateName));
-            foreach (string chId in channelIds) {
-                POS = chId.Split('/')[1];
-                foundGate = true;
+            foreach (ConfigObjects.Gate gate in Config.Gates.Where(c => c.GateName.Equals(gateName))) {
+                POS = ConfigObjects.ParseConvertXYZObject(gate.GateLocation);
             }
-            if (Config.RandomisedExit) {
-                Dictionary<string, string> gateSelection = new Dictionary<string, string>();
-                channelIds = Config.Gates;
-                int i = 0;
-                foreach (string gate in channelIds) {
-                    i++;
-                    gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
-                }
-                if (i != 0) {
-                    POS = utils.SelectRandomGate(gateSelection);
-                }
-            }
-            if (!Config.RandomisedExit) {
-                if (debug) { Log.Info($"API: Gate elected = {gateName}"); }
-            }
-            else {
-                if (debug) { Log.Info("Using randomly selected gate as exit"); }
-            }
+            
+            if (debug) { Log.Info($"API: Gate elected = {gateName}"); }
+           
 
             POS = POS.TrimStart('{').TrimEnd('}');
             Vector3D.TryParse(POS, out Vector3D gps);
@@ -505,12 +488,11 @@ namespace SwitchMe {
                     * and then the distance squared as the value
                     * to a Dictionary type variable
                     */
-                    IEnumerable<string> Gates = Config.Gates;
                     Dictionary<string, double> GateDistances = new Dictionary<string, double>();
-                    foreach (string gateId in Gates) {
-                        name = gateId.Split('/')[0];
-                        location = gateId.Split('/')[1];
-                        TargetAlias = gateId.Split('/')[3];
+                    foreach (ConfigObjects.Gate gate in Config.Gates) {
+                        name = gate.GateName;
+                        location = ConfigObjects.ParseConvertXYZObject(gate.GateLocation);
+                        TargetAlias = gate.TargetGate;
                         location = location.TrimStart('{').TrimEnd('}');
                         Vector3D.TryParse(location, out Vector3D gps);
                         GateDistances.Add(name, Vector3D.DistanceSquared(player.GetPosition(), gps));
@@ -525,9 +507,8 @@ namespace SwitchMe {
                     */
                     GateDistances = GateDistances.OrderBy(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
                     string closest_gate = GateDistances.FirstOrDefault().Key;
-                    IEnumerable<string> SpecficGate = Config.Gates.Where(c => c.Split('/')[0].Equals(closest_gate));
-                    foreach (string bit in SpecficGate) {
-                        TargetAlias = bit.Split('/')[3];
+                    foreach (ConfigObjects.Gate gate in Config.Gates.Where(c => c.TargetServerName.Equals(closest_gate))) {
+                        TargetAlias = gate.TargetGate;
                     }
 
                     /*
@@ -535,11 +516,10 @@ namespace SwitchMe {
                     * to find the server details of where the gate has been setup to 
                     * direct the players to.
                     */
-                    IEnumerable<string> channelIds = Config.Servers.Where(c => c.Split(':')[0].Equals(closest_gate));
-                    foreach (string chId in channelIds) {
-                        ip = chId.Split(':')[1];
-                        name = chId.Split(':')[0];
-                        port = chId.Split(':')[2];
+                    foreach (ConfigObjects.Server server in Config.Servers.Where(c => c.ServerName.Equals(closest_gate))) {
+                        name = server.ServerName;
+                        ip = server.ServerIP;
+                        port = server.ServerPort.ToString();
                     }
                     string target = ip + ":" + port;
 
@@ -648,12 +628,11 @@ namespace SwitchMe {
 
         public void OpenGates() {
             int gates = 0;
-            IEnumerable<string> channelIds = Config.Gates;
             string name = "";
             string location = "";
-            foreach (string chId in channelIds) {
-                name = chId.Split('/')[0];
-                location = chId.Split('/')[1].TrimStart('{').TrimEnd('}');
+            foreach (ConfigObjects.Gate gate in Config.Gates) {
+                name = gate.GateName;
+                location = ConfigObjects.ParseConvertXYZObject(gate.GateLocation);
                 Vector3D.TryParse(location, out Vector3D gps);
                 var ob = new MyObjectBuilder_SafeZone();
                 ob.PositionAndOrientation = new MyPositionAndOrientation(gps, Vector3.Forward, Vector3.Up);
@@ -771,15 +750,11 @@ namespace SwitchMe {
                 }
 
                 string xml = "";
-                string name = "";
-                string location = "";
-                string alias = "";
                 string Inbound = "N";
-                Dictionary<string, string> gateData = new Dictionary<string,string>();string targetAlias = "";
+                Dictionary<string, string> gateData = new Dictionary<string,string>();
                 Dictionary<string, Dictionary<string, string>> gate = new Dictionary<string, Dictionary<string, string>>();
                 Dictionary<string, Dictionary<string, Dictionary<string, string>>> gates = new Dictionary<string, Dictionary<string, Dictionary<string, string>>>();
 
-                IEnumerable<string> channelIds = Config.Gates;
                 try {
                     xml = File.ReadAllText(Path.Combine(StoragePath, "SwitchMe.cfg"));
                 }
@@ -793,12 +768,7 @@ namespace SwitchMe {
                     string maxPlayers = MySession.Static.MaxPlayers.ToString();
                     string currentPlayers = MySession.Static.Players.GetOnlinePlayers().Count.ToString();
 
-                    foreach (string chId in channelIds) {
-                        name = chId.Split('/')[0];
-                        location = chId.Split('/')[1];
-                        alias = chId.Split('/')[2];
-                        targetAlias = chId.Split('/')[3];                        
-                    }
+                   
 
                     if (Torch.CurrentSession != null && currentIP().Length > 1) {
 
@@ -815,7 +785,7 @@ namespace SwitchMe {
                             if (!Config.UseOnlineConfig) {
                                 utils.UpdateData.Add("CONFIG", xml);
                             }
-                            utils.UpdateData.Add("GATEDATA", JsonSerializer.Serialize(channelIds));
+                            utils.UpdateData.Add("GATEDATA", JsonSerializer.Serialize(Config.Gates));
                             utils.UpdateData.Add("FUNCTION", "UpdateServerData");
                             utils.SendAPIData(update_debug);
                         }

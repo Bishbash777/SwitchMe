@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using Torch;
 
 namespace SwitchMe {
@@ -71,11 +72,11 @@ namespace SwitchMe {
         private int _confirmationInSeconds = 30; //30 Seconds
         public int CooldownInSeconds { get => _cooldownInSeconds; set => SetValue(ref _cooldownInSeconds, value); }
 
-        private ObservableCollection<string> _switchServers = new ObservableCollection<string>();
-        public ObservableCollection<string> Servers { get => _switchServers; set => SetValue(ref _switchServers, value); }
+        private List<ConfigObjects.Gate> _gates = new List<ConfigObjects.Gate>() { new ConfigObjects.Gate()};
+        public List<ConfigObjects.Gate> Gates { get => _gates; set => SetValue(ref _gates, value); }
 
-        private ObservableCollection<string> _switchGates = new ObservableCollection<string>();
-        public ObservableCollection<string> Gates { get => _switchGates; set => SetValue(ref _switchGates, value); }
+        private List<ConfigObjects.Server> _servers = new List<ConfigObjects.Server>() { new ConfigObjects.Server() };
+        public List<ConfigObjects.Server> Servers { get => _servers; set => SetValue(ref _servers, value); }
 
     }
 }

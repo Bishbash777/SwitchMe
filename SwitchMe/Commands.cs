@@ -93,14 +93,12 @@ namespace SwitchMe {
             StringBuilder sb = new StringBuilder();
             string name;
 
-            IEnumerable<string> channelIds = Plugin.Config.Servers;
+            
 
-            foreach (string chId in channelIds) {
+            foreach (ConfigObjects.Server server in Plugin.Config.Servers) {
 
-                name = chId.Split(':')[0];
-                string ip = chId.Split(':')[1];
-                string port = chId.Split(':')[2];
-                string target = ip + ":" + port;
+                name = server.ServerName;
+                string target = server.ServerIP + ":" + server.ServerPort.ToString();
                 bool paired = await API.CheckKeyAsync(target);
 
                 if (paired == true) 
@@ -128,14 +126,10 @@ namespace SwitchMe {
         [Command("gates","Get the gps locations of jump gates in this server")]
         [Permission(MyPromoteLevel.None)]
         public void GetGates() {
+            ConfigObjects configObjects = new ConfigObjects();
             Context.Respond("Getting GPS locations for active jumpgates...");
-            IEnumerable<string> channelIds = Plugin.Config.Gates;
-            string name = "";
-            string location = "";
-            foreach (string chId in channelIds) {
-                name = chId.Split('/')[0];
-                location = chId.Split('/')[1];
-                Context.Respond($"GPS:{name}:{utils.GetSubstringByString("X:","Y", location)}:{utils.GetSubstringByString("Y:", "Z", location)}:{ utils.GetSubstringByString("Z:", "}", location)}");
+            foreach (ConfigObjects.Gate gate in Plugin.Config.Gates) {
+                Context.Respond($"GPS:{configObjects.ParseConvertXYZObject(gate.GateLocation)}");
             }
         }
 

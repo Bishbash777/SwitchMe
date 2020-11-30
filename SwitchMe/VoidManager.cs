@@ -24,6 +24,7 @@ namespace SwitchMe {
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         private readonly string ExportPath = "SwitchTemp\\{0}.xml";
+        public ConfigObjects ConfigObjects = new ConfigObjects();
 
         private readonly SwitchMePlugin Plugin;
         private readonly CommandContext Context;
@@ -94,22 +95,22 @@ namespace SwitchMe {
                 // DO THE RANDOMISER SHIT BISH
                 //
                 bool foundGate = false;
-                IEnumerable<string> channelIds = Plugin.Config.Gates.Where(c => c.Split('/')[2].Equals(gatename));
-                foreach (string chId in channelIds) {
-                    POS = chId.Split('/')[1];
+
+                foreach (ConfigObjects.Gate gate in Plugin.Config.Gates.Where(gate => gate.GateName.Equals(gatename))) {
+                    POS = ConfigObjects.ParseConvertXYZObject(gate.GateLocation);
                     foundGate = true;
                 }
                 if (Plugin.Config.RandomisedExit) {
-                    Dictionary<string, string> gateSelection = new Dictionary<string, string>();
-                    channelIds = Plugin.Config.Gates;
-                    int i = 0;
-                    foreach (string gate in channelIds) {
-                        i++;
-                        gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
-                    }
-                    if (i != 0) {
-                        POS = utils.SelectRandomGate(gateSelection);
-                    }
+                    //Dictionary<string, string> gateSelection = new Dictionary<string, string>();
+                    //channelIds = Plugin.Config.Gates;
+                    //int i = 0;
+                    //foreach (string gate in channelIds) {
+                    //    i++;
+                        //gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
+                    //}
+                    //if (i != 0) {
+                    //    POS = utils.SelectRandomGate(gateSelection);
+                    //}
                 }
                 if (!Plugin.Config.RandomisedExit) {
                     Log.Warn($"API: Gate elected = {gatename}");
@@ -223,13 +224,11 @@ namespace SwitchMe {
             }
 
             int i = 0;
-            IEnumerable<string> channelIds = Plugin.Config.Servers;
 
-            foreach (string chId in channelIds) {
-
-                ip = chId.Split(':')[1];
-                name = chId.Split(':')[0];
-                port = chId.Split(':')[2];
+            foreach (ConfigObjects.Server server in Plugin.Config.Servers) {
+                name = server.ServerName;
+                ip = server.ServerIP;
+                port = server.ServerPort.ToString();
                 i++;
             }
 
@@ -288,12 +287,11 @@ namespace SwitchMe {
 
             else {
 
-                channelIds = Plugin.Config.Servers.Where(c => c.Split(':')[0].Equals(Context.RawArgs));
 
-                foreach (string chId in channelIds) {
-                    ip = chId.Split(':')[1];
-                    name = chId.Split(':')[0];
-                    port = chId.Split(':')[2];
+                foreach (ConfigObjects.Server server in Plugin.Config.Servers.Where(server => server.ServerName.Equals(Context.RawArgs))) {
+                    name = server.ServerName;
+                    ip = server.ServerIP;
+                    port = server.ServerPort.ToString();
                 }
 
                 string target = ip + ":" + port;
