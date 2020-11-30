@@ -14,9 +14,6 @@ using System.Windows.Input;
 
 namespace SwitchMe {
 
-    /// <summary>
-    /// Interação lógica para SEDBControl.xaml
-    /// </summary>
     public partial class SwitchMeControl : UserControl {
         public SwitchMePlugin Plugin { get; }
         public ConfigObjects ConfigObjects = new ConfigObjects();
