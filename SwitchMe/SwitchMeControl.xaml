@@ -3,200 +3,152 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d" Height="1299.924">
-    <StackPanel Margin="0,0,0,10" Name="control">
-        <Label x:Name="popupTarget" FontWeight="Bold" FontSize="16" Content="SwitchMe Configuration:" Height="31" Margin="1,0,0,0" />
-        <DockPanel Height="31" LastChildFill="False" Margin="0,0,20,0">
-            <Border DockPanel.Dock="Bottom" Height="37" Margin="-1,0,-10,0">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="1,0" EndPoint="0,0">
-                        <GradientStop Offset="1" Color="#55555555"/>
-                        <GradientStop Offset="0" Color="Transparent"/>
-                    </LinearGradientBrush>
-                </Border.Background>
-                <Button  Content="Save Config" Click="SaveConfig_OnClick" Margin="10,4,0,10" HorizontalAlignment="Left" Width="78" />
-            </Border>
-        </DockPanel>
-        <CheckBox Content="Enabled" Margin="3" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
-        <CheckBox Content="Debug" Margin="3" IsChecked="{Binding Debug}" ToolTip="Enable or disable debug mode"/>
-        <StackPanel Orientation="Horizontal">
-            <CheckBox Content="Enable jumpgates" Margin="3" IsChecked="{Binding EnabledJumpgate}" ToolTip="Enable or disable SwitchMe Jumpgates"/>
-            <Label Content="(Beta feature - grids *may* be stuck in the void)" FontSize="8"/>
-        </StackPanel>
-        <CheckBox Content="Enable outbound grid transfers" Margin="3" IsChecked="{Binding EnabledTransfers}" ToolTip="Enable or disable grid transfers on SwitchMe" Height="18"/>
-        <CheckBox Content="Enable inbound grid transfers" Margin="3" IsChecked="{Binding InboundTransfersState}" ToolTip="Enable or disable inbound grid transfers on SwitchMe" Height="18"/>
-        <CheckBox Content="Randomise exit gate at target server" Margin="3" IsChecked="{Binding RandomisedExit}" ToolTip="Randomise exit gate on this server..." Height="18"/>
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Radius of jumpgate (Meters):"/>
-            <TextBox x:Name="txtSafeRange" Width="29" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding GateSize}" />
-        </StackPanel>
-        <Label Height="3">
-            <LineBreak/>
-        </Label>
-        <Label Content="Co-ordinates for Recover on connect and Locked positioning:" FontSize="10" />
-        <StackPanel Orientation="Horizontal">
-            <Label Content="X:"/>
-            <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding XCord}" />
-            <Label Content="Y:"/>
-            <TextBox Width="98" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding YCord}" />
-            <Label Content="Z:"/>
-            <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding ZCord}" />
-        </StackPanel>
+             mc:Ignorable="d" Height="685">
+    <Grid HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" x:Name="control">
+        <TabControl Height="650" Margin="0,25,0,-25">
 
-        <Label FontWeight="Bold" FontSize="13" Content="Jumpgates:" Height="31" Margin="1,0,0,0" />
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Target Server Name:"/>
-            <TextBox x:Name="txtGateTarget" Width="169" Margin="19,3,0,3" HorizontalAlignment="Right" Height="20" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Gate GPS:"/>
-            <Label Content="X:" Width="23"/>
-            <TextBox Width="90" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" x:Name="XCordGate" Text="{Binding XCordJump}"/>
-            <Label Content="Y:" Width="20"/>
-            <TextBox Width="86" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" x:Name="YCordGate" Text="{Binding YCordJump}"/>
-            <Label Content="Z:" Width="20"/>
-            <TextBox Width="88" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" x:Name="ZCordGate" Text="{Binding ZCordJump}" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Alias:"/>
-            <TextBox x:Name="txtGateAlias" Width="169" Margin="99,3,0,3" HorizontalAlignment="Right" Height="20" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Target Gate Alias:"/>
-            <TextBox x:Name="txtTargetAlias" Width="169" Margin="35,3,0,3" HorizontalAlignment="Right" Height="20" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Target Gate Alias:"/>
-            <ComboBox x:Name="CbxGateEnabled" SelectedIndex="0" Width="169" Margin="35,3,0,3" HorizontalAlignment="Right" Height="20" >
-                <ComboBoxItem Content="true" />
-                <ComboBoxItem Content="false"/>
-            </ComboBox>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <Button x:Name="btnAddGate" Width="100" Content="Add Gate" Margin="3"  Height="22" Click="btnAddGate_Click" />
-            <Button x:Name="btnDelGate" Width="100" Content="Delete Gate" Margin="3" Click="btnDelGate_Click" />
-        </StackPanel>
-
-        <StackPanel Orientation="Horizontal" Height="93">
-            <DataGrid x:Name="dgServerGates" ColumnWidth="*" Width="495" Margin="3,3,3,10" AutoGenerateColumns="False" IsReadOnly="True" SelectionChanged="dgServerGates_SelectionChanged">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Binding="{Binding GateTarget}" Header="Target Server"/>
-                    <DataGridTextColumn Binding="{Binding GPS}" Header="GPS"/>
-                    <DataGridTextColumn Binding="{Binding Alias}" Header="Gate Name"/>
-                    <DataGridTextColumn Binding="{Binding TargetAlias}" Header="Target Gate Name"/>
-                    <DataGridTextColumn Binding="{Binding Enabled}" Header="Enabled"/>
-                </DataGrid.Columns>
-            </DataGrid>
-        </StackPanel>
+            <TabItem Header="Main">
+                <Grid Background="#FFE5E5E5">
+                    <Label FontWeight="Bold" VerticalAlignment="Top" FontSize="16" Content="Operational settings:" Height="31" Margin="10,10,71,0" />
+                    <Label Content="*Please enter the ip your players use in order to connect to this instance of torch (Do not include port)." FontSize="9" Margin="14,157,112,435" />
+                    <Label Content="*Only needed if you have a local IP set in torch (eg, 0.0.0.0 , 127.0.0.0, 192.168.*.*)." FontSize="9" Margin="14,142,191,450" />
 
 
-        <!--<Label FontWeight="Bold" FontSize="13" Content="Position settings:" Height="27" Margin="1,0,0,0" />
-        <Label Content="DO NOT ENABLE IF YOU HAVE A WORLD LIMIT!" FontSize="9" Margin="28,0,0,0" />-->
-        <!--<RadioButton GroupName="positioning" Content="Enable mirrored positioning" Margin="31,3,3,3" IsChecked="{Binding EnabledMirror}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
-        <RadioButton GroupName="positioning" Content="Lock recoveries to a certain GPS position" Margin="31,3,3,3" IsChecked="{Binding LockedTransfer}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
-        <CheckBox Content="Enable specified positioning settings for recover command" Margin="3,3,3,3" IsChecked="{Binding EnabledPositioning}" ToolTip="Forces players to spawn at a co-ordinate they transfered from"/>
-        <Label Height="3">
-            <LineBreak/>
-        </Label>
-        <Label FontWeight="Bold" FontSize="13" Content="Economy settings:" Height="31" Margin="1,0,0,0" />
-        <CheckBox Content="Enable" Margin="6,3,3,3" IsChecked="{Binding EnableEcon}" ToolTip="Enable or economy integration"/>
-        <RadioButton GroupName="econ" IsChecked="{Binding PerTransfer}" Content="Per transfer cost" Margin="28,0,0,0"/>
-        <Label Height="3">
-            <LineBreak/>
-        </Label>
-        <RadioButton GroupName="econ" IsChecked="{Binding PerBlock}" Content="Per block cost" Margin="28,0,0,0"/>
-        <StackPanel Orientation="Horizontal" Margin="56,0,0,0">
-            <Label Content="Cost:"/>
-            <TextBox Width="99" Margin="3,0,0,0" HorizontalAlignment="Right" PreviewTextInput="NumberValidationTextBox" Height="20" Text="{Binding TransferCost}" />
-        </StackPanel>
-        -->
 
-        <Label Height="3">
-            <LineBreak/>
-        </Label>
 
-        <Label FontWeight="Bold" FontSize="13" Content="Block settings:" Height="29" Margin="1,0,0,0" />
-        <CheckBox Content="Enable" Margin="6,3,3,3" IsChecked="{Binding EnableBlockEnforcement}" ToolTip="Enable or economy integration"/>
-        <RadioButton GroupName="block" IsChecked="{Binding BlockAllow}" Content="Allow transfers with Certain Blocks" Margin="28,0,0,0"/>
-        <Label Height="3">
-            <LineBreak/>
-        </Label>
-        <RadioButton GroupName="block" IsChecked="{Binding BlockDisallow}" Content="Disallow transfers with Certain Blocks" Margin="28,0,0,0"/>
-        <Label Content="Subtypes to whitelist/blacklist:" Margin="28,0,0,0"/>
-        <Label Content="Seperate by , (e.g: SmallBlockSmallThrust, LargeBlockSmallThrust)" FontSize="11" Margin="56,-10,0,0" Height="28" />
-        <StackPanel Orientation="Horizontal" Margin="56,0,0,0">
-            <TextBox TextWrapping="Wrap"
+                    <Label Content="*Public IP of this server:" Height="30" VerticalAlignment="Bottom" Margin="10,0,384,475"/>
+                    <TextBox x:Name="txtServerLocalIP" Width="169" Margin="0,122,215,480" HorizontalAlignment="Right" Height="20" Text="{Binding LocalIP}" />
+
+
+                    <Label Width="Auto" Margin="229,14,84,581">
+                        <Hyperlink NavigateUri="https://www.paypal.com/paypalme2/startgatesurvival" RequestNavigate="Hyperlink_RequestNavigate">
+                            <Run Text="Like the plugin? You can donate here!"/>
+                        </Hyperlink>
+                    </Label>
+                    <CheckBox Content="Enabled" HorizontalAlignment="Left" Margin="10,51,0,0" VerticalAlignment="Top" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
+                    <CheckBox Content="Debug" HorizontalAlignment="Left" Margin="10,71,0,0" VerticalAlignment="Top" IsChecked="{Binding Debug}" ToolTip="Enable Debug mode"/>
+                    <Label Content="Binding Key" HorizontalAlignment="Left" Margin="62,208,0,0" VerticalAlignment="Top"/>
+                    <TextBox HorizontalAlignment="Left" Height="23" Margin="140,211,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="291" Text="{Binding BindingKey}" ToolTip="Binding key used to link all your servers"/>
+                    <CheckBox Content="Enable outbound grid transfers" Margin="107,75,242,529" IsChecked="{Binding EnabledTransfers}" ToolTip="Enable or disable grid transfers on SwitchMe" Height="18"/>
+                    <CheckBox Content="Enable inbound grid transfers" Margin="107,51,242,553" IsChecked="{Binding InboundTransfersState}" ToolTip="Enable or disable inbound grid transfers on SwitchMe" Height="18"/>
+
+                    <Label Content="Radius of jumpgate (Meters):" Margin="9,91,358,500"/>
+                    <TextBox x:Name="txtSafeRange" Width="69" Margin="0,98,284,504" HorizontalAlignment="Right" Height="20" Text="{Binding GateSize}" />
+
+                    <Label Content="*If this page is disabled - Uncheck the 'Use online config' checkbox*" HorizontalAlignment="Left" Margin="62,239,0,0" VerticalAlignment="Top"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Servers">
+                <Grid Background="#FFE5E5E5">
+                    <Label FontWeight="Bold" FontSize="13" Content="Add Servers to your network:" Margin="0,0,1,591" Grid.ColumnSpan="2" />
+
+
+
+                    <Label Content="Target server name:" Margin="0,46,323,545" Grid.Column="1"/>
+                    <TextBox x:Name="txtServerName" Width="275" Margin="0,50,39,552" HorizontalAlignment="Right" Grid.Column="1" />
+
+                    <Label Content="Target server IP:" Margin="0,20,323,576" Grid.Column="1"/>
+                    <TextBox x:Name="txtServerIP" Width="274" Margin="0,26,40,576" HorizontalAlignment="Right" Grid.Column="1" />
+
+                    <Label Content="Target server Port:" Margin="0,70,394,522" Grid.Column="1"/>
+                    <TextBox x:Name="txtServerPort" Width="275" Margin="0,75,39,526" HorizontalAlignment="Right" Grid.Column="1" />
+
+
+                    <Button x:Name="btnAddServer" Content="Add Server" Margin="93,110,309,479" Click="BtnAddServer_Click" Grid.Column="1" />
+                    <Button x:Name="btnDelServer" Content="Delete Server" Margin="251,110,151,479" Click="BtnDelServer_Click" Grid.Column="1" />
+
+
+                    <Grid Grid.ColumnSpan="2" Margin="0,212,0,211">
+                        <DataGrid x:Name="dgServerList" Margin="10,-62,10,83" AutoGenerateColumns="False" SelectionChanged="DgServerList_SelectionChanged" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Binding="{Binding SERVER}" Header="Server Name" Width="165"/>
+                                <DataGridTextColumn Binding="{Binding IP}" Header="Server IP" Width="165"/>
+                                <DataGridTextColumn Binding="{Binding PORT}" Header="Server Port" Width="165"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Gates">
+                <Grid Background="#FFE5E5E5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="197*"/>
+                        <ColumnDefinition Width="345*"/>
+                    </Grid.ColumnDefinitions>
+                    <Label FontWeight="Bold" FontSize="13" Content="Jumpgates:" Height="31" Margin="0,0,1,591" Grid.ColumnSpan="3" />
+                    <Label Content="Target Server Name:" Margin="33,60,42.667,534" Grid.Column="1"/>
+                    <TextBox x:Name="txtGateTarget" Width="169" Margin="0,65,210,537" HorizontalAlignment="Right" Height="20" Grid.Column="1" Grid.ColumnSpan="2" />
+
+
+                    <Label Content="Gate GPS:" Margin="33,85,82.667,512" Grid.Column="1"/>
+                    <Label Content="X:" Margin="136,88,38.667,511" Grid.Column="1"/>
+                    <TextBox Width="90" Margin="0,90,289,512" HorizontalAlignment="Right" Height="20" x:Name="XCordGate" Text="{Binding XCordJump}" Grid.Column="1" Grid.ColumnSpan="2"/>
+                    <Label Content="Y:" Margin="67.333,87,256,509" Grid.Column="2"/>
+                    <TextBox Width="90" Margin="0,90,161,512" HorizontalAlignment="Right" Height="20" x:Name="YCordGate" Text="{Binding YCordJump}" Grid.Column="2"/>
+                    <Label Content="Z:" Margin="192.333,88,133,509" Grid.Column="2" RenderTransformOrigin="0.42,0.48"/>
+                    <TextBox Width="90" Margin="0,90,38,512" HorizontalAlignment="Right" Height="20" x:Name="ZCordGate" Text="{Binding ZCordJump}" Grid.Column="2" />
+
+                    <Label Content="Gate Name:" Margin="33,38,91.667,558" Grid.Column="1"/>
+                    <TextBox x:Name="txtGateAlias" Width="169" Margin="0,36,210,566" HorizontalAlignment="Right" Height="20" Grid.Column="1" Grid.ColumnSpan="2" />
+
+                    <Label Content="Target Gate Alias:" Margin="33,111,47.667,484" Grid.Column="1"/>
+                    <TextBox x:Name="txtTargetAlias" Width="170" Margin="0,116,209,486" HorizontalAlignment="Right" Height="20" Grid.Column="1" Grid.ColumnSpan="2" />
+
+                    <Label Content="Target Gate Alias:" Margin="33,143,62.667,448" Grid.Column="1"/>
+                    <ComboBox x:Name="CbxGateEnabled" SelectedIndex="0" Width="55" Margin="0,145,324,455" HorizontalAlignment="Right" FontFamily="Segoe UI Light" RenderTransformOrigin="0.502,0.483" Grid.Column="1" Grid.ColumnSpan="2" >
+                        <ComboBoxItem Content="true" />
+                        <ComboBoxItem Content="false"/>
+                    </ComboBox>
+                    <Button x:Name="btnAddGate" Content="Add Gate" Margin="135,186,337,396" Click="btnAddGate_Click" Grid.Column="1" Grid.ColumnSpan="2" />
+                    <Button x:Name="btnDelGate" Content="Delete Gate" Margin="121.333,186,148,396" Click="btnDelGate_Click" Grid.Column="2" />
+
+                    <Grid Margin="0,264,0,213" Grid.ColumnSpan="3">
+                        <DataGrid x:Name="dgServerGates" ColumnWidth="*" Width="495" Margin="28,-26,19,39" AutoGenerateColumns="False" IsReadOnly="True" SelectionChanged="dgServerGates_SelectionChanged">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Binding="{Binding GateTarget}" Header="Target Server"/>
+                                <DataGridTextColumn Binding="{Binding GPS}" Header="GPS"/>
+                                <DataGridTextColumn Binding="{Binding Alias}" Header="Gate Name"/>
+                                <DataGridTextColumn Binding="{Binding TargetAlias}" Header="Target Gate Name"/>
+                                <DataGridTextColumn Binding="{Binding Enabled}" Header="Enabled"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Block configuration">
+                <Grid Background="#FFE5E5E5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="153*"/>
+                        <ColumnDefinition Width="370*"/>
+                    </Grid.ColumnDefinitions>
+                    <Label FontWeight="Bold" FontSize="13" Content="Block settings:" Height="29" Margin="10,3,132,590" Grid.ColumnSpan="2" />
+                    <CheckBox Content="Enable block rules" Margin="28,32,290,571" IsChecked="{Binding EnableBlockEnforcement}" ToolTip="Enable or economy integration"/>
+                    <RadioButton GroupName="block" IsChecked="{Binding BlockAllow}" Content="Allow transfers with Certain Blocks" Margin="28,79,0,523"/>
+                    <Label Height="3">
+                        <LineBreak/>
+                    </Label>
+                    <RadioButton GroupName="block" IsChecked="{Binding BlockDisallow}" Content="Disallow transfers with Certain Blocks" Margin="28,56,136,548"/>
+                    <Label Content="Subtypes to whitelist/blacklist:" Margin="26,103,73,485" Grid.ColumnSpan="2"/>
+                    <Label Content="Seperate by , (e.g: SmallBlockSmallThrust, LargeBlockSmallThrust)" FontSize="11" Margin="44,125,12,469" Height="28" />
+
+                    <TextBox TextWrapping="Wrap"
                      HorizontalScrollBarVisibility="Disabled"
-                     VerticalScrollBarVisibility="Auto" Width="338" Margin="3,0,0,0" HorizontalAlignment="Right" Height="42" Text="{Binding SubTypes}" />
-        </StackPanel>
-        <Label Content="Add Servers to link here:" />
-        <Label Content="*Please note that the Target server IP has to be the same your players connect to!" FontSize="9" />
-        <Label Height="7">
-            <LineBreak/>
-        </Label>
-        <Label Content="*Please enter the ip your players use in order to connect to this instance of torch (Do not include port)." FontSize="9" />
-        <Label Content="*Only needed if you have a local IP set in torch (eg, 0.0.0.0 , 127.0.0.0, 192.168.*.*)." FontSize="9" />
+                     VerticalScrollBarVisibility="Auto" Width="338" Margin="0,158,0,422" HorizontalAlignment="Right" Height="42" Text="{Binding SubTypes}" />
+                </Grid>
+            </TabItem>
+            <TabItem Header="Other">
+                <Grid Background="#FFE5E5E5">
 
+                </Grid>
+            </TabItem>
 
+        </TabControl>
+        <Grid>
+            <Label x:Name="popupTarget" FontWeight="Bold" VerticalAlignment="Top" FontSize="16" Content="SwitchMe Configuration:" Height="31" Margin="0,-7,0,0" />
+            <CheckBox Content="Use online config" FontSize="14" VerticalAlignment="Top" IsChecked="{Binding UseOnlineConfig}" Height="23" Width="202" Margin="232,1,115,0"/>
+            <Button Content="Save Config" HorizontalAlignment="Left" Margin="401,1,0,0" VerticalAlignment="Top" Width="99" Click="SaveConfig_OnClick" Height="31"/>
+        </Grid>
+    </Grid>
 
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Public IP of this server:"/>
-            <TextBox x:Name="txtServerLocalIP" Width="169" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding LocalIP}" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Activation Key:" Width="129"/>
-            <TextBox x:Name="txtServerKey" Width="169" Margin="3,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding ActivationKey}" />
-            <Label Content="  *Only available for monthly donators" FontSize="9" Height="22" Width="166" />
-        </StackPanel>
-        <Label Width="Auto">
-            <Hyperlink NavigateUri="https://www.paypal.com/paypalme2/startgatesurvival" RequestNavigate="Hyperlink_RequestNavigate">
-                <Run Text="Like the plugin? You can donate here!"/>
-            </Hyperlink>
-        </Label>
-        <Label Height="7">
-            <LineBreak/>
-        </Label>
-        <Label FontWeight="Bold" Content="Make sure your bind key is the same on all your target servers!" FontSize="12" />
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Binding key:"/>
-            <TextBox x:Name="txtServerBindingKey" Width="169" Margin="58,0,0,0" HorizontalAlignment="Right" Height="20" Text="{Binding BindingKey}" />
-        </StackPanel>
-        <Label Height="10">
-            <LineBreak/>
-        </Label>
-
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Target server name:"/>
-            <TextBox x:Name="txtServerName" Width="169" Margin="19,3,0,3" HorizontalAlignment="Right" Height="20" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Target server IP:"/>
-            <TextBox x:Name="txtServerIP" Width="169" Margin="39,3,0,3" HorizontalAlignment="Right" Height="20" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Target server Port:"/>
-            <TextBox x:Name="txtServerPort" Width="169" Margin="27,3,0,3" HorizontalAlignment="Right" Height="20" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-            <Button x:Name="btnAddServer" Width="100" Content="Add Server" Margin="3" Click="BtnAddServer_Click" Height="22" />
-            <Button x:Name="btnDelServer" Width="100" Content="Delete Server" Margin="3" Click="BtnDelServer_Click" />
-        </StackPanel>
-
-        <StackPanel Orientation="Horizontal" Height="199">
-            <DataGrid x:Name="dgServerList" Width="495" Margin="3,3,3,18" AutoGenerateColumns="False" SelectionChanged="DgServerList_SelectionChanged" IsReadOnly="True">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Binding="{Binding SERVER}" Header="Server Name" Width="165"/>
-                    <DataGridTextColumn Binding="{Binding IP}" Header="Server IP" Width="165"/>
-                    <DataGridTextColumn Binding="{Binding PORT}" Header="Server Port" Width="165"/>
-                </DataGrid.Columns>
-            </DataGrid>
-        </StackPanel>
-
-
-        
-
-
-
-
-    </StackPanel>
 </UserControl>
