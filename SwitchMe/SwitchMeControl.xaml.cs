@@ -11,6 +11,8 @@ using Torch;
 
 using VRage.Game;
 using System.Windows.Input;
+using System.Net;
+using System.IO;
 
 namespace SwitchMe {
 
@@ -63,7 +65,7 @@ namespace SwitchMe {
 
             server.ServerName = txtServerName.Text;
             server.ServerIP = txtServerIP.Text;
-            server.ServerPort = int.Parse(txtServerPort.Text);
+            server.ServerPort = txtServerPort.Text;
 
 
             Plugin.Config.Servers.Add(server);
@@ -145,6 +147,24 @@ namespace SwitchMe {
 
                 txtGateTarget.Text = dataRowGate.GateTarget;
             }
+        }
+
+        private async void ReloadPlugin_OnClickAsync(object sender, RoutedEventArgs e)
+        {
+            APIMethods API = new APIMethods(Plugin);
+            if (Plugin.Config.UseOnlineConfig)
+            {
+                var api_response = await API.LoadOnlineConfig();
+                if (api_response["responseCode"] == "0")
+                {
+                    WebClient myWebClient = new WebClient();
+                    myWebClient.DownloadFile($"{Plugin.API_URL + api_response["path"]}", Path.Combine(Plugin.StoragePath, "SwitchMeOnline.cfg"));
+                    Plugin._config = Persistent<SwitchMeConfig>.Load(Path.Combine(Plugin.StoragePath, "SwitchMeOnline.cfg"));
+                    Plugin.Save();
+                }
+            }
+            Plugin.CloseGates();
+            Plugin.OpenGates();
         }
     }
 }

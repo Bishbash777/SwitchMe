@@ -4,8 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" Height="685">
-    <Grid HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" x:Name="control">
-        <TabControl Height="650" Margin="0,25,0,-25">
+    <Grid HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top">
+        <TabControl Margin="0,50,0,-25" x:Name="control">
 
             <TabItem Header="Main">
                 <Grid Background="#FFE5E5E5">
@@ -20,11 +20,7 @@
                     <TextBox x:Name="txtServerLocalIP" Width="169" Margin="0,122,215,480" HorizontalAlignment="Right" Height="20" Text="{Binding LocalIP}" />
 
 
-                    <Label Width="Auto" Margin="229,14,84,581">
-                        <Hyperlink NavigateUri="https://www.paypal.com/paypalme2/startgatesurvival" RequestNavigate="Hyperlink_RequestNavigate">
-                            <Run Text="Like the plugin? You can donate here!"/>
-                        </Hyperlink>
-                    </Label>
+
                     <CheckBox Content="Enabled" HorizontalAlignment="Left" Margin="10,51,0,0" VerticalAlignment="Top" IsChecked="{Binding Enabled}" ToolTip="Enable or disable SwitchMe"/>
                     <CheckBox Content="Debug" HorizontalAlignment="Left" Margin="10,71,0,0" VerticalAlignment="Top" IsChecked="{Binding Debug}" ToolTip="Enable Debug mode"/>
                     <Label Content="Binding Key" HorizontalAlignment="Left" Margin="62,208,0,0" VerticalAlignment="Top"/>
@@ -70,41 +66,36 @@
                 </Grid>
             </TabItem>
             <TabItem Header="Gates">
-                <Grid Background="#FFE5E5E5">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition/>
-                        <ColumnDefinition Width="197*"/>
-                        <ColumnDefinition Width="345*"/>
-                    </Grid.ColumnDefinitions>
-                    <Label FontWeight="Bold" FontSize="13" Content="Jumpgates:" Height="31" Margin="0,0,1,591" Grid.ColumnSpan="3" />
-                    <Label Content="Target Server Name:" Margin="33,60,42.667,534" Grid.Column="1"/>
-                    <TextBox x:Name="txtGateTarget" Width="169" Margin="0,65,210,537" HorizontalAlignment="Right" Height="20" Grid.Column="1" Grid.ColumnSpan="2" />
+                <Grid Background="#FFE5E5E5" Margin="1,0">
+                    <Label FontWeight="Bold" FontSize="13" Content="Jumpgates:" Margin="0,0,1,591" />
+                    <Label Content="Target Server Name:" Margin="7,63,0,531"  HorizontalAlignment="Left" Width="120"/>
+                    <TextBox x:Name="txtGateTarget" Width="169" Margin="0,65,234,537" HorizontalAlignment="Right" />
 
 
-                    <Label Content="Gate GPS:" Margin="33,85,82.667,512" Grid.Column="1"/>
-                    <Label Content="X:" Margin="136,88,38.667,511" Grid.Column="1"/>
-                    <TextBox Width="90" Margin="0,90,289,512" HorizontalAlignment="Right" Height="20" x:Name="XCordGate" Text="{Binding XCordJump}" Grid.Column="1" Grid.ColumnSpan="2"/>
-                    <Label Content="Y:" Margin="67.333,87,256,509" Grid.Column="2"/>
-                    <TextBox Width="90" Margin="0,90,161,512" HorizontalAlignment="Right" Height="20" x:Name="YCordGate" Text="{Binding YCordJump}" Grid.Column="2"/>
-                    <Label Content="Z:" Margin="192.333,88,133,509" Grid.Column="2" RenderTransformOrigin="0.42,0.48"/>
-                    <TextBox Width="90" Margin="0,90,38,512" HorizontalAlignment="Right" Height="20" x:Name="ZCordGate" Text="{Binding ZCordJump}" Grid.Column="2" />
+                    <Label Content="Gate GPS:" Margin="10,87,0,510" HorizontalAlignment="Left" Width="62"/>
+                    <Label Content="X:" HorizontalAlignment="Right" Margin="0,92,403,507" RenderTransformOrigin="0.55,0.522"/>
+                    <TextBox Width="87" Margin="0,92,316,510" HorizontalAlignment="Right" x:Name="XCordGate" Text="{Binding XCordJump}"/>
+                    <Label Content="Y:" Margin="0,92,284,507" HorizontalAlignment="Right"/>
+                    <TextBox Width="87" Margin="0,92,197,510" HorizontalAlignment="Right" x:Name="YCordGate" Text="{Binding YCordJump}"/>
+                    <Label Content="Z:" HorizontalAlignment="Right"  Margin="0,92,170,504"/>
+                    <TextBox Width="100" Margin="0,92,70,510" HorizontalAlignment="Right" x:Name="ZCordGate" Text="{Binding ZCordJump}" />
 
-                    <Label Content="Gate Name:" Margin="33,38,91.667,558" Grid.Column="1"/>
-                    <TextBox x:Name="txtGateAlias" Width="169" Margin="0,36,210,566" HorizontalAlignment="Right" Height="20" Grid.Column="1" Grid.ColumnSpan="2" />
+                    <Label Content="Gate Name:" Margin="10,40,0,559" HorizontalAlignment="Left" Width="72"/>
+                    <TextBox x:Name="txtGateAlias" Width="169" Margin="0,40,234,562" HorizontalAlignment="Right"  />
 
-                    <Label Content="Target Gate Alias:" Margin="33,111,47.667,484" Grid.Column="1"/>
-                    <TextBox x:Name="txtTargetAlias" Width="170" Margin="0,116,209,486" HorizontalAlignment="Right" Height="20" Grid.Column="1" Grid.ColumnSpan="2" />
+                    <Label Content="Target Gate Alias:" Margin="10,113,0,482" HorizontalAlignment="Left" Width="101"/>
+                    <TextBox x:Name="txtTargetAlias" Width="170" Margin="0,120,233,482" HorizontalAlignment="Right" />
 
-                    <Label Content="Target Gate Alias:" Margin="33,143,62.667,448" Grid.Column="1"/>
-                    <ComboBox x:Name="CbxGateEnabled" SelectedIndex="0" Width="55" Margin="0,145,324,455" HorizontalAlignment="Right" FontFamily="Segoe UI Light" RenderTransformOrigin="0.502,0.483" Grid.Column="1" Grid.ColumnSpan="2" >
+                    <Label Content="Enabled:" Margin="10,140,0,452" HorizontalAlignment="Left" Width="62"/>
+                    <ComboBox x:Name="CbxGateEnabled" SelectedIndex="0" Width="69" Margin="0,145,334,455" HorizontalAlignment="Right" FontFamily="Segoe UI Light" RenderTransformOrigin="0.502,0.483" >
                         <ComboBoxItem Content="true" />
                         <ComboBoxItem Content="false"/>
                     </ComboBox>
-                    <Button x:Name="btnAddGate" Content="Add Gate" Margin="135,186,337,396" Click="btnAddGate_Click" Grid.Column="1" Grid.ColumnSpan="2" />
-                    <Button x:Name="btnDelGate" Content="Delete Gate" Margin="121.333,186,148,396" Click="btnDelGate_Click" Grid.Column="2" />
+                    <Button x:Name="btnAddGate" Content="Add Gate" Margin="135,186,310,396" Click="btnAddGate_Click" />
+                    <Button x:Name="btnDelGate" Content="Delete Gate" Margin="279,186,166,396" Click="btnDelGate_Click" />
 
-                    <Grid Margin="0,264,0,213" Grid.ColumnSpan="3">
-                        <DataGrid x:Name="dgServerGates" ColumnWidth="*" Width="495" Margin="28,-26,19,39" AutoGenerateColumns="False" IsReadOnly="True" SelectionChanged="dgServerGates_SelectionChanged">
+                    <Grid Margin="0,264,0,213">
+                        <DataGrid x:Name="dgServerGates" ColumnWidth="*" Width="463" Margin="28,-26,0,39" AutoGenerateColumns="False" IsReadOnly="True" SelectionChanged="dgServerGates_SelectionChanged" HorizontalAlignment="Left">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Binding="{Binding GateTarget}" Header="Target Server"/>
                                 <DataGridTextColumn Binding="{Binding GPS}" Header="GPS"/>
@@ -119,22 +110,22 @@
             <TabItem Header="Block configuration">
                 <Grid Background="#FFE5E5E5">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="153*"/>
-                        <ColumnDefinition Width="370*"/>
+                        <ColumnDefinition Width="34*"/>
+                        <ColumnDefinition Width="147*"/>
                     </Grid.ColumnDefinitions>
                     <Label FontWeight="Bold" FontSize="13" Content="Block settings:" Height="29" Margin="10,3,132,590" Grid.ColumnSpan="2" />
-                    <CheckBox Content="Enable block rules" Margin="28,32,290,571" IsChecked="{Binding EnableBlockEnforcement}" ToolTip="Enable or economy integration"/>
-                    <RadioButton GroupName="block" IsChecked="{Binding BlockAllow}" Content="Allow transfers with Certain Blocks" Margin="28,79,0,523"/>
-                    <Label Height="3">
+                    <CheckBox Content="Enable block rules" Margin="28,32,290,571" IsChecked="{Binding EnableBlockEnforcement}" ToolTip="Enable or economy integration" Grid.ColumnSpan="2"/>
+                    <RadioButton GroupName="block" IsChecked="{Binding BlockAllow}" Content="Allow transfers with Certain Blocks" Margin="28,79,0,523" Grid.ColumnSpan="2"/>
+                    <Label Height="3" Grid.ColumnSpan="2" Margin="0,310">
                         <LineBreak/>
                     </Label>
-                    <RadioButton GroupName="block" IsChecked="{Binding BlockDisallow}" Content="Disallow transfers with Certain Blocks" Margin="28,56,136,548"/>
+                    <RadioButton GroupName="block" IsChecked="{Binding BlockDisallow}" Content="Disallow transfers with Certain Blocks" Margin="28,56,136,548" Grid.ColumnSpan="2"/>
                     <Label Content="Subtypes to whitelist/blacklist:" Margin="26,103,73,485" Grid.ColumnSpan="2"/>
-                    <Label Content="Seperate by , (e.g: SmallBlockSmallThrust, LargeBlockSmallThrust)" FontSize="11" Margin="44,125,12,469" Height="28" />
+                    <Label Content="Seperate by , (e.g: SmallBlockSmallThrust, LargeBlockSmallThrust)" FontSize="11" Margin="44,125,12,469" Height="28" Grid.ColumnSpan="2" />
 
                     <TextBox TextWrapping="Wrap"
                      HorizontalScrollBarVisibility="Disabled"
-                     VerticalScrollBarVisibility="Auto" Width="338" Margin="0,158,0,422" HorizontalAlignment="Right" Height="42" Text="{Binding SubTypes}" />
+                     VerticalScrollBarVisibility="Auto" Width="338" Margin="0,158,177,422" HorizontalAlignment="Right" Height="42" Text="{Binding SubTypes}" Grid.ColumnSpan="2" />
                 </Grid>
             </TabItem>
             <TabItem Header="Other">
@@ -146,8 +137,14 @@
         </TabControl>
         <Grid>
             <Label x:Name="popupTarget" FontWeight="Bold" VerticalAlignment="Top" FontSize="16" Content="SwitchMe Configuration:" Height="31" Margin="0,-7,0,0" />
-            <CheckBox Content="Use online config" FontSize="14" VerticalAlignment="Top" IsChecked="{Binding UseOnlineConfig}" Height="23" Width="202" Margin="232,1,115,0"/>
-            <Button Content="Save Config" HorizontalAlignment="Left" Margin="401,1,0,0" VerticalAlignment="Top" Width="99" Click="SaveConfig_OnClick" Height="31"/>
+            <CheckBox Content="Use online config" HorizontalAlignment="Left" FontSize="14" VerticalAlignment="Top" IsChecked="{Binding UseOnlineConfig}" Height="23" Margin="210,5,0,0"/>
+            <Button Content="Save Config" HorizontalAlignment="Left" Margin="360,0,0,0" VerticalAlignment="Top" Width="175" Click="SaveConfig_OnClick" Height="31"/>
+            <Button Content="Reload" HorizontalAlignment="Left" Margin="360,36,0,0" VerticalAlignment="Top" Width="175" Click="ReloadPlugin_OnClickAsync" Height="31"/>
+            <Label HorizontalAlignment="Left" Margin="10,19,0,0" VerticalAlignment="Top">
+                <Hyperlink NavigateUri="https://www.paypal.com/paypalme2/startgatesurvival" RequestNavigate="Hyperlink_RequestNavigate">
+                    <Run Text="Like the plugin? You can donate here!"/>
+                </Hyperlink>
+            </Label>
         </Grid>
     </Grid>
 

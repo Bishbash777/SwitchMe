@@ -72,10 +72,10 @@ namespace SwitchMe {
         private int _confirmationInSeconds = 30; //30 Seconds
         public int CooldownInSeconds { get => _cooldownInSeconds; set => SetValue(ref _cooldownInSeconds, value); }
 
-        private List<ConfigObjects.Gate> _gates = new List<ConfigObjects.Gate>() { new ConfigObjects.Gate()};
+        private List<ConfigObjects.Gate> _gates = new List<ConfigObjects.Gate>();
         public List<ConfigObjects.Gate> Gates { get => _gates; set => SetValue(ref _gates, value); }
 
-        private List<ConfigObjects.Server> _servers = new List<ConfigObjects.Server>() { new ConfigObjects.Server() };
+        private List<ConfigObjects.Server> _servers = new List<ConfigObjects.Server>();
         public List<ConfigObjects.Server> Servers { get => _servers; set => SetValue(ref _servers, value); }
 
     }
