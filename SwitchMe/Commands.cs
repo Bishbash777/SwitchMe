@@ -148,7 +148,7 @@ namespace SwitchMe {
             VoidManager voidManager = new VoidManager(Plugin);
 
             
-            Tuple<string, string, Vector3D> data = await voidManager.DownloadGridAsync(currentIp, Context.Player.SteamUserId, Context.Player.GetPosition().ToString());
+            Tuple<string, string, GateObject> data = await voidManager.DownloadGridAsync(currentIp, Context.Player.SteamUserId, Context.Player.GetPosition().ToString());
 
             if (data == null)
             {
@@ -156,10 +156,10 @@ namespace SwitchMe {
             }
             string targetFile = data.Item1;
             string filename = data.Item2;
-            Vector3D newPos = data.Item3;
+            GateObject gate = data.Item3;
             MyAPIGateway.Utilities.InvokeOnGameThread(() => {
                 GridImporter gridManager = new GridImporter(Plugin, Context);
-                if (gridManager.DeserializeGridFromPath(targetFile, Context.Player.DisplayName, newPos))
+                if (gridManager.DeserializeGridFromPath(targetFile, Context.Player.DisplayName, gate))
                 {
                     File.Delete(targetFile);
                 }

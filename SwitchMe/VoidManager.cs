@@ -9,6 +9,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using Torch.Commands;
+using Sandbox.Common;
 using Torch.Mod;
 using Torch.Mod.Messages;
 using VRage.Groups;
@@ -16,6 +17,7 @@ using VRageMath;
 using System.Threading.Tasks;
 using Sandbox.Game.World;
 using VRage.Game.ModAPI;
+using Sandbox.Common.ObjectBuilders;
 
 namespace SwitchMe {
 
@@ -80,13 +82,14 @@ namespace SwitchMe {
             return false;
         }
 
-        public async Task<Tuple<string, string, Vector3D>> DownloadGridAsync(string currentIp, ulong steamid, string POS) {
+        public async Task<Tuple<string, string, GateObject>> DownloadGridAsync(string currentIp, ulong steamid, string POS) {
             APIMethods API = new APIMethods(Plugin);
 
             Directory.CreateDirectory("SwitchTemp");
             using (WebClient client = new WebClient()) {
 
-                Vector3D newPos;
+                GateObject gate = new GateObject();
+                Vector3D gps = Vector3D.Zero;
                 string filename;
                 string targetFile;
 
@@ -96,8 +99,9 @@ namespace SwitchMe {
                 //
                 bool foundGate = false;
 
-                foreach (ConfigObjects.Gate gate in Plugin.Config.Gates.Where(gate => gate.GateName.Equals(gatename))) {
-                    POS = ConfigObjects.ParseConvertXYZObject(gate.GateLocation);
+                foreach (GateObject gateOb in Plugin.zones.Where(zone => zone.gateName.Equals($"SwitchGate-{gatename}"))) {
+                    gps = gateOb.position;
+                    gate = gateOb;
                     foundGate = true;
                 }
                 if (Plugin.Config.RandomisedExit) {
@@ -123,9 +127,7 @@ namespace SwitchMe {
                 else if (config.EnabledMirror)
                     POS = POSsource.Substring(0, POSsource.IndexOf("^"));
                 */
-                POS = POS.TrimStart('{').TrimEnd('}');
-                Vector3D.TryParse(POS, out Vector3D gps);
-                newPos = gps;
+
                 Log.Info("Selected GPS: " + gps.ToString());
 
 
@@ -141,7 +143,7 @@ namespace SwitchMe {
 
                         WebClient myWebClient = new WebClient();
                         myWebClient.DownloadFile(remoteUri, targetFile);
-                        return new Tuple<string, string, Vector3D>(targetFile, filename, newPos);
+                        return new Tuple<string, string, GateObject>(targetFile, filename, gate);
 
                     } catch (Exception error) {
                         Log.Fatal("Unable to download grid: " + error.ToString());

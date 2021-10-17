@@ -164,7 +164,7 @@ namespace SwitchMe {
                 }
             }
             Plugin.CloseGates();
-            Plugin.OpenGates();
+            //Plugin.OpenGates();
         }
     }
 }

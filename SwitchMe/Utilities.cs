@@ -36,6 +36,11 @@ using System.Net.NetworkInformation;
 
 namespace SwitchMe {
 
+    public class GateObject {
+        public long entityId { get; set; }
+        public string gateName { get; set; }
+        public Vector3D position { get; set; }
+    }
     public class utils {
         public static string API_URL = "http://switchplugin.net/api2/";
         public static ITorchBase Torch { get; }

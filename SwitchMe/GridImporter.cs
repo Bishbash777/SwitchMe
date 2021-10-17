@@ -33,7 +33,7 @@ namespace SwitchMe {
             this.Context = Context;
         }
 
-        public bool DeserializeGridFromPath(string targetFile, string playername, Vector3D newpos) {
+        public bool DeserializeGridFromPath(string targetFile, string playername, GateObject gate) {
             var player = utils.GetPlayerByNameOrId(playername);
             if (MyObjectBuilderSerializer.DeserializeXML(targetFile, out MyObjectBuilder_Definitions myObjectBuilder_Definitions)) {
 
@@ -52,14 +52,14 @@ namespace SwitchMe {
                 var grids = prefab.CubeGrids;
 
                 /* Where do we want to paste the grids? Lets find out. */
-                var pos = FindPastePosition(grids, newpos, player.DisplayName);
+                var pos = FindPastePosition(grids, gate, player.DisplayName);
                 if (pos == null) {
                     utils.NotifyMessage("No free place.", player.SteamUserId);
                     return false;
                 }
 
                 /* Update GridsPosition if that doesnt work get out of here. */
-                if (!UpdateGridsPosition(grids, newpos, player.DisplayName)) {
+                if (!UpdateGridsPosition(grids, gate.position, player.DisplayName)) {
                     Log.Error("Failed to update grid position");
                     return false;
                 }
@@ -227,8 +227,8 @@ namespace SwitchMe {
                 MyMultiplayer.RaiseEvent(myCubeGrid, x => new Action<long, long>(x.TransferBlocksBuiltByID), author, player.IdentityId, new EndpointId());
         }
 
-        private Vector3D? FindPastePosition(MyObjectBuilder_CubeGrid[] grids, Vector3D pos, string playername) {
-            var player = utils.GetPlayerByNameOrId(playername);
+        private Vector3D? FindPastePosition(MyObjectBuilder_CubeGrid[] grids, GateObject gate, string playername) {
+            //var player = utils.GetPlayerByNameOrId(playername);
             Vector3? vector = null;
             float radius = 0F;
 
@@ -269,7 +269,7 @@ namespace SwitchMe {
              * used to determine the perfect place to paste the grids to. 
              */
 
-            return MyEntities.FindFreePlace(player.GetPosition(), radius);
+            return MyEntities.FindFreePlaceCustom(gate.position, radius, default, default, default, default, MyEntities.GetEntityById(gate.entityId));
         }
 
         public bool UpdateGridsPosition(MyObjectBuilder_CubeGrid[] grids, Vector3D newPosition, string playername) {

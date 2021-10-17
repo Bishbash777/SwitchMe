@@ -64,13 +64,13 @@ namespace SwitchMe {
         private IMultiplayerManagerBase _multibase;
         private readonly List<long> player_ids_to_spawn = new List<long>();
         private readonly List<IMyPlayer> all_players = new List<IMyPlayer>();
-        public List<string> zones = new List<string>();
+        public List<GateObject> zones = new List<GateObject>();
         private readonly Dictionary<long, IMyPlayer> current_player_ids = new Dictionary<long, IMyPlayer>();
         private readonly Dictionary<ulong, string> target_file_list = new Dictionary<ulong, string>();
         private readonly Dictionary<ulong, bool> connecting = new Dictionary<ulong, bool>();
         public Dictionary<Vector3D, string> JumpInfo = new Dictionary<Vector3D, string>();
         private readonly List<long> clear_ids = new List<long>();
-        private static Vector3D spawn_vector_location = Vector3D.One;
+        private Dictionary<ulong, GateObject> GatesBeingProcessed = new Dictionary<ulong, GateObject>();
         private MatrixD spawn_matrix = MatrixD.Identity;
         public bool update_debug = false;
         private Dictionary<ulong, bool> DisplayedMessage = new Dictionary<ulong, bool>();
@@ -89,7 +89,7 @@ namespace SwitchMe {
         public UserControl GetControl() => _control ?? (_control = new SwitchMeControl(this));
         public void Save() => _config?.Save();
         MyPlayer player;
-        public bool debug = false;
+        public bool debug = true;
         public string API_URL = "http://switchplugin.net/api2/";
         public bool loadFailure = false;
         public bool downloaded_config = false;
@@ -160,19 +160,20 @@ namespace SwitchMe {
                 return;
             }
 
-            string POS = "";
+            GateObject gate  = new GateObject();
             string gateName = await API.GetGateAsync(obj.SteamId.ToString());
-            foreach (ConfigObjects.Gate gate in Config.Gates.Where(c => c.GateName.Equals(gateName))) {
-                POS = ConfigObjects.ParseConvertXYZObject(gate.GateLocation);
+            foreach (GateObject gateOb in zones.Where(c => c.gateName.Equals(($"SwitchGate-{gateName}")))) {
+                gate = gateOb;
             }
             
             if (debug) { Log.Info($"API: Gate elected = {gateName}"); }
-           
 
-            POS = POS.TrimStart('{').TrimEnd('}');
-            Vector3D.TryParse(POS, out Vector3D gps);
-            spawn_vector_location = gps;
-            if (debug) { Log.Info("Selected GPS: " + gps.ToString()); }
+            Log.Error($"ADDING ID {obj.SteamId} TO GATES BEING PROCESSED");
+
+            if (!GatesBeingProcessed.ContainsKey(obj.SteamId)) {
+                GatesBeingProcessed.Add(obj.SteamId, gate);
+            }
+            if (debug) { Log.Info("Selected GPS: " + gate.position.ToString()); }
             
             if (!connecting.ContainsKey(obj.SteamId)) {
                 connecting.Add(obj.SteamId, true);
@@ -226,14 +227,14 @@ namespace SwitchMe {
                     var player = utils.GetPlayerByNameOrId(player_id.ToString());
                     if (debug) { Log.Info("Starting recovery process"); }
                     if (connecting[steamid] == true) {
-                        CloseGates();
+                        //CloseGates();
                         if (current_player_ids[player_id].Character == null && current_player_ids[player_id].Controller?.ControlledEntity?.Entity == null) {
                             MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-                                spawn_matrix = MatrixD.CreateWorld(spawn_vector_location);
+                                spawn_matrix = MatrixD.CreateWorld(GatesBeingProcessed[steamid].position);
                                 MyVisualScriptLogicProvider.SpawnPlayer(spawn_matrix, Vector3D.Zero, player_id); //Spawn function
                             });
                         }
-                        await Recovery(player_id, spawn_vector_location);
+                        await Recovery(player_id, GatesBeingProcessed[steamid]);
                         //utils.RefreshPlayer(steamid);
                     }
                     clear_ids.Add(player_id);
@@ -246,18 +247,20 @@ namespace SwitchMe {
 
         public override async void Update() {
             try {
-                //Scan for players near/inside jump areas
-                await Scan();
+                if (Config.Enabled) {
+                    //Scan for players near/inside jump areas
+                    await Scan();
 
-                //Check for players that need to be spawned
-                await ScanSpawnablePlayers();
+                    //Check for players that need to be spawned
+                    await ScanSpawnablePlayers();
+                }
             }
             catch (Exception e) {
                 Log.Error(e.ToString());
             }
         }
 
-        private async Task Recovery(long playerid, Vector3D spawn_vector_location) {
+        private async Task Recovery(long playerid, GateObject gate) {
             APIMethods API = new APIMethods(this);
             ulong steamid = MySession.Static.Players.TryGetSteamId(playerid);
             connecting.Remove(steamid);
@@ -280,11 +283,12 @@ namespace SwitchMe {
                         var prefab = prefabs[0];
                         var grids = prefab.CubeGrids;
                         /* Where do we want to paste the grids? Lets find out. */
-                        var pos = FindPastePosition(grids, spawn_vector_location);
+                        var pos = FindPastePosition(grids, GatesBeingProcessed[steamid]);
                         if (pos == null) {
+                            //WHAT THE FUCK KEEN SAFEZONES HAVE PHYSICS?!?!?!
                             Log.Error("No free place.");
                             pass = false;
-                            OpenGates();
+                            //OpenGates();
                             return;
                         }
 
@@ -292,7 +296,7 @@ namespace SwitchMe {
                         if (!UpdateGridsPosition(grids, (Vector3D)pos)) {
                             Log.Error("Failed to find update the grids position");
                             pass = false;
-                            OpenGates();
+                            //OpenGates();
                             return;
                         }
 
@@ -304,7 +308,7 @@ namespace SwitchMe {
                                 FixOwnerAndAuthorShip(cubeGrid, playerid);
 
                         }
-                        OpenGates();
+                        //OpenGates();
                         if (pass) {
                             await API.MarkCompleteAsync(steamid);
                             await API.RemoveConnectionAsync(steamid);
@@ -364,7 +368,7 @@ namespace SwitchMe {
             foreach (long author in authors)
                 MyMultiplayer.RaiseEvent(myCubeGrid, x => new Action<long, long>(x.TransferBlocksBuiltByID), author, playerId, new EndpointId());
         }
-        private Vector3D? FindPastePosition(MyObjectBuilder_CubeGrid[] grids, Vector3D position) {
+        private Vector3D? FindPastePosition(MyObjectBuilder_CubeGrid[] grids, GateObject gate) {
             Vector3? vector = null;
             float radius = 0F;
 
@@ -405,8 +409,9 @@ namespace SwitchMe {
              * used to determine the perfect place to paste the grids to. 
              */
 
+            Log.Error($"GATE ENTITY = {gate.entityId} | {MyEntities.GetEntityById(gate.entityId)}");
 
-            return MyEntities.FindFreePlace(position, radius);
+            return MyEntities.FindFreePlaceCustom(gate.position, radius, default, default, default, default, MyEntities.GetEntityById(gate.entityId));
 
 
         }
@@ -476,7 +481,7 @@ namespace SwitchMe {
             string TargetAlias = string.Empty;
 
             //Enter jumpgate logic.
-            if (Config.EnabledJumpgate && tick % 16 == 0) {
+            if (tick % 16 == 0) {
                 foreach (var playerOnline in MySession.Static.Players.GetOnlinePlayers()) {
                     var player = utils.GetPlayerByNameOrId(playerOnline.DisplayName);
                     if (player.Character == null) { continue; }
@@ -640,15 +645,25 @@ namespace SwitchMe {
                 ob.Shape = MySafeZoneShape.Sphere;
                 ob.Radius = (float)50;
                 ob.Enabled = true;
-                ob.DisplayName = $"SM-{gps}";
+                ob.DisplayName = $"SwitchGate-{gate.GateName}";
                 ob.AccessTypeGrids = MySafeZoneAccess.Blacklist;
                 ob.AccessTypeFloatingObjects = MySafeZoneAccess.Blacklist;
                 ob.AccessTypeFactions = MySafeZoneAccess.Blacklist;
                 ob.AccessTypePlayers = MySafeZoneAccess.Blacklist;
                 var zone = MyEntities.CreateFromObjectBuilderAndAdd(ob, true);
                 gates++;
-                if (!zones.Contains(ob.DisplayName)) {
-                    zones.Add(ob.DisplayName);
+
+                GateObject gateObject = new GateObject() {
+                    entityId = zone.EntityId,
+                    gateName = ob.DisplayName,
+                    position = gps
+                };
+
+                Log.Error($"GATE ENTITY AT CREATION = {gateObject.entityId} | {MyEntities.GetEntityById(gateObject.entityId)}");
+
+                zone.Physics.Deactivate();
+                if (!zones.Contains(gateObject)) {
+                    zones.Add(gateObject);
                 }
             }
             Log.Info($"{gates} Jumpgates created!");
@@ -657,7 +672,7 @@ namespace SwitchMe {
             int i = 0;
             foreach (var zone in zones) {
                 foreach (var entity in MyEntities.GetEntities()) {
-                    if (entity?.DisplayName?.Contains(zone, StringComparison.CurrentCultureIgnoreCase) ?? false) {
+                    if (entity?.DisplayName?.Contains(zone.gateName, StringComparison.CurrentCultureIgnoreCase) ?? false) {
                         i++;
                         entity.Close();
                     }
