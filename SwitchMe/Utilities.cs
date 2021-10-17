@@ -16,16 +16,50 @@ using System.Web;
 using Torch.Mod.Messages;
 using VRage.Game;
 using VRage.Game.ModAPI;
+using System.Management;
+using Sandbox.ModAPI;
 using VRage.Groups;
 using VRageMath;
 using Torch;
 using Torch.API;
+using System.Net;
+using System.Collections.Specialized;
+using VRage.Network;
+using Sandbox.Engine.Multiplayer;
+using Torch.Utils;
+using VRage.Collections;
+using VRage.Replication;
+using System.Collections;
+using VRage.ModAPI;
+using Microsoft.Win32;
+using System.Net.NetworkInformation;
 
 namespace SwitchMe {
 
+    public class GateObject {
+        public long entityId { get; set; }
+        public string gateName { get; set; }
+        public Vector3D position { get; set; }
+    }
     public class utils {
+        public static string API_URL = "http://switchplugin.net/api2/";
         public static ITorchBase Torch { get; }
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
+        public static Dictionary<string, string> webdata = new Dictionary<string, string>();
+        public static Dictionary<string, string> UpdateData = new Dictionary<string, string>();
+        public static Dictionary<string, string> HWIDData = new Dictionary<string, string>();
+        public static List<string> ReservedDicts = new List<string>();
+        #pragma warning disable 649
+        [ReflectedGetter(Name = "m_clientStates")]
+        private static Func<MyReplicationServer, IDictionary> _clientStates;
+        private const string CLIENT_DATA_TYPE_NAME = "VRage.Network.MyClient, VRage";
+        [ReflectedGetter(TypeName = CLIENT_DATA_TYPE_NAME, Name = "Replicables")]
+        private static Func<object, MyConcurrentDictionary<IMyReplicable, MyReplicableClientData>> _replicables;
+        [ReflectedMethod(Name = "RemoveForClient", OverrideTypeNames = new[] { null, CLIENT_DATA_TYPE_NAME, null })]
+        private static Action<MyReplicationServer, IMyReplicable, object, bool> _removeForClient;
+        [ReflectedMethod(Name = "ForceReplicable")]
+        private static Action<MyReplicationServer, IMyReplicable, Endpoint> _forceReplicable;
+        #pragma warning restore 649
         public static string CreateExternalIP(SwitchMeConfig Config) {
 
             if (MySandboxGame.ConfigDedicated.IP.Contains("0.0") || MySandboxGame.ConfigDedicated.IP.Contains("127.0") || Sandbox.MySandboxExternal.ConfigDedicated.IP.Contains("192.168"))
@@ -47,6 +81,16 @@ namespace SwitchMe {
             Random rand = new Random();
             var k = dictionary.Keys.ToList()[rand.Next(dictionary.Count)];
             return dictionary[k];
+        }
+
+        public static string GetMachineId() {
+            string firstMacAddress = NetworkInterface
+                .GetAllNetworkInterfaces()
+                .Where(nic => nic.OperationalStatus == OperationalStatus.Up && nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                .Select(nic => nic.GetPhysicalAddress().ToString())
+                .FirstOrDefault();
+
+            return firstMacAddress;
         }
 
         public static MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group FindRelevantGroup(
@@ -101,8 +145,6 @@ namespace SwitchMe {
 
                         /* Is the player ID the biggest owner? */
                         if (gridOwner == playerId) {
-
-                            Log.Fatal("checking was completed");
                             groupFound = true;
                             break;
 
@@ -130,8 +172,31 @@ namespace SwitchMe {
         }
 
 
-        public static void NotifyMessage(string message, ulong steamid) {
-            ModCommunication.SendMessageTo(new NotificationMessage(message, 15000, "Blue"), steamid);
+        public static void NotifyMessage(string message, ulong steamid, string colour = "Blue") {
+            ModCommunication.SendMessageTo(new NotificationMessage(message, 15000, colour), steamid);
+        }
+
+
+        public static void RefreshPlayer(ulong steamid) {
+            MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                var playerEndpoint = new Endpoint(steamid, 0);
+                var replicationServer = (MyReplicationServer)MyMultiplayer.ReplicationLayer;
+                var clientDataDict = _clientStates.Invoke(replicationServer);
+                object clientData;
+                try {
+                    clientData = clientDataDict[playerEndpoint];
+                }
+                catch { return; }
+                var clientReplicables = _replicables.Invoke(clientData);
+                var replicableList = new List<IMyReplicable>(clientReplicables.Count);
+                foreach (var pair in clientReplicables)
+                    replicableList.Add(pair.Key);
+                foreach (var replicable in replicableList) {
+                    _removeForClient.Invoke(replicationServer, replicable, clientData, true);
+                    _forceReplicable.Invoke(replicationServer, replicable, playerEndpoint);
+
+                }
+            });
         }
 
         public static void Respond(string message, string sender = null, ulong steamid = 0, string font = null) {
@@ -143,7 +208,31 @@ namespace SwitchMe {
             if (manager == null) {
                 return;
             }
-            manager.SendMessageAsOther(sender, message, font, steamid);
+            manager.SendMessageAsOther(sender, message, default, steamid, "White");
+        }
+
+        public static void Delete(string entityName) {
+            try {
+                MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                    var name = entityName;
+
+                    if (string.IsNullOrEmpty(name))
+                        return;
+
+                    if (!utils.TryGetEntityByNameOrId(name, out IMyEntity entity))
+                        return;
+
+                    if (entity is IMyCharacter)
+                        return;
+
+                    entity.Close();
+
+                    Log.Warn("Entitiy deleted.");
+                });
+            }
+            catch (Exception e) {
+                Log.Error(e.ToString());
+            }
         }
 
         public static ConcurrentBag<MyGroups<MyCubeGrid, MyGridPhysicalGroupData>.Group> FindGridGroup(string gridName) {
@@ -179,6 +268,29 @@ namespace SwitchMe {
             return groups;
         }
 
+         public static bool TryGetEntityByNameOrId(string nameOrId, out IMyEntity entity) {
+            if (long.TryParse(nameOrId, out long id))
+                return MyAPIGateway.Entities.TryGetEntityById(id, out entity);
+
+            foreach (var ent in MyEntities.GetEntities()) {
+                if (ent.DisplayName == nameOrId) {
+                    entity = ent;
+                    return true;
+                }
+            }
+            entity = null;
+            return false;
+        }
+
+        public static MyIdentity GetIdentityByName(string playerName) {
+
+            foreach (var identity in MySession.Static.Players.GetAllIdentities())
+                if (identity.DisplayName == playerName)
+                    return identity;
+
+            return null;
+        }
+
         public static IMyPlayer GetPlayerByNameOrId(string nameOrPlayerId) {
             if (!long.TryParse(nameOrPlayerId, out long id)) {
                 foreach (var identity in MySession.Static.Players.GetAllIdentities()) {
@@ -196,5 +308,75 @@ namespace SwitchMe {
 
             return null;
         }
+
+        public static async Task<Dictionary<string,string>> SendAPIRequestAsync(bool debug) {
+            HttpResponseMessage response = null;
+            string function = string.Empty;
+            try {
+                using (HttpClient client = new HttpClient()) {
+
+                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>();
+
+                    foreach (var kvp in webdata) {
+                        if (kvp.Key == "FUNCTION") { function = kvp.Value; }
+                        pairs.Add(new KeyValuePair<string, string>(kvp.Key, kvp.Value));
+                    }
+
+                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
+                    response = await client.PostAsync(API_URL, content);
+                    
+                    var api_response = ParseQueryString(await response.Content.ReadAsStringAsync());
+                    webdata.Clear();
+                    if (debug) {
+                        Log.Warn($"{function} response data:");
+                        foreach (var kvp in api_response) {
+                            Log.Warn($"{kvp.Key}={kvp.Value}");
+                        }
+                    }
+                    return api_response;
+                }
+            } catch(Exception e) {
+                Log.Fatal(e.ToString());
+                if (debug) { Log.Warn(response); }
+                return null;
+            }
+        }
+
+        public static async void SendAPIData(bool UpdateDebug = false) {
+            try {
+                using (HttpClient client = new HttpClient()) {
+                    List<KeyValuePair<string, string>> postData = new List<KeyValuePair<string, string>>();
+                    foreach (var kvp in UpdateData) {
+                        postData.Add(new KeyValuePair<string, string> (kvp.Key, kvp.Value));
+                    }
+                    FormUrlEncodedContent content = new FormUrlEncodedContent(postData);
+                    HttpResponseMessage response = await client.PostAsync(API_URL, content);
+                    if (UpdateDebug) { Log.Warn(await response.Content.ReadAsStringAsync()); }
+                    UpdateData.Clear();
+                }
+            }
+            catch (Exception e) {
+                Log.Fatal(e.ToString());
+            }
+        }
+
+        public static async void SendHWIDData(bool UpdateDebug = false) {
+            try {
+                using (HttpClient client = new HttpClient()) {
+                    List<KeyValuePair<string, string>> postData = new List<KeyValuePair<string, string>>();
+                    foreach (var kvp in HWIDData) {
+                        postData.Add(new KeyValuePair<string, string>(kvp.Key, kvp.Value));
+                    }
+                    FormUrlEncodedContent content = new FormUrlEncodedContent(postData);
+                    HttpResponseMessage response = await client.PostAsync(API_URL, content);
+                    if (UpdateDebug) { Log.Warn(await response.Content.ReadAsStringAsync()); }
+                    HWIDData.Clear();
+                }
+            }
+            catch (Exception e) {
+                Log.Fatal(e.ToString());
+            }
+        }
+
     }
 }

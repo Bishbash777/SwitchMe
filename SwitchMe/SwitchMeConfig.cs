@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using Torch;
 
 namespace SwitchMe {
@@ -6,6 +7,9 @@ namespace SwitchMe {
 
         private bool _enabled = false;
         public bool Enabled { get => _enabled; set => SetValue(ref _enabled, value); }
+
+        private bool _useOnlineConfig = false;
+        public bool UseOnlineConfig { get => _useOnlineConfig; set => SetValue(ref _useOnlineConfig, value); }
 
         private bool _debug = false;
         public bool Debug { get => _debug; set => SetValue(ref _debug, value); }
@@ -25,15 +29,6 @@ namespace SwitchMe {
         private bool _inboundTransfersState = false;
         public bool InboundTransfersState { get => _inboundTransfersState; set => SetValue(ref _inboundTransfersState, value); }
 
-        private string _Xcord = "";
-        public string XCord { get => _Xcord; set => SetValue(ref _Xcord, value); }
-
-        private string _ycord = "";
-        public string YCord { get => _ycord; set => SetValue(ref _ycord, value); }
-
-        private string _zcord = "";
-        public string ZCord { get => _zcord; set => SetValue(ref _zcord, value); }
-
         private string _localIP = "";
         public string LocalIP { get => _localIP; set => SetValue(ref _localIP, value); }
 
@@ -42,8 +37,8 @@ namespace SwitchMe {
         public string ActivationKey { get => _ActivationKey; set => SetValue(ref _ActivationKey, value); }
         */
 
-        private string _localKey = "";
-        public string LocalKey { get => _localKey; set => SetValue(ref _localKey, value); }
+        private string _BindingKey = "";
+        public string BindingKey { get => _BindingKey; set => SetValue(ref _BindingKey, value); }
 
         /*
         private bool _econEnabled = false;
@@ -77,11 +72,11 @@ namespace SwitchMe {
         private int _confirmationInSeconds = 30; //30 Seconds
         public int CooldownInSeconds { get => _cooldownInSeconds; set => SetValue(ref _cooldownInSeconds, value); }
 
-        private ObservableCollection<string> _switchServers = new ObservableCollection<string>();
-        public ObservableCollection<string> Servers { get => _switchServers; set => SetValue(ref _switchServers, value); }
+        private List<ConfigObjects.Gate> _gates = new List<ConfigObjects.Gate>();
+        public List<ConfigObjects.Gate> Gates { get => _gates; set => SetValue(ref _gates, value); }
 
-        private ObservableCollection<string> _switchGates = new ObservableCollection<string>();
-        public ObservableCollection<string> Gates { get => _switchGates; set => SetValue(ref _switchGates, value); }
+        private List<ConfigObjects.Server> _servers = new List<ConfigObjects.Server>();
+        public List<ConfigObjects.Server> Servers { get => _servers; set => SetValue(ref _servers, value); }
 
     }
 }

@@ -9,6 +9,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using Torch.Commands;
+using Sandbox.Common;
 using Torch.Mod;
 using Torch.Mod.Messages;
 using VRage.Groups;
@@ -16,6 +17,7 @@ using VRageMath;
 using System.Threading.Tasks;
 using Sandbox.Game.World;
 using VRage.Game.ModAPI;
+using Sandbox.Common.ObjectBuilders;
 
 namespace SwitchMe {
 
@@ -24,6 +26,7 @@ namespace SwitchMe {
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         private readonly string ExportPath = "SwitchTemp\\{0}.xml";
+        public ConfigObjects ConfigObjects = new ConfigObjects();
 
         private readonly SwitchMePlugin Plugin;
         private readonly CommandContext Context;
@@ -63,7 +66,7 @@ namespace SwitchMe {
                     return false;
                 }
 
-                if (await UploadGridAsync(serverTarget, gridTarget, player.DisplayName, ip, currentIp, path, pos, targetAlias)) {
+                if (await UploadGridAsync(serverTarget, gridTarget, player.DisplayName, ip, path, pos, targetAlias)) {
                     /* Upload successful close the grids */
                     DeleteUploadedGrids(relevantGroup);
 
@@ -79,94 +82,59 @@ namespace SwitchMe {
             return false;
         }
 
-        public async Task<Tuple<string, string, Vector3D>> DownloadGridAsync(string currentIp, ulong steamid, string POS) {
+        public async Task<Tuple<string, string, GateObject>> DownloadGridAsync(string currentIp, ulong steamid, string POS) {
+            APIMethods API = new APIMethods(Plugin);
 
             Directory.CreateDirectory("SwitchTemp");
             using (WebClient client = new WebClient()) {
 
-                Vector3D newPos;
-                string POSsource = "";
+                GateObject gate = new GateObject();
+                Vector3D gps = Vector3D.Zero;
                 string filename;
                 string targetFile;
-                string source = "";
 
-                using (HttpClient clients = new HttpClient()) {
-                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                    {
-                    new KeyValuePair<string, string>("recover", steamid.ToString()),
-                    new KeyValuePair<string, string>("currentIP", currentIp),
-                    new KeyValuePair<string, string>("bindKey", Plugin.Config.LocalKey)
-                };
-                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                    HttpResponseMessage httpResponseMessage = await clients.PostAsync(Plugin.API_URL, content);
-                    var response = httpResponseMessage;
-                    httpResponseMessage = null;
-                    string texts = await response.Content.ReadAsStringAsync();
-                    POSsource = texts;
-                    //
-                    // DO THE RANDOMISER SHIT BISH
-                    //
-                    bool foundGate = false;
-                    IEnumerable<string> channelIds = Plugin.Config.Gates.Where(c => c.Split('/')[2].Equals(POSsource));
-                    foreach (string chId in channelIds) {
-                        POS = chId.Split('/')[1];
-                        foundGate = true;
-                    }
-                    if (Plugin.Config.RandomisedExit) {
-                        Dictionary<string, string> gateSelection = new Dictionary<string, string>();
-                        channelIds = Plugin.Config.Gates;
-                        int i = 0;
-                        foreach (string gate in channelIds) {
-                            i++;
-                            gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
-                        }
-                        if (i != 0) {
-                            POS = utils.SelectRandomGate(gateSelection);
-                        }
-                    }
-                    if (!Plugin.Config.RandomisedExit) {
-                        Log.Warn($"API: Gate elected = {POSsource}");
-                    }
-                    else {
-                        Log.Warn("Using randomly selected gate as exit");
-                    }
+                string gatename = await API.GetGateAsync(steamid.ToString());
+                //
+                // DO THE RANDOMISER SHIT BISH
+                //
+                bool foundGate = false;
 
-                    if (!foundGate) {
-                        POS = "{X:" + Plugin.Config.XCord + " Y:" + Plugin.Config.YCord + " Z:" + Plugin.Config.ZCord + "}";
-                        Log.Error($"Target gate ({POSsource}) does not exist... Using default");
-                    }
-                    /*
-                    else if (config.EnabledMirror)
-                        POS = POSsource.Substring(0, POSsource.IndexOf("^"));
-                    */
-                    POS = POS.TrimStart('{').TrimEnd('}');
-                    Vector3D.TryParse(POS, out Vector3D gps);
-                    newPos = gps;
-                    Log.Info("Selected GPS: " + gps.ToString());
+                foreach (GateObject gateOb in Plugin.zones.Where(zone => zone.gateName.Equals($"SwitchGate-{gatename}"))) {
+                    gps = gateOb.position;
+                    gate = gateOb;
+                    foundGate = true;
+                }
+                if (Plugin.Config.RandomisedExit) {
+                    //Dictionary<string, string> gateSelection = new Dictionary<string, string>();
+                    //channelIds = Plugin.Config.Gates;
+                    //int i = 0;
+                    //foreach (string gate in channelIds) {
+                    //    i++;
+                        //gateSelection.Add(gate.Split('/')[2], gate.Split('/')[1]);
+                    //}
+                    //if (i != 0) {
+                    //    POS = utils.SelectRandomGate(gateSelection);
+                    //}
+                }
+                if (!Plugin.Config.RandomisedExit) {
+                    Log.Warn($"API: Gate elected = {gatename}");
+                }
+                else {
+                    Log.Warn("Using randomly selected gate as exit");
                 }
 
+                /*
+                else if (config.EnabledMirror)
+                    POS = POSsource.Substring(0, POSsource.IndexOf("^"));
+                */
+
+                Log.Info("Selected GPS: " + gps.ToString());
 
 
-                using (HttpClient clients = new HttpClient())
-                {
-                    List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                    {
-                        new KeyValuePair<string, string>("steamID", steamid.ToString()),
-                        new KeyValuePair<string, string>("currentIP", currentIp)
-                    };
-                    FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                    HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/recovery.php", content);
-                    HttpResponseMessage response = httpResponseMessage;
-                    httpResponseMessage = null;
-                    string text = await response.Content.ReadAsStringAsync();
-                    source = text;
-                }
-       
-
-                string existance = source.Substring(0, source.IndexOf(":"));
-                if (existance == "1") {
+                var api_response = await API.FindWebGridAsync(steamid);
+                if (api_response["responseCode"] == "0") {
                     Log.Info("Grid found in database... attempting download!");
-                    filename = source.Split(':').Last() + ".xml";
+                    filename = api_response["filename"] + ".xml";
 
                     try {
 
@@ -175,7 +143,7 @@ namespace SwitchMe {
 
                         WebClient myWebClient = new WebClient();
                         myWebClient.DownloadFile(remoteUri, targetFile);
-                        return new Tuple<string, string, Vector3D>(targetFile, filename, newPos);
+                        return new Tuple<string, string, GateObject>(targetFile, filename, gate);
 
                     } catch (Exception error) {
                         Log.Fatal("Unable to download grid: " + error.ToString());
@@ -190,20 +158,25 @@ namespace SwitchMe {
             }
         }
 
-        private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string playername, string ip, string currentIp, string path, string pos, string targetAlias) {
-            var player = utils.GetPlayerByNameOrId(playername);
-            /* DO we need a using here too? */
+        private bool UploadGridFile(string path) {
             WebClient Client = new WebClient();
             Client.Headers.Add("Content-Type", "binary/octet-stream");
+            byte[] result = Client.UploadFile("http://switchplugin.net/api2/grid-upload.php", "POST", path);
+            Log.Fatal("Grid was uploaded to webserver!");
+            var api_response = utils.ParseQueryString(Encoding.UTF8.GetString(result, 0, result.Length));
+            if (api_response["responseCode"] != "0") {
+                if (Plugin.debug) { Log.Warn($"{api_response["responseMessage"]}"); }
+                return false;
+            }
+            return true;
+        }
+
+        private async Task<bool> UploadGridAsync(string serverTarget, string gridTarget, string playername, string ip, string path, string pos, string targetAlias) {
+            var player = utils.GetPlayerByNameOrId(playername);
+            APIMethods API = new APIMethods(Plugin);
 
             try {
-
-                byte[] result = Client.UploadFile("http://switchplugin.net/gridHandle.php", "POST", path);
-                Log.Fatal("Grid was uploaded to webserver!");
-
-                string s = System.Text.Encoding.UTF8.GetString(result, 0, result.Length);
-
-                if (s == "1") {
+                if (UploadGridFile(path)) {
 
                     utils.NotifyMessage("Grid has been sent to the void! - Good luck!", player.SteamUserId);
 
@@ -211,41 +184,10 @@ namespace SwitchMe {
 
                     ModCommunication.SendMessageTo(new JoinServerMessage(ip), player.SteamUserId);
 
-                    using (HttpClient clients = new HttpClient())
-                    {
-                        List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                        {
-                            new KeyValuePair<string, string>("steamID", player.SteamUserId.ToString()),
-                            new KeyValuePair<string, string>("targetIP", ip ),
-                            new KeyValuePair<string, string>("fileName", player.SteamUserId.ToString() + "-" + gridTarget ),
-                            new KeyValuePair<string, string>("bindKey", Plugin.Config.LocalKey ),
-                            new KeyValuePair<string, string>("targetPOS", pos ),
-                            new KeyValuePair<string, string>("gridName", gridTarget ),
-                            new KeyValuePair<string, string>("currentIP", currentIp)
-                        };
-                        FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                        HttpResponseMessage httpResponseMessage = await clients.PostAsync("http://switchplugin.net/gridHandle.php", content);
-                        HttpResponseMessage response = httpResponseMessage;
-                        httpResponseMessage = null;
-                        string text = await response.Content.ReadAsStringAsync();
-                    }
-
-                    using (HttpClient client = new HttpClient()) {
-                        List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>
-                        {
-                            new KeyValuePair<string, string>("BindKey", Plugin.Config.LocalKey),
-                            new KeyValuePair<string, string>("CurrentIP", currentIp),
-                            new KeyValuePair<string, string>("TargetIP", ip),
-                            new KeyValuePair<string, string>("TargetAlias", targetAlias),
-                            new KeyValuePair<string, string>("AddConnection",player.SteamUserId.ToString())
-                        };
-                        FormUrlEncodedContent content = new FormUrlEncodedContent(pairs);
-                        HttpResponseMessage httpResponseMessage = await client.PostAsync(Plugin.API_URL, content);
-                        HttpResponseMessage response = httpResponseMessage;
-                        httpResponseMessage = null;
-                        string text = await response.Content.ReadAsStringAsync();
-                        Log.Warn(text);
-                    }
+                    //Add entry into transfers table
+                    await API.AddTransferAsync(player.SteamUserId.ToString(),ip, player.SteamUserId.ToString() + "-" + gridTarget, pos, gridTarget);
+                    //Add user to transfer Queue (Active users)
+                    await API.AddConnectionAsync(player.SteamUserId, ip, targetAlias);
                     return true;
 
                 } else {
@@ -274,19 +216,21 @@ namespace SwitchMe {
         }
 
         public async Task PlayerTransfer(string type, ulong steamid) {
+            APIMethods API = new APIMethods(Plugin);
             string ip = "";
             string name = "";
             string port = "";
-            string existanceCheck = "";
+            int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
+            if (type == "single") {
+                currentLocalPlayers = 1;
+            }
 
             int i = 0;
-            IEnumerable<string> channelIds = Plugin.Config.Servers;
 
-            foreach (string chId in channelIds) {
-
-                ip = chId.Split(':')[1];
-                name = chId.Split(':')[0];
-                port = chId.Split(':')[2];
+            foreach (ConfigObjects.Server server in Plugin.Config.Servers) {
+                name = server.ServerName;
+                ip = server.ServerIP;
+                port = server.ServerPort.ToString();
                 i++;
             }
 
@@ -294,9 +238,8 @@ namespace SwitchMe {
 
                 string target = ip + ":" + port;
                 ip += ":" + port;
-                string slotinfo = await Plugin.CheckSlotsAsync(target);
-                existanceCheck = slotinfo.Split(';').Last();
-                bool paired = await Plugin.CheckKeyAsync(target);
+                bool slotsAvailable = bool.Parse(await API.CheckSlotsAsync(target, currentLocalPlayers.ToString()));
+                bool paired = await API.CheckKeyAsync(target);
 
                 if (ip == null || name == null || port == null) {
                     utils.Respond("Invalid Configuration!", "Server" , steamid);
@@ -308,7 +251,7 @@ namespace SwitchMe {
                     return;
                 }
 
-                if (existanceCheck != "1") {
+                if (!await API.CheckExistance(target)) {
                     utils.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!", "Server", steamid);
                     return;
                 }
@@ -319,19 +262,8 @@ namespace SwitchMe {
                 }
 
                 ///   Slot checking
-                Log.Warn("Checking " + target);
-                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                Log.Warn("MAX: " + max);
-                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                if (type == "single") {
-                    currentLocalPlayers = 1;
-                }
-                int maxi = int.Parse(max);
-                int maxcheck = currentLocalPlayers + currentRemotePlayers;
                 utils.Respond("Slot Checking...", "Server", steamid);
-                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-                if (maxcheck > maxi && Context.Player.PromoteLevel != MyPromoteLevel.Admin) {
+                if (!slotsAvailable && Context.Player.PromoteLevel != MyPromoteLevel.Admin) {
                     return;
                 }
 
@@ -357,19 +289,17 @@ namespace SwitchMe {
 
             else {
 
-                channelIds = Plugin.Config.Servers.Where(c => c.Split(':')[0].Equals(Context.RawArgs));
 
-                foreach (string chId in channelIds) {
-                    ip = chId.Split(':')[1];
-                    name = chId.Split(':')[0];
-                    port = chId.Split(':')[2];
+                foreach (ConfigObjects.Server server in Plugin.Config.Servers.Where(server => server.ServerName.Equals(Context.RawArgs))) {
+                    name = server.ServerName;
+                    ip = server.ServerIP;
+                    port = server.ServerPort.ToString();
                 }
 
                 string target = ip + ":" + port;
                 ip += ":" + port;
-                string slotinfo = await Plugin.CheckSlotsAsync(target);
-                existanceCheck = slotinfo.Split(';').Last();
-                bool paired = await Plugin.CheckKeyAsync(target);
+                bool slotsAvailable = bool.Parse(await API.CheckSlotsAsync(target, currentLocalPlayers.ToString()));
+                bool paired = await API.CheckKeyAsync(target);
 
                 if (ip == null || name == null || port == null) {
                     Context.Respond("Invalid Configuration!");
@@ -381,7 +311,7 @@ namespace SwitchMe {
                     return;
                 }
 
-                if (existanceCheck != "1") {
+                if (!await API.CheckExistance(target)) {
                     Context.Respond("Cannot communicate with target, please make sure SwitchMe is installed there!");
                     return;
                 }
@@ -392,16 +322,7 @@ namespace SwitchMe {
                 }
 
                 ///     Slot checking
-                Log.Warn("Checking " + target);
-                int currentRemotePlayers = int.Parse(slotinfo.Substring(0, slotinfo.IndexOf(":")));
-                string max = slotinfo.Substring(slotinfo.IndexOf(':') + 1, slotinfo.IndexOf(';') - slotinfo.IndexOf(':') - 1);
-                Log.Warn("MAX: " + max);
-                int currentLocalPlayers = int.Parse(MySession.Static.Players.GetOnlinePlayers().Count.ToString());
-                int maxi = int.Parse(max);
-                int maxcheck = currentLocalPlayers + currentRemotePlayers;
-                Context.Respond("Slot Checking...");
-                Log.Warn(maxcheck + " Player Count Prediction|Player Count Threshold " + max);
-                if (maxcheck > maxi) {
+                if (slotsAvailable) {
                     Context.Respond("Cannot switch, not enough slots available");
                     return;
                 }
